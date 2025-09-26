@@ -1,0 +1,37 @@
+[gd_scene load_steps=3 format=3 uid="uid://b7nlnllxbfp5y"]
+
+[ext_resource type="Script" uid="uid://crbmvuyikpjah" path="res://addons/omni_button/test/test.gd" id="1_mr6o5"]
+[ext_resource type="Script" uid="uid://3msmjo362g7m" path="res://addons/omni_button/OmniButton.cs" id="3_3erv6"]
+
+[node name="Control" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_mr6o5")
+
+[node name="IconTextButton" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 0
+offset_right = 349.0
+offset_bottom = 315.0
+script = ExtResource("3_3erv6")
+EnableHoverActions = true
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="LabelButton" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -754.0
+offset_top = -512.0
+grow_horizontal = 0
+grow_vertical = 0
+script = ExtResource("3_3erv6")
+EnableHoverActions = true
+metadata/_custom_type_script = "uid://3msmjo362g7m"
