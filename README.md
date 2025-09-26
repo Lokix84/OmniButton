@@ -32,3 +32,10 @@ By Default, the control will be marked as a button with press and hover enabled.
 The Press, Release and Toggle actions by default will output a log message stating that the button is running built-in logic.
 
 PressAction, ReleaseAction, ToggleAction, HoverInAction and HoverOutAction are Callable properties. Setting those in code will change the functionality of the corresponding signal events.
+
+----------------
+Logging
+----------------
+There are GD.Print ,GD.PushWarning and GD.PushError outputs throughout the functionality. at present moment it outputs to Godots various consoles.
+
+If you have your own logging solution, you can overwrite it just like the other actions. Change the LogAction property. Type and Message are the parameters it takes in. Type is meant to be "Debug", "Info", "Warning" or "Error". 
