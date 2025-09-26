@@ -6,7 +6,7 @@ The idea was to make a control that could have text or an image that could have 
 ----------------
 INSTALL
 ----------------
-Add omni_button folder to addons folder.
+Add omni_button folder to addons folder. There are GDscript and a C# versions of the plugin. Delete the CS or GD folder if you dont plan on using it.
 
 ----------------
 GET STARED
