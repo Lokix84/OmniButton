@@ -1,7 +1,7 @@
-[gd_scene load_steps=3 format=3 uid="uid://b7nlnllxbfp5y"]
+[gd_scene load_steps=3 format=3 uid="uid://d3ukhudxpvpvd"]
 
-[ext_resource type="Script" uid="uid://b0v0vv67rbtor" path="res://addons/omni_button/test/Test.cs" id="1_1o0i0"]
-[ext_resource type="Script" uid="uid://3msmjo362g7m" path="res://addons/omni_button/OmniButton.cs" id="3_3erv6"]
+[ext_resource type="Script" uid="uid://n54ewwkpv83g" path="res://addons/omni_button/test/CSharpTest.cs" id="1_dqdkr"]
+[ext_resource type="Script" uid="uid://3msmjo362g7m" path="res://addons/omni_button/CS/OmniButton.cs" id="2_3dl0p"]
 
 [node name="Control" type="Control"]
 layout_mode = 3
@@ -10,7 +10,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_1o0i0")
+script = ExtResource("1_dqdkr")
 
 [node name="LabelButton" type="Control" parent="." node_paths=PackedStringArray("BoundsSource")]
 layout_mode = 1
@@ -25,7 +25,7 @@ offset_right = 377.0
 offset_bottom = 104.5
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("3_3erv6")
+script = ExtResource("2_3dl0p")
 BoundsSource = NodePath(".")
 PressedAction = Callable()
 EnableReleaseActions = true
@@ -58,7 +58,7 @@ offset_left = -25.0
 offset_right = 25.0
 offset_bottom = 50.0
 grow_horizontal = 2
-script = ExtResource("3_3erv6")
+script = ExtResource("2_3dl0p")
 BoundsSource = NodePath(".")
 PressedAction = Callable()
 EnableReleaseActions = true
@@ -80,7 +80,7 @@ offset_top = -25.0
 offset_right = 50.0
 offset_bottom = 25.0
 grow_vertical = 2
-script = ExtResource("3_3erv6")
+script = ExtResource("2_3dl0p")
 BoundsSource = NodePath(".")
 PressedAction = Callable()
 EnableReleaseActions = true
@@ -105,7 +105,7 @@ offset_top = -25.0
 offset_bottom = 25.0
 grow_horizontal = 0
 grow_vertical = 2
-script = ExtResource("3_3erv6")
+script = ExtResource("2_3dl0p")
 BoundsSource = NodePath(".")
 PressedAction = Callable()
 EnableReleaseActions = true
@@ -130,7 +130,7 @@ offset_top = -50.0
 offset_right = 25.0
 grow_horizontal = 2
 grow_vertical = 0
-script = ExtResource("3_3erv6")
+script = ExtResource("2_3dl0p")
 BoundsSource = NodePath(".")
 PressedAction = Callable()
 EnableReleaseActions = true
@@ -156,7 +156,7 @@ offset_right = 25.0
 offset_bottom = 25.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("3_3erv6")
+script = ExtResource("2_3dl0p")
 BoundsSource = NodePath(".")
 PressedAction = Callable()
 EnableReleaseActions = true
@@ -191,7 +191,7 @@ offset_top = -50.0
 offset_right = 100.0
 offset_bottom = 50.0
 grow_vertical = 2
-script = ExtResource("3_3erv6")
+script = ExtResource("2_3dl0p")
 BoundsSource = NodePath(".")
 PressedAction = Callable()
 ReleasedAction = Callable()
@@ -213,7 +213,7 @@ offset_top = -50.0
 offset_bottom = 50.0
 grow_horizontal = 0
 grow_vertical = 2
-script = ExtResource("3_3erv6")
+script = ExtResource("2_3dl0p")
 BoundsSource = NodePath(".")
 PressedAction = Callable()
 ReleasedAction = Callable()
