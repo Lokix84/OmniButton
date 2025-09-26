@@ -8,6 +8,8 @@ public partial class OmniButton : Control
     [Signal] public delegate void PressedEventHandler();
     [Signal] public delegate void ToggledEventHandler(bool button_pressed);
     [Signal] public delegate void ReleasedEventHandler();
+    [Signal] public delegate void HoverInEventHandler();
+    [Signal] public delegate void HoverOutEventHandler();
     [Signal] public delegate void LogEventHandler(string type, string message);
 
     // ---------- Enums ----------
@@ -57,8 +59,16 @@ public partial class OmniButton : Control
     [Export] public int MinFontSize { get; set; } = 12; // Minimum font size
     [Export] public int MaxFontSize { get; set; } = 100; // Maximum font size
 
+    // Logging
+    [ExportGroup("Logging")]
+    [Export] public Callable LogAction { get; set; }
+
     // ---------- Private Variables ----------
+    // Signal locks
     private bool _pressedLock = false;
+    private bool _releasedLock = false;
+    private bool _toggledLock = false;
+    private bool _logLock = false;
     private Godot.Vector2 originalScale = Godot.Vector2.One;
 
     // ---------- Lifecycle Methods ----------
@@ -70,13 +80,18 @@ public partial class OmniButton : Control
         HoverInAction = new Callable(this, nameof(RunBuiltInHoverIn));
         HoverOutAction = new Callable(this, nameof(RunBuiltInHoverOut));
         ToggledAction = new Callable(this, nameof(RunBuiltInToggled));
+        LogAction = new Callable(this, nameof(RunBuiltInLog));
 
-        SafeConnect(SignalName.Pressed, nameof(OnPressed));
-        SafeConnect(SignalName.Toggled, nameof(OnToggled));
-        SafeConnect(SignalName.Released, nameof(OnReleased));
-        SafeConnect(SignalName.Log, nameof(OnLog));
-        SafeConnect(SignalName.MouseEntered, nameof(OnMouseEntered));
-        SafeConnect(SignalName.MouseExited, nameof(OnMouseExited));
+        // Use ConnectSignal to manage signal connections
+        ConnectSignal(nameof(SignalName.Pressed), PressedAction);
+        ConnectSignal(nameof(SignalName.Released), ReleasedAction);
+        ConnectSignal(nameof(SignalName.Toggled), ToggledAction);
+        ConnectSignal(nameof(SignalName.Log), LogAction);
+        ConnectSignal(nameof(SignalName.HoverIn), HoverInAction);
+        ConnectSignal(nameof(SignalName.HoverOut), HoverOutAction);
+
+        Connect("mouse_entered", new Callable(this, nameof(OnMouseEntered)));
+        Connect("mouse_exited", new Callable(this, nameof(OnMouseExited)));
     }
 
     public override void _ExitTree()
@@ -106,8 +121,8 @@ public partial class OmniButton : Control
 
         if (!string.IsNullOrEmpty(ActionName) && @event.IsActionPressed(ActionName) && ActionAllowed())
         {
-            if (FireOnce())
-                GetViewport().SetInputAsHandled();
+            OnPressed();
+            GetViewport().SetInputAsHandled();
         }
     }
 
@@ -119,34 +134,66 @@ public partial class OmniButton : Control
             return;
         }
 
-        if (@event is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
+        if (@event is InputEventMouseButton mb)
         {
-            if (PointInside(mb.GlobalPosition) && FireOnce())
-                return;
+            if (mb.Pressed && mb.ButtonIndex == MouseButton.Left)
+            {
+                // Handle button press
+                if (PointInside(mb.GlobalPosition) && !_pressedLock)
+                {
+                    OnPressed();
+                    GetViewport().SetInputAsHandled();
+                    return;
+                }
+            }
+            else if (!mb.Pressed && mb.ButtonIndex == MouseButton.Left)
+            {
+                // Handle button release
+                if (PointInside(mb.GlobalPosition))
+                {
+                    OnReleased();
+                    GetViewport().SetInputAsHandled();
+                }
+            }
         }
-        else if (@event is InputEventScreenTouch touch && touch.Pressed)
+        else if (@event is InputEventScreenTouch touch)
         {
-            var globalPosition = Position + touch.Position;
-            if (PointInside(globalPosition) && FireOnce())
-                return;
+            if (touch.Pressed)
+            {
+                var globalPosition = Position + touch.Position;
+                if (PointInside(globalPosition) && !_pressedLock)
+                {
+                    OnPressed();
+                    GetViewport().SetInputAsHandled();
+                    return;
+                }
+            }
+            else
+            {
+                // Handle touch release
+                var globalPosition = Position + touch.Position;
+                if (PointInside(globalPosition))
+                {
+                    OnReleased();
+                    GetViewport().SetInputAsHandled();
+                }
+            }
         }
     }
 
     // ---------- Hover and Scaling ----------
     private void OnMouseEntered()
     {
-        if (EnableHoverActions)
-        {
-            RunBuiltInHoverIn();
-        }
+        if (!EnableHoverActions || ButtonDisabled) return;
+
+        EmitSignal(SignalName.HoverIn);
     }
 
     private void OnMouseExited()
     {
-        if (EnableHoverActions)
-        {
-            RunBuiltInHoverOut();
-        }
+        if (!EnableHoverActions || ButtonDisabled) return;
+
+        EmitSignal(SignalName.HoverOut);
     }
 
     private void RunBuiltInHoverIn()
@@ -162,9 +209,10 @@ public partial class OmniButton : Control
     }
 
     // ---------- Utility Methods ----------
+    public void DisplayLabel(string text) => DisplayLabel(text, null);
     public void DisplayLabel(string text, Theme theme = null)
     {
-        OnLog("Debug", $"CustomButton: {Name} Setting label...");
+        OnLog("Debug", $"CustomButton: {Name} Setting label text to '{text}'...");
         Label lbl = GetNodeOrNull<Label>("Label");
         if (lbl == null || !GodotObject.IsInstanceValid(lbl))
         {
@@ -197,6 +245,11 @@ public partial class OmniButton : Control
         DynamicFontAdjust(lbl, text);
     }
 
+    public void DisplayTexture(string texturepath, bool stretch = true)
+    {
+        DisplayTexture(GD.Load<Texture2D>(texturepath), stretch);
+    }
+
     public void DisplayTexture(Texture2D texture, bool stretch = true)
     {
         OnLog("Debug", $"CustomButton: {Name} Setting texture...");
@@ -215,6 +268,8 @@ public partial class OmniButton : Control
 
         tr.StretchMode = stretch ? TextureRect.StretchModeEnum.Scale
                                    : TextureRect.StretchModeEnum.KeepAspectCentered;
+        tr.ExpandMode = stretch ? TextureRect.ExpandModeEnum.IgnoreSize
+                                 : TextureRect.ExpandModeEnum.KeepSize;
         tr.Texture = texture;
     }
 
@@ -266,21 +321,6 @@ public partial class OmniButton : Control
         return rect.HasPoint(globalPoint);
     }
 
-    private bool FireOnce()
-    {
-        if (_pressedLock)
-        {
-            OnLog("Warning", $"CustomButton: {Name} Button press ignored because it is locked.");
-            return false;
-        }
-
-        _pressedLock = true;
-        OnLog("Info", $"CustomButton: {Name} Button pressed.");
-        EmitSignal(SignalName.Pressed);
-        CallDeferred(MethodName.UnlockPress);
-        return true;
-    }
-
     private bool ActionAllowed()
     {
         if (RequireFocusForAction)
@@ -291,15 +331,74 @@ public partial class OmniButton : Control
 
     private void UnlockPress()
     {
-        OnLog("Info", $"CustomButton: {Name} Unlocking button press.");
         _pressedLock = false;
     }
 
-    private void SafeConnect(StringName signal, string method)
+    public void ConnectSignal(string signalName, Callable newCallable)
     {
-        var callable = new Callable(this, method);
-        if (!IsConnected(signal, callable))
-            Connect(signal, callable);
+        // Validate the signal name
+        if (string.IsNullOrEmpty(signalName))
+        {
+            GD.PushError($"CustomButton: {Name} Signal name cannot be null or empty.");
+            return;
+        }
+
+        // Get the current callable for the signal
+        Callable currentCallable = signalName switch
+        {
+            nameof(SignalName.Pressed) => PressedAction,
+            nameof(SignalName.Released) => ReleasedAction,
+            nameof(SignalName.Toggled) => ToggledAction,
+            nameof(SignalName.HoverIn) => HoverInAction,
+            nameof(SignalName.HoverOut) => HoverOutAction,
+            nameof(SignalName.Log) => LogAction,
+            _ => default
+        };
+
+        if (currentCallable.Target == null)
+        {
+            GD.PushError($"CustomButton: {Name} Invalid signal name '{signalName}'.");
+            return;
+        }
+
+        // Disconnect the old callable if it exists
+        if (IsConnected(signalName, currentCallable))
+        {
+            Disconnect(signalName, currentCallable);
+        }
+
+        // Connect the new callable
+        if (newCallable.Target != null)
+        {
+            Connect(signalName, newCallable);
+
+            // Update the corresponding action property
+            switch (signalName)
+            {
+                case nameof(SignalName.Pressed):
+                    PressedAction = newCallable;
+                    break;
+                case nameof(SignalName.Released):
+                    ReleasedAction = newCallable;
+                    break;
+                case nameof(SignalName.Toggled):
+                    ToggledAction = newCallable;
+                    break;
+                case nameof(SignalName.Log):
+                    LogAction = newCallable;
+                    break;
+                case nameof(SignalName.HoverIn):
+                    HoverInAction = newCallable;
+                    break;
+                case nameof(SignalName.HoverOut):
+                    HoverOutAction = newCallable;
+                    break;
+            }
+        }
+        else
+        {
+            GD.PushWarning($"CustomButton: {Name} New callable for signal '{signalName}' is null or invalid. Signal will be disconnected.");
+        }
     }
 
     private void DisconnectAllLocalSignalHandlers()
@@ -309,7 +408,9 @@ public partial class OmniButton : Control
             SignalName.Pressed,
             SignalName.Toggled,
             SignalName.Released,
-            SignalName.Log
+            SignalName.Log,
+            SignalName.HoverIn,
+            SignalName.HoverOut
         };
 
         foreach (var sig in signals)
@@ -330,25 +431,53 @@ public partial class OmniButton : Control
     // Default (now dispatcher) handlers
     private void OnPressed()
     {
-        if (!EnablePressActions || ButtonDisabled) return;
-        PressedAction.Call();
+        if (_pressedLock || !EnablePressActions || ButtonDisabled) return;
+
+        _pressedLock = true; // Lock the button to prevent multiple presses
+        EmitSignal(SignalName.Pressed);
+        CallDeferred(nameof(UnlockPress)); // Unlock the button after the current frame
     }
 
     private void OnToggled(bool button_pressed)
     {
-        if (!EnableToggleActions || ButtonDisabled) return;
-        ToggledAction.Call(button_pressed);
+        if (_toggledLock || !EnableToggleActions || ButtonDisabled) return;
+
+        _toggledLock = true; // Lock the button to prevent multiple toggles
+        EmitSignal(SignalName.Toggled, button_pressed);
+        CallDeferred(nameof(UnlockToggle)); // Unlock the button after the current frame
     }
 
     private void OnReleased()
     {
-        if (!EnableReleaseActions || ButtonDisabled) return;
-        ReleasedAction.Call();
+        if (_releasedLock || !EnableReleaseActions || ButtonDisabled) return;
+
+        _releasedLock = true; // Lock the button to prevent multiple releases
+        EmitSignal(SignalName.Released);
+        CallDeferred(nameof(UnlockRelease)); // Unlock the button after the current frame
+    }
+
+    private void UnlockRelease()
+    {
+        _releasedLock = false;
+    }
+
+    private void UnlockToggle()
+    {
+        _toggledLock = false;
     }
 
     private void OnLog(string type, string message)
     {
-        RunBuiltInLog(type, message);
+        if (_logLock) return;
+
+        _logLock = true; // Lock the log to prevent multiple log calls
+        EmitSignal(SignalName.Log, type, message);
+        CallDeferred(nameof(UnlockLog)); // Unlock the log after the current frame
+    }
+
+    private void UnlockLog()
+    {
+        _logLock = false;
     }
 
     // Built‑in fallback behaviors

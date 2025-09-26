@@ -22,3 +22,7 @@ project/assembly_name="OmniButton"
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/omni_button/plugin.cfg")
+
+[rendering]
+
+textures/default_filters/use_nearest_mipmap_filter=true

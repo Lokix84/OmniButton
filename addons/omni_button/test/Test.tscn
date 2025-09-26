@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://b7nlnllxbfp5y"]
 
-[ext_resource type="Script" uid="uid://crbmvuyikpjah" path="res://addons/omni_button/test/test.gd" id="1_mr6o5"]
+[ext_resource type="Script" uid="uid://b0v0vv67rbtor" path="res://addons/omni_button/test/Test.cs" id="1_1o0i0"]
 [ext_resource type="Script" uid="uid://3msmjo362g7m" path="res://addons/omni_button/OmniButton.cs" id="3_3erv6"]
 
 [node name="Control" type="Control"]
@@ -10,28 +10,215 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_mr6o5")
+script = ExtResource("1_1o0i0")
 
-[node name="IconTextButton" type="Control" parent="."]
+[node name="LabelButton" type="Control" parent="." node_paths=PackedStringArray("BoundsSource")]
 layout_mode = 1
-anchors_preset = 0
-offset_right = 349.0
-offset_bottom = 315.0
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -377.0
+offset_top = -104.5
+offset_right = 377.0
+offset_bottom = 104.5
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("3_3erv6")
+BoundsSource = NodePath(".")
+PressedAction = Callable()
+EnableReleaseActions = true
+ReleasedAction = Callable()
+ToggledAction = Callable()
 EnableHoverActions = true
+HoverInAction = Callable()
+HoverOutAction = Callable()
+LogAction = Callable()
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="LabelButton" type="Control" parent="."]
+[node name="Directional" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 50.0
+offset_top = -198.0
+offset_right = 200.0
+offset_bottom = -48.0
+grow_vertical = 0
+
+[node name="IconButton" type="Control" parent="Directional" node_paths=PackedStringArray("BoundsSource")]
+custom_minimum_size = Vector2(25, 25)
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -25.0
+offset_right = 25.0
+offset_bottom = 50.0
+grow_horizontal = 2
+script = ExtResource("3_3erv6")
+BoundsSource = NodePath(".")
+PressedAction = Callable()
+EnableReleaseActions = true
+ReleasedAction = Callable()
+ToggledAction = Callable()
+EnableHoverActions = true
+HoverInAction = Callable()
+HoverOutAction = Callable()
+LogAction = Callable()
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="IconButton2" type="Control" parent="Directional" node_paths=PackedStringArray("BoundsSource")]
+custom_minimum_size = Vector2(25, 25)
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_top = -25.0
+offset_right = 50.0
+offset_bottom = 25.0
+grow_vertical = 2
+script = ExtResource("3_3erv6")
+BoundsSource = NodePath(".")
+PressedAction = Callable()
+EnableReleaseActions = true
+ReleasedAction = Callable()
+ToggledAction = Callable()
+EnableHoverActions = true
+HoverInAction = Callable()
+HoverOutAction = Callable()
+LogAction = Callable()
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="IconButton3" type="Control" parent="Directional" node_paths=PackedStringArray("BoundsSource")]
+custom_minimum_size = Vector2(25, 25)
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -50.0
+offset_top = -25.0
+offset_bottom = 25.0
+grow_horizontal = 0
+grow_vertical = 2
+script = ExtResource("3_3erv6")
+BoundsSource = NodePath(".")
+PressedAction = Callable()
+EnableReleaseActions = true
+ReleasedAction = Callable()
+ToggledAction = Callable()
+EnableHoverActions = true
+HoverInAction = Callable()
+HoverOutAction = Callable()
+LogAction = Callable()
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="IconButton4" type="Control" parent="Directional" node_paths=PackedStringArray("BoundsSource")]
+custom_minimum_size = Vector2(25, 25)
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -25.0
+offset_top = -50.0
+offset_right = 25.0
+grow_horizontal = 2
+grow_vertical = 0
+script = ExtResource("3_3erv6")
+BoundsSource = NodePath(".")
+PressedAction = Callable()
+EnableReleaseActions = true
+ReleasedAction = Callable()
+ToggledAction = Callable()
+EnableHoverActions = true
+HoverInAction = Callable()
+HoverOutAction = Callable()
+LogAction = Callable()
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="IconButton5" type="Control" parent="Directional" node_paths=PackedStringArray("BoundsSource")]
+custom_minimum_size = Vector2(25, 25)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -25.0
+offset_top = -25.0
+offset_right = 25.0
+offset_bottom = 25.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("3_3erv6")
+BoundsSource = NodePath(".")
+PressedAction = Callable()
+EnableReleaseActions = true
+ReleasedAction = Callable()
+ToggledAction = Callable()
+EnableHoverActions = true
+HoverInAction = Callable()
+HoverOutAction = Callable()
+LogAction = Callable()
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="Actions" type="Control" parent="."]
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -754.0
-offset_top = -512.0
+offset_left = -250.0
+offset_top = -150.0
+offset_right = -50.0
+offset_bottom = -50.0
 grow_horizontal = 0
 grow_vertical = 0
+
+[node name="Attack" type="Control" parent="Actions" node_paths=PackedStringArray("BoundsSource")]
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_top = -50.0
+offset_right = 100.0
+offset_bottom = 50.0
+grow_vertical = 2
 script = ExtResource("3_3erv6")
-EnableHoverActions = true
+BoundsSource = NodePath(".")
+PressedAction = Callable()
+ReleasedAction = Callable()
+ToggledAction = Callable()
+HoverInAction = Callable()
+HoverOutAction = Callable()
+LogAction = Callable()
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="Defend" type="Control" parent="Actions" node_paths=PackedStringArray("BoundsSource")]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -100.0
+offset_top = -50.0
+offset_bottom = 50.0
+grow_horizontal = 0
+grow_vertical = 2
+script = ExtResource("3_3erv6")
+BoundsSource = NodePath(".")
+PressedAction = Callable()
+ReleasedAction = Callable()
+ToggledAction = Callable()
+HoverInAction = Callable()
+HoverOutAction = Callable()
+LogAction = Callable()
 metadata/_custom_type_script = "uid://3msmjo362g7m"
