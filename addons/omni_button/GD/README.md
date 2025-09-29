@@ -1,214 +1,225 @@
-# OMNIBUTTON - Universal Button Control for Godot
-A highly customizable and feature-rich button control for Godot that extends the base Control node with advanced input handling, hover effects, and flexible action management.
+# OMNIBUTTON — Universal Button Control for Godot
 
-## FEATURES
-Multiple Button Types: Standard button and toggle button functionality
+A highly customizable, feature-rich button built on `Control`. OmniButton unifies **press**, **release**, **toggle**, **hover**, label/text autosizing, and icon textures (with a smart pressed-state fallback) into one drop-in node. Works in-game and live in the editor (`@tool`).
 
-Advanced Input Handling: Support for mouse, touch, and keyboard input
+---
 
-Customizable Hover Effects: Built-in hover animations with configurable parameters
+## ✨ Features
 
-Flexible Bounds Detection: Custom hit detection areas with slop margins
+- **Single node, two behaviors**  
+  Momentary press by default; flip a flag to enable **toggle** mode (no separate “type” enum).
+- **Text & autosizing**  
+  Set `.text` (exported). A `Label` child is created if needed and its font size is adjusted to fit.
+- **Icon textures with pressed fallback**  
+  Set `.texture` for normal, `.pressed_texture` optional. If pressed but no `pressed_texture`, OmniButton **inverts** the normal texture with a lightweight shader.
+- **Advanced input handling**  
+  Mouse, touch, and keyboard/action map (`action_name`). Optional **focus requirement**.
+- **Custom hit detection**  
+  Use a different `bounds_source` and expand the touch area with `hit_slop`.
+- **Hover effects**  
+  Built-in scale-on-hover with configurable scale and lerp speed; toggleable at runtime.
+- **Signal-first API**  
+  `pressed`, `released`, `toggled(is_pressed)`, `hover_in`, `hover_out`, and internal `log`.
+- **Editor-friendly**  
+  All features preview in the editor: changing `text`, `texture`, `toggle_pressed`, etc. updates visuals immediately.
 
-Signal-Based Architecture: Comprehensive signal system for all button interactions
+---
 
-Focus Management: Optional focus requirements for keyboard actions
+## 📦 Installation
 
-Extensible Design: Easy to extend with custom behaviors
+1. Copy the `omni_button` addon folder into your project’s `addons/` directory.
+2. (Optional) Enable the plugin in **Project > Project Settings > Plugins** if you ship an EditorPlugin.  
+3. Add **OmniButton** to your scene:
+   - In the editor: add a **Control** and set its script to `OmniButton.gd` (class_name makes it show up by name), or  
+   - In code:  
+     ```gdscript
+     var btn := OmniButton.new()
+     add_child(btn)
+     ```
 
-## INSTALLATION
-Copy the omni_button addon folder to your project's addons directory
+---
 
-Enable the plugin in Project Settings > Plugins
+## 🚀 Basic Usage
 
-The OmniButton class will be available in your project
+### Add to scene & connect signals
 
-## BASIC USAGE
-Adding an OmniButton to Your Scene
+```gdscript
+func _ready() -> void:
+	var button: OmniButton = $OmniButton
 
-# In the editor, add a Control node and change its script to OmniButton# Or create programmatically:var omni_button = OmniButton.new()add_child(omni_button)
-Connecting to Button Signals
-`code
+	# Momentary press behavior (default):
+	button.pressed.connect(_on_btn_pressed)
+	button.released.connect(_on_btn_released)
 
-    func _ready():    var button = $OmniButton     
-  
-      # Connect to button press   
-      
-      button.pressed.connect(_on_button_pressed)     
-    
-      
-      # Connect to toggle events (for toggle buttons)  
-      
-      button.toggled.connect(_on_button_toggled)   
-    
-      
-      # Connect to hover events    
-      
-      button.hover_in.connect(_on_button_hover_in)    
-    
-      button.hover_out.connect(_on_button_hover_out)       
-    
-      
-      # Connect to release events    
-      
-      button.released.connect(_on_button_released)
-    
-  
-    func _on_button_pressed():    
-  
-      print("Button was pressed!")
-    
-  
-    func _on_button_toggled(is_pressed: bool):   
-    
-      print("Button toggled: ", is_pressed)
-      
-    
-    func _on_button_hover_in():    
-    
-      print("Mouse entered button")
-      
-    
-    func _on_button_hover_out():    
-    
-      print("Mouse left button")
-`
+	# Toggle behavior (enable + subscribe):
+	button.enable_toggle_actions = true
+	button.toggled.connect(_on_btn_toggled)
 
-## CONFIGURATION OPTIONS
+	# Hover feedback (optional):
+	button.enable_hover_actions = true
+	button.hover_in.connect(_on_btn_hover_in)
+	button.hover_out.connect(_on_btn_hover_out)
+
+	# Text & texture:
+	button.text = "Play"
+	button.texture = preload("res://ui/play_icon.png")
+	# Optional pressed art:
+	# button.pressed_texture = preload("res://ui/play_icon_pressed.png")
+	# (If omitted, pressed state will invert the normal texture.)
+```
+
+```gdscript
+func _on_btn_pressed() -> void:
+	print("Pressed!")
+
+func _on_btn_released() -> void:
+	print("Released!")
+
+func _on_btn_toggled(is_pressed: bool) -> void:
+	print("Toggled: ", is_pressed)
+
+func _on_btn_hover_in() -> void:
+	print("Hover in")
+
+func _on_btn_hover_out() -> void:
+	print("Hover out")
+```
+
+---
+
+## ⚙️ Exports & Configuration
+
 ### General Settings
+- `button_disabled: bool` — disables all interactions and visual state changes.
+
+### Input & Hit Detection
+- `action_name: String = "ui_accept"` — action map name for keyboard/controller.
+- `require_focus_for_action: bool = true` — only trigger action if the control has focus.
+- `bounds_source: Control` — optional alternate node used for hit testing.
+- `hit_slop: Vector2` — expands the clickable/touchable area on all sides.
+
+### Interaction & Actions
+- **Press/Release**
+  - `enable_press_actions: bool = true`
+  - `pressed_action: Callable` *(optional convenience; you can also use signals)*
+  - `enable_release_actions: bool = false`
+  - `released_action: Callable`
+- **Toggle**
+  - `enable_toggle_actions: bool = false` — when `true`, the button maintains state.
+  - `toggle_pressed: bool` — current toggle state (exported; live updates in editor).  
+    Setting this property updates visuals and (in game) emits `toggled(is_pressed)`.
+  - `toggled_action: Callable`
+
+### Hover & Scaling
+- `enable_hover_actions: bool = false`
+- `hover_in_action: Callable`, `hover_out_action: Callable`
+- `hover_scale: float = 1.25`
+- `hover_lerp_speed: float = 25.0`
 
-Type: Choose between BUTTON (standard) or TOGGLE button behavior
+### Text & Font
+- `text: String` — exported property. Setting it creates/updates a `Label` child and autosizes the font.
+- `min_font_size: int = 12`, `max_font_size: int = 100` — font size bounds for autosizing.
 
-Button Disabled: Disable the button to prevent all interactions
+### Texture
+- `texture: Texture2D` — normal icon. Creates/updates an `Icon` (`TextureRect`) child.
+- `pressed_texture: Texture2D` — optional pressed icon.  
+  **Fallback**: if pressed/toggled and this is **not set**, OmniButton shows the **inverted** normal texture via a tiny shader.
 
+### Logging
+- `log_action: Callable` — internal logging hook (also exposed via `log` signal).
 
-### Input Settings
+---
 
-Action Name: Input action name for keyboard/controller support (default: "ui_accept")
+## 🔔 Signals
 
-Require Focus for Action: Whether the button needs focus to respond to the assigned action
+| Signal      | Parameters              | When it fires                                           |
+|-------------|-------------------------|---------------------------------------------------------|
+| `pressed`   | —                       | On mouse/touch press or action trigger (if enabled).    |
+| `released`  | —                       | On mouse/touch release (if enabled).                    |
+| `toggled`   | `button_pressed: bool`  | When toggle state changes (`toggle_pressed` setter).    |
+| `hover_in`  | —                       | Pointer enters the button bounds.                       |
+| `hover_out` | —                       | Pointer exits the button bounds.                        |
+| `log`       | `type, message: String` | Internal/diagnostic logging hook.                       |
 
+> **Note:** In toggle mode, `_on_pressed()` flips `toggle_pressed`; the **setter** updates visuals and emits `toggled` (in game). This avoids double-emits.
 
-### Bounds and Hit Detection
+---
 
-Bounds Source: Optional Control node to use for hit detection instead of self
+## 🎨 Visual Behavior
 
-Hit Slop: Extra margin around the button for easier touch/click detection
+- **Pressed state (momentary):** While the pointer is down, OmniButton uses `pressed_texture` if set; otherwise it shows the **inverted** normal texture.
+- **Toggle state:** When `enable_toggle_actions = true`, the visual pressed state follows `toggle_pressed` (again: pressed texture if present, otherwise inverted normal).
+- **Hover:** If `enable_hover_actions = true`, the control scales toward `hover_scale` with `hover_lerp_speed` on enter/exit.
 
-## ACTION GROUPS
-The button supports multiple action groups that can be enabled/disabled independently:
+---
 
-Press Actions: Control standard button press behavior
+## 🧭 Advanced Tips
 
-Toggle Actions: Control toggle button behavior (when type is TOGGLE)
+### Custom bounds & hit slop
+```gdscript
+button.bounds_source = $BigInvisibleArea
+button.hit_slop = Vector2(12, 12) # expand touch area on mobile
+```
 
-Release Actions: Control button release behavior
+### Keyboard/controller
+```gdscript
+button.action_name = "ui_accept"
+button.require_focus_for_action = true  # only when focused
+```
 
-Hover Actions: Control mouse enter/exit behavior
+### Programmatic toggle
+```gdscript
+button.enable_toggle_actions = true
+button.toggle_pressed = true  # updates visuals and emits `toggled(true)` in game
+```
 
-## BUTTON TYPES
+### Disabled state
+```gdscript
+button.button_disabled = true  # suppresses input + visual changes
+```
 
-### Standard Button (ButtonType.BUTTON)
+---
 
-Emits pressed signal when clicked
+## ✅ Best Practices
 
-Can optionally emit released signal
+- **Pick a mode:** leave toggle off for momentary actions; enable it for on/off state.
+- **Pressed visuals:** Supply `pressed_texture` for explicit art. If not provided, the invert fallback is automatic.
+- **Accessibility:** Provide an action map name and keep keyboard focus paths clear.
+- **Mobile:** Use `hit_slop` to make touch easier.
+- **Performance:** Disable unused groups (hover, release) if not needed.
 
-Standard one-shot button behavior
+---
 
+## 🔧 Troubleshooting
 
-### Toggle Button (ButtonType.TOGGLE)
+### Button not responding
+- Ensure `button_disabled == false`.
+- Check size/visibility; make sure no sibling control intercepts input.
+- Verify `MouseFilter` on parents isn’t blocking events.
 
-Maintains pressed/unpressed state
+### Hover not firing
+- Set `enable_hover_actions = true`.
+- Confirm the control receives mouse events and is not covered by another control.
 
-Emits toggled(bool) signal with current state
+### Keyboard input not working
+- Confirm `action_name` exists in **Project > Input Map**.
+- If `require_focus_for_action = true`, make sure the control can be focused and has focus.
 
-Visual feedback for current state
+### Toggle signal firing twice
+- Only emit `toggled` from the **`toggle_pressed` setter**; do not emit again in `_on_pressed()`.
 
+### Pressed look doesn’t change
+- Provide `pressed_texture`, or rely on the built-in inversion fallback (ensure `texture` is set).
 
-## SIGNALS
+---
 
-Signal	Parameters	Description
+## 📄 License
 
-pressed	None	Emitted when button is pressed
+MIT — see `LICENSE`.
 
-released	None	Emitted when button is released
+---
 
-toggled	button_pressed: bool	Emitted when toggle state changes
+## 🤝 Contributing
 
-hover_in	None	Emitted when mouse enters button area
-
-hover_out	None	Emitted when mouse exits button area
-
-log	type: String, message: String	Internal logging signal
-
-## ADVANCED FEATURES
-
-### Custom Bounds Detection
-
-Set a different Control node as the bounds source for hit detection:
-
-# Use a larger invisible area for hit detectionbutton.bounds_source = $LargerHitArea
-
-
-### Hit Slop for Better Touch Support
-
-Add extra margin around the button for easier touch interaction:
-
-# Add 10 pixels of extra touch area on all sidesbutton.hit_slop = Vector2(10, 10)
-
-### Focus Management
-
-Control whether the button responds to keyboard input:
-
-# Button only responds to assigned action when focusedbutton.require_focus_for_action = true# Button always responds to assigned actionbutton.require_focus_for_action = false
-
-### Selective Action Enabling
-
-Enable only the interactions you need:
-
-# Only enable press actions, disable hover and releasebutton.enable_press_actions = truebutton.enable_hover_actions = falsebutton.enable_release_actions = false
-
-## BEST PRACTICES
-Performance: Disable unused action groups to improve performance
-
-Touch Support: Use hit slop for better mobile touch experience
-
-Accessibility: Always provide keyboard support via action names
-
-Visual Feedback: Connect to hover signals for visual state changes
-
-State Management: Use toggle buttons for on/off states
-
-## TROUBLEASHOOTING
-### Button Not Responding
-
-Check if button_disabled is set to false
-
-Ensure the button has a valid size and is visible
-
-Verify that MouseFilter is not set to IGNORE
-
-Check if another control is intercepting input
-
-### Hover Effects Not Working
-
-Ensure enable_hover_actions is true
-
-Check that hover signals are properly connected
-
-Verify the button is receiving mouse events
-
-### Keyboard Input Not Working
-
-Ensure the assigned action_name exists in Input Map
-
-Check require_focus_for_action setting
-
-Verify the button can receive focus
-
-## LICENSE
-This addon is provided under the MIT License. See LICENSE file for details.
-
-## CONTRIBUTING
-Contributions are welcome! Please feel free to submit issues and pull requests to improve the OmniButton functionality.
+Issues and PRs are welcome!  
+Please include minimal repro scenes or scripts when reporting bugs (especially for input/hover/toggle edge cases).
