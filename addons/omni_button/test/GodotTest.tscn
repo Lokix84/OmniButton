@@ -1,7 +1,14 @@
-[gd_scene load_steps=3 format=3 uid="uid://b7nlnllxbfp5y"]
+[gd_scene load_steps=10 format=3 uid="uid://b7nlnllxbfp5y"]
 
 [ext_resource type="Script" uid="uid://dsy7se21478dt" path="res://addons/omni_button/test/GodotTest.gd" id="1_1o0i0"]
+[ext_resource type="Texture2D" uid="uid://c8gpacmdt8yrf" path="res://addons/omni_button/test/icons/Icon-UpArrow1.png" id="3_mb060"]
 [ext_resource type="Script" uid="uid://dy07niwspg15j" path="res://addons/omni_button/GD/omni_button.gd" id="3_ov6p0"]
+[ext_resource type="Texture2D" uid="uid://c1ecj2g07rj4n" path="res://addons/omni_button/test/icons/Icon-LeftArrow1.png" id="4_4im83"]
+[ext_resource type="Texture2D" uid="uid://c0aaku6680sid" path="res://addons/omni_button/test/icons/Icon-RightArrow1.png" id="5_a7viy"]
+[ext_resource type="Texture2D" uid="uid://b5lx4c8vwy73h" path="res://addons/omni_button/test/icons/Icon-DownArrow1.png" id="6_c3pcx"]
+[ext_resource type="Texture2D" uid="uid://d3na4mhfwnpqk" path="res://addons/omni_button/test/icons/Icon-Circle1.png" id="7_tc1tc"]
+[ext_resource type="Texture2D" uid="uid://ruv70baanys7" path="res://addons/omni_button/test/icons/Icon-Sword1.png" id="8_xntu3"]
+[ext_resource type="Texture2D" uid="uid://7gj2r6qeswvv" path="res://addons/omni_button/test/icons/Icon-Shield5.png" id="9_7nnny"]
 
 [node name="Control" type="Control"]
 layout_mode = 3
@@ -13,50 +20,64 @@ grow_vertical = 2
 script = ExtResource("1_1o0i0")
 
 [node name="LabelButton" type="Control" parent="." node_paths=PackedStringArray("bounds_source")]
+texture_filter = 1
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -377.0
-offset_top = -104.5
-offset_right = 377.0
-offset_bottom = 104.5
+anchor_left = 0.17300001
+anchor_top = 0.33900002
+anchor_right = 0.827
+anchor_bottom = 0.661
+offset_left = -0.29600525
+offset_top = -0.17201233
+offset_right = 0.29595947
+offset_bottom = 0.17199707
 grow_horizontal = 2
 grow_vertical = 2
+pivot_offset = Vector2(377, 104.5)
+focus_mode = 2
+theme_type_variation = &"OmniButton"
 script = ExtResource("3_ov6p0")
 bounds_source = NodePath(".")
+enable_press_actions = false
 pressed_action = Callable()
 released_action = Callable()
 toggled_action = Callable()
 enable_hover_actions = true
 hover_in_action = Callable()
 hover_out_action = Callable()
+hover_scale = 2.0
+text = "hello there we are going more text than this can handle a lot more text than it could otherwise handle and make it shrink like really good."
 log_action = Callable()
+"Interaction & Actions/enable_toggle_actions" = null
+"Interaction & Actions/toggle_pressed" = null
+"Interaction & Actions/toggled_action" = null
 metadata/_custom_type_script = "uid://dy07niwspg15j"
 
 [node name="Directional" type="Control" parent="."]
 layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 50.0
-offset_top = -198.0
-offset_right = 200.0
-offset_bottom = -48.0
+anchor_left = 0.043
+anchor_top = 0.694
+anchor_right = 0.17400001
+anchor_bottom = 0.92600006
+offset_left = 0.4639969
+offset_top = 0.28799438
+offset_right = -0.4480133
+offset_bottom = -0.048034668
 grow_vertical = 0
 
-[node name="IconButton" type="Control" parent="Directional" node_paths=PackedStringArray("bounds_source")]
+[node name="UpBtn" type="Control" parent="Directional" node_paths=PackedStringArray("bounds_source")]
+texture_filter = 1
 custom_minimum_size = Vector2(25, 25)
 layout_mode = 1
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -25.0
-offset_right = 25.0
-offset_bottom = 50.0
+anchor_left = 0.333
+anchor_right = 0.66700006
+anchor_bottom = 0.333
+offset_left = 0.049999237
+offset_right = -0.05001068
+offset_bottom = 0.049999237
 grow_horizontal = 2
+pivot_offset = Vector2(25, 25)
+focus_mode = 2
+theme_type_variation = &"OmniButton"
 script = ExtResource("3_ov6p0")
 bounds_source = NodePath(".")
 pressed_action = Callable()
@@ -65,19 +86,28 @@ toggled_action = Callable()
 enable_hover_actions = true
 hover_in_action = Callable()
 hover_out_action = Callable()
+hover_scale = 1.5
+texture = ExtResource("3_mb060")
 log_action = Callable()
+"Interaction & Actions/enable_toggle_actions" = null
+"Interaction & Actions/toggle_pressed" = null
+"Interaction & Actions/toggled_action" = null
 metadata/_custom_type_script = "uid://dy07niwspg15j"
 
-[node name="IconButton2" type="Control" parent="Directional" node_paths=PackedStringArray("bounds_source")]
+[node name="LeftBtn" type="Control" parent="Directional" node_paths=PackedStringArray("bounds_source")]
+texture_filter = 1
 custom_minimum_size = Vector2(25, 25)
 layout_mode = 1
-anchors_preset = 4
-anchor_top = 0.5
-anchor_bottom = 0.5
-offset_top = -25.0
-offset_right = 50.0
-offset_bottom = 25.0
+anchor_top = 0.333
+anchor_right = 0.333
+anchor_bottom = 0.66700006
+offset_top = 0.049999237
+offset_right = 0.049999237
+offset_bottom = -0.05001068
 grow_vertical = 2
+pivot_offset = Vector2(25, 25)
+focus_mode = 2
+theme_type_variation = &"OmniButton"
 script = ExtResource("3_ov6p0")
 bounds_source = NodePath(".")
 pressed_action = Callable()
@@ -86,22 +116,30 @@ toggled_action = Callable()
 enable_hover_actions = true
 hover_in_action = Callable()
 hover_out_action = Callable()
+hover_scale = 1.5
+texture = ExtResource("4_4im83")
 log_action = Callable()
+"Interaction & Actions/enable_toggle_actions" = null
+"Interaction & Actions/toggle_pressed" = null
+"Interaction & Actions/toggled_action" = null
 metadata/_custom_type_script = "uid://dy07niwspg15j"
 
-[node name="IconButton3" type="Control" parent="Directional" node_paths=PackedStringArray("bounds_source")]
+[node name="RightBtn" type="Control" parent="Directional" node_paths=PackedStringArray("bounds_source")]
+texture_filter = 1
 custom_minimum_size = Vector2(25, 25)
 layout_mode = 1
-anchors_preset = 6
-anchor_left = 1.0
-anchor_top = 0.5
+anchor_left = 0.66700006
+anchor_top = 0.333
 anchor_right = 1.0
-anchor_bottom = 0.5
-offset_left = -50.0
-offset_top = -25.0
-offset_bottom = 25.0
+anchor_bottom = 0.66700006
+offset_left = -0.05001068
+offset_top = 0.049999237
+offset_bottom = -0.05001068
 grow_horizontal = 0
 grow_vertical = 2
+pivot_offset = Vector2(25, 25)
+focus_mode = 2
+theme_type_variation = &"OmniButton"
 script = ExtResource("3_ov6p0")
 bounds_source = NodePath(".")
 pressed_action = Callable()
@@ -110,22 +148,30 @@ toggled_action = Callable()
 enable_hover_actions = true
 hover_in_action = Callable()
 hover_out_action = Callable()
+hover_scale = 1.5
+texture = ExtResource("5_a7viy")
 log_action = Callable()
+"Interaction & Actions/enable_toggle_actions" = null
+"Interaction & Actions/toggle_pressed" = null
+"Interaction & Actions/toggled_action" = null
 metadata/_custom_type_script = "uid://dy07niwspg15j"
 
-[node name="IconButton4" type="Control" parent="Directional" node_paths=PackedStringArray("bounds_source")]
+[node name="DownBtn" type="Control" parent="Directional" node_paths=PackedStringArray("bounds_source")]
+texture_filter = 1
 custom_minimum_size = Vector2(25, 25)
 layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
+anchor_left = 0.333
+anchor_top = 0.66700006
+anchor_right = 0.66700006
 anchor_bottom = 1.0
-offset_left = -25.0
-offset_top = -50.0
-offset_right = 25.0
+offset_left = 0.049999237
+offset_top = -0.05001068
+offset_right = -0.05001068
 grow_horizontal = 2
 grow_vertical = 0
+pivot_offset = Vector2(25, 25)
+focus_mode = 2
+theme_type_variation = &"OmniButton"
 script = ExtResource("3_ov6p0")
 bounds_source = NodePath(".")
 pressed_action = Callable()
@@ -134,87 +180,122 @@ toggled_action = Callable()
 enable_hover_actions = true
 hover_in_action = Callable()
 hover_out_action = Callable()
+hover_scale = 1.5
+texture = ExtResource("6_c3pcx")
 log_action = Callable()
+"Interaction & Actions/enable_toggle_actions" = null
+"Interaction & Actions/toggle_pressed" = null
+"Interaction & Actions/toggled_action" = null
 metadata/_custom_type_script = "uid://dy07niwspg15j"
 
-[node name="IconButton5" type="Control" parent="Directional" node_paths=PackedStringArray("bounds_source")]
+[node name="SprintToggle" type="Control" parent="Directional" node_paths=PackedStringArray("bounds_source")]
+texture_filter = 1
 custom_minimum_size = Vector2(25, 25)
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -25.0
-offset_top = -25.0
-offset_right = 25.0
-offset_bottom = 25.0
+anchor_left = 0.333
+anchor_top = 0.333
+anchor_right = 0.66700006
+anchor_bottom = 0.66700006
+offset_left = 0.049999237
+offset_top = 0.049999237
+offset_right = -0.05001068
+offset_bottom = -0.05001068
 grow_horizontal = 2
 grow_vertical = 2
+pivot_offset = Vector2(25, 25)
+focus_mode = 2
+theme_type_variation = &"OmniButton"
 script = ExtResource("3_ov6p0")
 bounds_source = NodePath(".")
+enable_press_actions = false
 pressed_action = Callable()
 released_action = Callable()
+enable_toggle_actions = true
 toggled_action = Callable()
 enable_hover_actions = true
 hover_in_action = Callable()
 hover_out_action = Callable()
+hover_scale = 1.5
+texture = ExtResource("7_tc1tc")
 log_action = Callable()
+"Interaction & Actions/enable_toggle_actions" = null
+"Interaction & Actions/toggle_pressed" = null
+"Interaction & Actions/toggled_action" = null
 metadata/_custom_type_script = "uid://dy07niwspg15j"
 
 [node name="Actions" type="Control" parent="."]
 layout_mode = 1
-anchors_preset = 3
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -250.0
-offset_top = -150.0
-offset_right = -50.0
-offset_bottom = -50.0
+anchor_left = 0.78300005
+anchor_top = 0.76900005
+anchor_right = 0.957
+anchor_bottom = 0.92300004
+offset_left = -0.016052246
+offset_top = -0.31204224
+offset_right = -0.46398926
+offset_bottom = -0.104003906
 grow_horizontal = 0
 grow_vertical = 0
 
 [node name="Attack" type="Control" parent="Actions" node_paths=PackedStringArray("bounds_source")]
+texture_filter = 1
 layout_mode = 1
-anchors_preset = 4
-anchor_top = 0.5
-anchor_bottom = 0.5
-offset_top = -50.0
-offset_right = 100.0
-offset_bottom = 50.0
+anchor_right = 0.5
+anchor_bottom = 1.0
 grow_vertical = 2
+pivot_offset = Vector2(50, 50)
+focus_mode = 2
+theme_type_variation = &"OmniButton"
 script = ExtResource("3_ov6p0")
 bounds_source = NodePath(".")
 pressed_action = Callable()
+enable_release_actions = true
 released_action = Callable()
 toggled_action = Callable()
 enable_hover_actions = true
 hover_in_action = Callable()
 hover_out_action = Callable()
+hover_scale = 1.5
+texture = ExtResource("8_xntu3")
 log_action = Callable()
+"Interaction & Actions/enable_toggle_actions" = null
+"Interaction & Actions/toggle_pressed" = null
+"Interaction & Actions/toggled_action" = null
 metadata/_custom_type_script = "uid://dy07niwspg15j"
 
 [node name="Defend" type="Control" parent="Actions" node_paths=PackedStringArray("bounds_source")]
+texture_filter = 1
 layout_mode = 1
-anchors_preset = 6
-anchor_left = 1.0
-anchor_top = 0.5
+anchor_left = 0.5
 anchor_right = 1.0
-anchor_bottom = 0.5
-offset_left = -100.0
-offset_top = -50.0
-offset_bottom = 50.0
+anchor_bottom = 1.0
 grow_horizontal = 0
 grow_vertical = 2
+pivot_offset = Vector2(50, 50)
+focus_mode = 2
+theme_type_variation = &"OmniButton"
 script = ExtResource("3_ov6p0")
 bounds_source = NodePath(".")
+enable_press_actions = false
 pressed_action = Callable()
 released_action = Callable()
+enable_toggle_actions = true
 toggled_action = Callable()
 enable_hover_actions = true
 hover_in_action = Callable()
 hover_out_action = Callable()
+hover_scale = 1.5
+texture = ExtResource("9_7nnny")
 log_action = Callable()
+"Interaction & Actions/enable_toggle_actions" = null
+"Interaction & Actions/toggle_pressed" = null
+"Interaction & Actions/toggled_action" = null
 metadata/_custom_type_script = "uid://dy07niwspg15j"
+
+[connection signal="pressed" from="Directional/UpBtn" to="." method="on_button_pressed"]
+[connection signal="pressed" from="Directional/LeftBtn" to="." method="on_button_pressed"]
+[connection signal="pressed" from="Directional/RightBtn" to="." method="on_button_pressed"]
+[connection signal="pressed" from="Directional/DownBtn" to="." method="on_button_pressed"]
+[connection signal="toggled" from="Directional/SprintToggle" to="." method="_on_sprint_toggle_toggled"]
+[connection signal="pressed" from="Actions/Attack" to="." method="on_button_pressed"]
+[connection signal="released" from="Actions/Attack" to="." method="on_button_released"]
+[connection signal="toggled" from="Actions/Defend" to="." method="_on_defend_toggled"]

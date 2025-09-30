@@ -10,7 +10,7 @@ public partial class OmniButtonPlugin : EditorPlugin
 		var customNodeScript = GD.Load<Script>("res://addons/omni_button/CS/OmniButton.cs");
 		var customNodeIcon = GD.Load<Texture2D>("res://addons/omni_button/OmniButton.png");
 
-		AddCustomType("OmniButton", "Control", customNodeScript, customNodeIcon);
+		AddCustomType("OmniButtonCS", "Control", customNodeScript, customNodeIcon);
 
 	}
 

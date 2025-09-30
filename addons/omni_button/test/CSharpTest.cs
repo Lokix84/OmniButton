@@ -1,47 +1,24 @@
 using Godot;
 using System;
 
-public partial class Test : Control
+public partial class CSharpTest : Control
 {
     public override void _Ready()
     {
-        OmniButton IconBtn = GetNode<OmniButton>("Directional/IconButton");
-        IconBtn.ConnectSignal(nameof(OmniButton.Pressed), new Callable(this, nameof(OnButtonPressed)));
-        IconBtn.ConnectSignal(nameof(OmniButton.Released), new Callable(this, nameof(OnButtonReleased)));
-        IconBtn.DisplayTexture(GD.Load<Texture2D>("res://addons/omni_button/test/icons/Icon-UpArrow1.png"));
+        OmniButton SprintBtn = GetNode<OmniButton>("Directional/SprintToggle");
+        SprintBtn.Toggled += OnSprintToggled;
+        SprintBtn.Texture = GD.Load<Texture2D>("res://addons/omni_button/test/icons/Icon-Circle1.png");
 
-        OmniButton IconBtn2 = GetNode<OmniButton>("Directional/IconButton2");
-        IconBtn2.ConnectSignal(nameof(OmniButton.Pressed), new Callable(this, nameof(OnButtonPressed)));
-        IconBtn2.ConnectSignal(nameof(OmniButton.Released), new Callable(this, nameof(OnButtonReleased)));
-        IconBtn2.DisplayTexture(GD.Load<Texture2D>("res://addons/omni_button/test/icons/Icon-LeftArrow1.png"));
+        OmniButton AttackBtn = GetNode<OmniButton>("Actions/Attack");
+        AttackBtn.Pressed += OnButtonPressed;
+        AttackBtn.Released += OnButtonReleased;
 
-        OmniButton IconBtn3 = GetNode<OmniButton>("Directional/IconButton3");
-        IconBtn3.ConnectSignal(nameof(OmniButton.Pressed), new Callable(this, nameof(OnButtonPressed)));
-        IconBtn3.ConnectSignal(nameof(OmniButton.Released), new Callable(this, nameof(OnButtonReleased)));
-        IconBtn3.DisplayTexture(GD.Load<Texture2D>("res://addons/omni_button/test/icons/Icon-RightArrow1.png"));
-
-        OmniButton IconBtn4 = GetNode<OmniButton>("Directional/IconButton4");
-        IconBtn4.ConnectSignal(nameof(OmniButton.Pressed), new Callable(this, nameof(OnButtonPressed)));
-        IconBtn4.ConnectSignal(nameof(OmniButton.Released), new Callable(this, nameof(OnButtonReleased)));
-        IconBtn4.DisplayTexture(GD.Load<Texture2D>("res://addons/omni_button/test/icons/Icon-DownArrow1.png"));
-
-        OmniButton IconBtn5 = GetNode<OmniButton>("Directional/IconButton5");
-        IconBtn5.ConnectSignal(nameof(OmniButton.Pressed), new Callable(this, nameof(OnButtonPressed)));
-        IconBtn5.ConnectSignal(nameof(OmniButton.Released), new Callable(this, nameof(OnButtonReleased)));
-        IconBtn5.DisplayTexture(GD.Load<Texture2D>("res://addons/omni_button/test/icons/Icon-Circle1.png"));
-
-        OmniButton IconBtn6 = GetNode<OmniButton>("Actions/Attack");
-        IconBtn6.ConnectSignal(nameof(OmniButton.Pressed), new Callable(this, nameof(OnButtonPressed)));
-        IconBtn6.ConnectSignal(nameof(OmniButton.Released), new Callable(this, nameof(OnButtonReleased)));
-        IconBtn6.DisplayTexture(GD.Load<Texture2D>("res://addons/omni_button/test/icons/Icon-Sword1.png"));
-        
-        OmniButton IconBtn7 = GetNode<OmniButton>("Actions/Defend");
-        IconBtn7.ConnectSignal(nameof(OmniButton.Pressed), new Callable(this, nameof(OnButtonPressed)));
-        IconBtn7.ConnectSignal(nameof(OmniButton.Released), new Callable(this, nameof(OnButtonReleased)));
-        IconBtn7.DisplayTexture(GD.Load<Texture2D>("res://addons/omni_button/test/icons/Icon-Shield5.png"));
+        OmniButton DefendBtn = GetNode<OmniButton>("Actions/Defend");
+        DefendBtn.Toggled += OnDefendToggled;
+        DefendBtn.Texture = GD.Load<Texture2D>("res://addons/omni_button/test/icons/Icon-Shield5.png");
 
         OmniButton LabelBtn = GetNode<OmniButton>("LabelButton");
-        LabelBtn.DisplayLabel("Click Me");
+        LabelBtn.Text = "Click Me this is a huge amount of text that will probably make an overflow and not cleanly fit";
     }
 
     public void OnButtonPressed()
@@ -61,4 +38,15 @@ public partial class Test : Control
     {
         GD.Print("Label Button Released!");
     }
+
+    public void OnSprintToggled(bool toggled)
+    {
+        GD.Print("Sprint Toggled: " + toggled);
+    }
+
+    public void OnDefendToggled(bool toggled)
+    {
+        GD.Print("Defend Toggled: " + toggled);
+    }
+
 }

@@ -21,7 +21,7 @@ project/assembly_name="OmniButton"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/omni_button/CS/plugin.cfg", "res://addons/omni_button/GD/plugin.cfg", "res://addons/omni_button/plugin.cfg")
+enabled=PackedStringArray("res://addons/omni_button/CS/plugin.cfg", "res://addons/omni_button/GD/plugin.cfg")
 
 [rendering]
 
