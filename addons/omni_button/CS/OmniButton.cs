@@ -12,7 +12,22 @@ public partial class OmniButton : Control
     [Signal] public delegate void HoverOutEventHandler();
     [Signal] public delegate void LogEventHandler(string type, string message);
 
-    // ---------- Export Groups ----------
+    // ---------- Constants ----------
+    private const string T_TEXT_NORMAL = "text_color";
+    private const string T_TEXT_HOVER = "text_color_hover";
+    private const string T_TEXT_PRESSED = "text_color_pressed";
+    private const string T_TEXT_DISABLED = "text_color_disabled";
+
+    private const string T_ICON_TINT_NORMAL = "icon_tint";
+    private const string T_ICON_TINT_HOVER = "icon_tint_hover";
+    private const string T_ICON_TINT_PRESSED = "icon_tint_pressed";
+    private const string T_ICON_TINT_DISABLED = "icon_tint_disabled";
+
+    private const string T_BG = "panel"; // StyleBox
+    private const string T_FONT = "font";
+    private const string T_FONT_SIZE = "font_size";
+
+    // ---------- Export Properties ----------
 
     // General Settings
     [ExportGroup("General Settings")]
@@ -32,21 +47,21 @@ public partial class OmniButton : Control
         }
     }
 
-    // ---------- Input & Hit Detection ----------
+    // Input & Hit Detection
     [ExportGroup("Input & Hit Detection")]
     [Export] public string ActionName { get; set; } = "ui_accept";
     [Export] public bool RequireFocusForAction { get; set; } = true;
-    [Export] public Control BoundsSource { get; set; }
+    [Export] public Control? BoundsSource { get; set; }
     [Export] public Vector2 HitSlop { get; set; } = Vector2.Zero;
 
-    // ---------- Interaction & Actions ----------
+    // Interaction & Actions
     [ExportGroup("Interaction & Actions")]
     [Export] public bool EnablePressActions { get; set; } = true;
     [Export] public Callable PressedAction { get; set; }
     [Export] public bool EnableReleaseActions { get; set; } = false;
     [Export] public Callable ReleasedAction { get; set; }
-
     [Export] public bool EnableToggleActions { get; set; } = false;
+    [Export] public Callable ToggledAction { get; set; }
 
     private bool _togglePressed = false;
     [Export]
@@ -63,9 +78,7 @@ public partial class OmniButton : Control
         }
     }
 
-    [Export] public Callable ToggledAction { get; set; }
-
-    // ---------- Hover and Scaling ----------
+    // Hover and Scaling
     [ExportGroup("Hover and Scaling")]
     [Export] public bool EnableHoverActions { get; set; } = false;
     [Export] public Callable HoverInAction { get; set; }
@@ -73,7 +86,7 @@ public partial class OmniButton : Control
     [Export] public float HoverScale { get; set; } = 1.25f;
     [Export] public float HoverLerpSpeed { get; set; } = 25.0f;
 
-    // ---------- Text & Font ----------
+    // Text & Font
     [ExportGroup("Text & Font")]
     [Export] public int MinFontSize { get; set; } = 12;
     [Export] public int MaxFontSize { get; set; } = 100;
@@ -93,16 +106,16 @@ public partial class OmniButton : Control
         }
     }
 
-    // ---------- Icon ----------
+    // Icon
     [ExportGroup("Icon")]
     [Export] public bool IconStretch { get; set; } = true;
     [Export] public bool IconKeepAspect { get; set; } = true;
 
-    // ---------- Texture ----------
+    // Texture
     [ExportGroup("Texture")]
-    private Texture2D _normalTexture;
+    private Texture2D? _normalTexture;
     [Export]
-    public Texture2D Texture
+    public Texture2D? Texture
     {
         get => _normalTexture;
         set
@@ -113,9 +126,9 @@ public partial class OmniButton : Control
         }
     }
 
-    private Texture2D _pressedTexture;
+    private Texture2D? _pressedTexture;
     [Export]
-    public Texture2D PressedTexture
+    public Texture2D? PressedTexture
     {
         get => _pressedTexture;
         set
@@ -125,28 +138,7 @@ public partial class OmniButton : Control
         }
     }
 
-    // ---------- Theme keys ----------
-    private const string T_TEXT_NORMAL = "text_color";
-    private const string T_TEXT_HOVER = "text_color_hover";
-    private const string T_TEXT_PRESSED = "text_color_pressed";
-    private const string T_TEXT_DISABLED = "text_color_disabled";
-
-    private const string T_ICON_TINT_NORMAL = "icon_tint";
-    private const string T_ICON_TINT_HOVER = "icon_tint_hover";
-    private const string T_ICON_TINT_PRESSED = "icon_tint_pressed";
-    private const string T_ICON_TINT_DISABLED = "icon_tint_disabled";
-
-    private const string T_BG = "panel"; // StyleBox
-
-    private const string T_FONT = "font";
-    private const string T_FONT_SIZE = "font_size";
-
-    // ---------- Backing fields ----------
-    private bool _isPointerDown = false;
-    private ShaderMaterial _invertMat;
-    private float _hoverTargetScale = 1.0f;
-
-    // ---------- Theme & Visuals ----------
+    // Theme & Visuals
     [ExportGroup("Theme & Visuals")]
     private string _themeTypeName = "OmniButton";
     [Export]
@@ -161,22 +153,67 @@ public partial class OmniButton : Control
         }
     }
 
-    // ---------- Logging ----------
+    // Logging
     [ExportGroup("Logging")]
     [Export] public Callable LogAction { get; set; }
 
-    // ---------- Private Vars ----------
-    private bool _pressedLock = false;
-    private bool _releasedLock = false;
-    private bool _toggledLock = false;
-    private bool _logLock = false;
+    // ---------- Private Fields ----------
+    private bool _isPointerDown = false;
+    private ShaderMaterial? _invertMat;
+    private float _hoverTargetScale = 1.0f;
     private Vector2 _originalScale = Vector2.One;
     private bool _hovering = false;
     private bool _themeApplying = false;
     private bool _fittingLabel = false;
 
-    // ---------- Lifecycle ----------
+    // ---------- Godot Lifecycle Methods ----------
     public override void _EnterTree()
+    {
+        InitializeCallables();
+        ConnectSignals();
+        ConnectMouseEvents();
+    }
+
+    public override void _ExitTree()
+    {
+        DisconnectAllSignalHandlers();
+    }
+
+    public override void _Ready()
+    {
+        InitializeComponent();
+        ApplyInitialState();
+        ConnectMinimumSizeChanged();
+    }
+
+    public override void _Process(double delta)
+    {
+        ProcessHoverScaling(delta);
+    }
+
+    public override void _Notification(int what)
+    {
+        HandleNotifications(what);
+    }
+
+    public override Array<Dictionary> _GetPropertyList()
+    {
+        return BuildPropertyList();
+    }
+
+    // ---------- Input Handling ----------
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        HandleUnhandledInput(@event);
+    }
+
+    public override void _GuiInput(InputEvent @event)
+    {
+        HandleGuiInput(@event);
+    }
+
+    // ---------- Initialization Methods ----------
+    private void InitializeCallables()
     {
         // Build fallbacks
         var fbPressed = new Callable(this, nameof(RunBuiltInPressed));
@@ -193,21 +230,27 @@ public partial class OmniButton : Control
         HoverOutAction = AdoptConnectedCallable(SignalName.HoverOut, fbHoverOut);
         ToggledAction = AdoptConnectedCallable(SignalName.Toggled, fbToggled);
         LogAction = AdoptConnectedCallable(SignalName.Log, fbLog);
+    }
 
+    private void ConnectSignals()
+    {
         // Only connect our fallback if the signal has no connections yet
-        if (GetSignalConnectionList(SignalName.Pressed).Count == 0 && PressedAction.Equals(fbPressed))
+        if (GetSignalConnectionList(SignalName.Pressed).Count == 0 && PressedAction.Equals(new Callable(this, nameof(RunBuiltInPressed))))
             Connect(SignalName.Pressed, PressedAction);
-        if (GetSignalConnectionList(SignalName.Released).Count == 0 && ReleasedAction.Equals(fbReleased))
+        if (GetSignalConnectionList(SignalName.Released).Count == 0 && ReleasedAction.Equals(new Callable(this, nameof(RunBuiltInReleased))))
             Connect(SignalName.Released, ReleasedAction);
-        if (GetSignalConnectionList(SignalName.HoverIn).Count == 0 && HoverInAction.Equals(fbHoverIn))
+        if (GetSignalConnectionList(SignalName.HoverIn).Count == 0 && HoverInAction.Equals(new Callable(this, nameof(RunBuiltInHoverIn))))
             Connect(SignalName.HoverIn, HoverInAction);
-        if (GetSignalConnectionList(SignalName.HoverOut).Count == 0 && HoverOutAction.Equals(fbHoverOut))
+        if (GetSignalConnectionList(SignalName.HoverOut).Count == 0 && HoverOutAction.Equals(new Callable(this, nameof(RunBuiltInHoverOut))))
             Connect(SignalName.HoverOut, HoverOutAction);
-        if (GetSignalConnectionList(SignalName.Toggled).Count == 0 && ToggledAction.Equals(fbToggled))
+        if (GetSignalConnectionList(SignalName.Toggled).Count == 0 && ToggledAction.Equals(new Callable(this, nameof(RunBuiltInToggled))))
             Connect(SignalName.Toggled, ToggledAction);
-        if (GetSignalConnectionList(SignalName.Log).Count == 0 && LogAction.Equals(fbLog))
+        if (GetSignalConnectionList(SignalName.Log).Count == 0 && LogAction.Equals(new Callable(this, nameof(RunBuiltInLog))))
             Connect(SignalName.Log, LogAction);
+    }
 
+    private void ConnectMouseEvents()
+    {
         // Mouse hover signals (guard duplicates)
         if (!IsConnected("mouse_entered", new Callable(this, nameof(OnMouseEntered))))
             Connect("mouse_entered", new Callable(this, nameof(OnMouseEntered)));
@@ -215,9 +258,7 @@ public partial class OmniButton : Control
             Connect("mouse_exited", new Callable(this, nameof(OnMouseExited)));
     }
 
-    public override void _ExitTree() => DisconnectAllSignalHandlers();
-
-    public override void _Ready()
+    private void InitializeComponent()
     {
         FocusMode = FocusModeEnum.All;
         BoundsSource ??= this;
@@ -229,88 +270,23 @@ public partial class OmniButton : Control
 
         if (!string.IsNullOrEmpty(_text))
             Text = _text; // ensures label exists and fits
+    }
 
+    private void ApplyInitialState()
+    {
         ApplyVisualState();
         ApplyThemeNow();
+    }
 
+    private void ConnectMinimumSizeChanged()
+    {
         // NEW: re-fit when min size changes (e.g. theme/stylebox changes content size)
         if (!IsConnected("minimum_size_changed", new Callable(this, nameof(OnMinimumSizeChanged))))
             Connect("minimum_size_changed", new Callable(this, nameof(OnMinimumSizeChanged)));
     }
 
-    public override void _Process(double delta)
-    {
-        if (!EnableHoverActions)
-        {
-            SetProcess(false);
-            return;
-        }
-        PivotOffset = Size / 2.0f;
-        var target = Vector2.One * _hoverTargetScale;
-        Scale = Scale.Lerp(target, (float)(HoverLerpSpeed * delta));
-        if (Scale.DistanceTo(target) < 0.001f)
-            SetProcess(false);
-    }
-
-    public override void _Notification(int what)
-    {
-        if (what == NotificationResized)
-        {
-            FitLabelText();
-        }
-        else if (what == NotificationThemeChanged)
-        {
-            CallDeferred(nameof(ApplyThemeNow));
-            CallDeferred(nameof(FitLabelText));
-        }
-        else if (what == NotificationVisibilityChanged)
-        {
-            if (!IsVisibleInTree())
-            {
-                _isPointerDown = false;
-                ApplyVisualState();
-            }
-        }
-        else if (what == NotificationPredelete)
-        {
-            DisconnectAllSignalHandlers();
-        }
-    }
-
-    // ---------- Property List (to re-announce toggle props conditionally) ----------
-    public override Array<Dictionary> _GetPropertyList()
-    {
-        var list = new Array<Dictionary>();
-
-        list.Add(new Dictionary
-        {
-            { "name", "Interaction & Actions/EnableToggleActions" },
-            { "type", (int)Variant.Type.Bool },
-            { "usage", (int)PropertyUsageFlags.Default }
-        });
-
-        var usage = (int)PropertyUsageFlags.Default;
-        var usageHidden = (int)PropertyUsageFlags.Storage; // stored but not editable/visible
-
-        list.Add(new Dictionary
-        {
-            { "name", "Interaction & Actions/TogglePressed" },
-            { "type", (int)Variant.Type.Bool },
-            { "usage", EnableToggleActions ? usage : usageHidden }
-        });
-
-        list.Add(new Dictionary
-        {
-            { "name", "Interaction & Actions/ToggledAction" },
-            { "type", (int)Variant.Type.Callable },
-            { "usage", EnableToggleActions ? usage : usageHidden }
-        });
-
-        return list;
-    }
-
-    // ---------- Input Handling ----------
-    public override void _UnhandledInput(InputEvent @event)
+    // ---------- Input Processing ----------
+    private void HandleUnhandledInput(InputEvent @event)
     {
         if (ButtonDisabled)
         {
@@ -341,7 +317,7 @@ public partial class OmniButton : Control
         }
     }
 
-    public override void _GuiInput(InputEvent @event)
+    private void HandleGuiInput(InputEvent @event)
     {
         if (ButtonDisabled)
         {
@@ -351,56 +327,99 @@ public partial class OmniButton : Control
 
         if (@event is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Left)
         {
-            if (mb.Pressed)
-            {
-                if (PointInside(mb.GlobalPosition) && !_pressedLock)
-                {
-                    OnPressed();
-                    GetViewport().SetInputAsHandled();
-                    return;
-                }
-            }
-            else
-            {
-                _isPointerDown = false;
-                ApplyVisualState();
-
-                if (PointInside(mb.GlobalPosition))
-                {
-                    OnReleased();
-                    GetViewport().SetInputAsHandled();
-                }
-                return;
-            }
+            HandleMouseButton(mb);
         }
         else if (@event is InputEventScreenTouch touch)
         {
-            var globalPos = GlobalPosition + touch.Position;
-            if (touch.Pressed)
-            {
-                if (PointInside(globalPos) && !_pressedLock)
-                {
-                    OnPressed();
-                    GetViewport().SetInputAsHandled();
-                    return;
-                }
-            }
-            else
-            {
-                _isPointerDown = false;
-                ApplyVisualState();
+            HandleScreenTouch(touch);
+        }
+    }
 
-                if (PointInside(globalPos))
-                {
-                    OnReleased();
-                    GetViewport().SetInputAsHandled();
-                }
-                return;
+    private void HandleMouseButton(InputEventMouseButton mb)
+    {
+        if (mb.Pressed)
+        {
+            if (PointInside(mb.GlobalPosition))
+            {
+                OnPressed();
+                GetViewport().SetInputAsHandled();
+            }
+        }
+        else
+        {
+            _isPointerDown = false;
+            ApplyVisualState();
+
+            if (PointInside(mb.GlobalPosition))
+            {
+                OnReleased();
+                GetViewport().SetInputAsHandled();
             }
         }
     }
 
-    // ---------- Hover and Scaling ----------
+    private void HandleScreenTouch(InputEventScreenTouch touch)
+    {
+        var globalPos = GlobalPosition + touch.Position;
+        if (touch.Pressed)
+        {
+            if (PointInside(globalPos))
+            {
+                OnPressed();
+                GetViewport().SetInputAsHandled();
+            }
+        }
+        else
+        {
+            _isPointerDown = false;
+            ApplyVisualState();
+
+            if (PointInside(globalPos))
+            {
+                OnReleased();
+                GetViewport().SetInputAsHandled();
+            }
+        }
+    }
+
+    // ---------- Event Handlers ----------
+    private void OnPressed()
+    {
+        if (ButtonDisabled) return;
+
+        _isPointerDown = true;
+        ApplyVisualState();
+        GrabFocus();
+
+        if (EnablePressActions)
+            EmitSignal(SignalName.Pressed);
+
+        if (EnableToggleActions)
+            TogglePressed = !TogglePressed;
+    }
+
+    private void OnReleased()
+    {
+        if (ButtonDisabled) return;
+
+        _isPointerDown = false;
+        ApplyVisualState();
+
+        if (EnableReleaseActions)
+            EmitSignal(SignalName.Released);
+    }
+
+    private void OnToggled(bool button_pressed)
+    {
+        if (!EnableToggleActions || ButtonDisabled) return;
+        EmitSignal(SignalName.Toggled, button_pressed);
+    }
+
+    private void OnLog(string type, string message)
+    {
+        EmitSignal(SignalName.Log, type, message);
+    }
+
     private void OnMouseEntered()
     {
         if (ButtonDisabled) return;
@@ -427,22 +446,71 @@ public partial class OmniButton : Control
         ApplyThemeNow(); // revert hover tint/colors
     }
 
-    private void RunBuiltInHoverIn()
+    private void OnMinimumSizeChanged()
     {
-        PivotOffset = Size / 2.0f;
-        Scale = Scale.Lerp(Vector2.One * HoverScale, HoverLerpSpeed * (float)GetProcessDeltaTime());
+        if (IsInsideTree() && !IsQueuedForDeletion())
+            CallDeferred(nameof(FitLabelText));
     }
 
-    private void RunBuiltInHoverOut()
+    // ---------- Process Methods ----------
+    private void ProcessHoverScaling(double delta)
     {
+        if (!EnableHoverActions)
+        {
+            SetProcess(false);
+            return;
+        }
         PivotOffset = Size / 2.0f;
-        Scale = Scale.Lerp(Vector2.One / HoverScale, HoverLerpSpeed * (float)GetProcessDeltaTime());
+        var target = Vector2.One * _hoverTargetScale;
+        Scale = Scale.Lerp(target, (float)(HoverLerpSpeed * delta));
+        if (Scale.DistanceTo(target) < 0.001f)
+            SetProcess(false);
     }
 
-    // ---------- Utility ----------
+    private void HandleNotifications(int what)
+    {
+        if (what == NotificationResized)
+        {
+            FitLabelText();
+        }
+        else if (what == NotificationThemeChanged)
+        {
+            CallDeferred(nameof(ApplyThemeNow));
+            CallDeferred(nameof(FitLabelText));
+        }
+        else if (what == NotificationVisibilityChanged)
+        {
+            if (!IsVisibleInTree())
+            {
+                _isPointerDown = false;
+                ApplyVisualState();
+            }
+        }
+        else if (what == NotificationPredelete)
+        {
+            DisconnectAllSignalHandlers();
+        }
+    }
+
+    // ---------- UI Component Management ----------
     public void DisplayLabel(string text, Theme theme = null)
     {
         OnLog("Debug", $"CustomButton: {Name} Setting label text to '{text}'...");
+        var lbl = GetOrCreateLabel();
+
+        lbl.Text = text ?? "";
+        lbl.Theme = theme ?? Theme;
+
+        // Ensure we have LabelSettings so we can authoritatively set font + size
+        EnsureLabelSettings(lbl);
+
+        // Fit next frame after layout/theme is ready
+        if (IsInsideTree() && !IsQueuedForDeletion())
+            CallDeferred(nameof(FitLabelText));
+    }
+
+    private Label GetOrCreateLabel()
+    {
         var lbl = GetNodeOrNull<Label>("Label");
         if (lbl == null || !GodotObject.IsInstanceValid(lbl))
         {
@@ -458,103 +526,8 @@ public partial class OmniButton : Control
             lbl.SetAnchorsPreset(LayoutPreset.FullRect);
             AddChild(lbl);
         }
-
-        lbl.Text = text ?? "";
-        lbl.Theme = theme ?? Theme;
-
-        // Ensure we have LabelSettings so we can authoritatively set font + size
-        EnsureLabelSettings(lbl);
-
-        // Fit next frame after layout/theme is ready
-        CallDeferred(nameof(FitLabelText));
+        return lbl;
     }
-
-    private void OnMinimumSizeChanged()
-    {
-        CallDeferred(nameof(FitLabelText));
-    }
-
-    private void FitLabelText()
-    {
-        if (_fittingLabel) return;
-        _fittingLabel = true;
-
-        var lbl = GetNodeOrNull<Label>("Label");
-        if (lbl == null || !GodotObject.IsInstanceValid(lbl))
-        {
-            _fittingLabel = false;
-            return;
-        }
-
-        // Available area = control Size minus StyleBox content margins
-        var avail = Size;
-        var sb = GetThemeStylebox("panel", ThemeTypeVariation);
-        if (sb != null)
-        {
-            avail.X -= (float)(sb.GetContentMargin(Side.Left) + sb.GetContentMargin(Side.Right));
-            avail.Y -= (float)(sb.GetContentMargin(Side.Top) + sb.GetContentMargin(Side.Bottom));
-        }
-
-        if (avail.X <= 1.0f || avail.Y <= 1.0f)
-        {
-            CallDeferred(nameof(FitLabelText));
-            _fittingLabel = false;
-            return;
-        }
-
-        // Robust font fallback (works in editor too)
-        Font fnt = lbl.GetThemeFont("font");
-        if (fnt == null) fnt = lbl.GetThemeDefaultFont();
-        if (fnt == null) fnt = ThemeDB.FallbackFont;
-        if (fnt == null)
-        {
-            _fittingLabel = false;
-            return;
-        }
-
-        var text = lbl.Text;
-        if (string.IsNullOrEmpty(text))
-        {
-            _fittingLabel = false;
-            return;
-        }
-
-        // Try largest -> smallest; measure WRAPPED MULTILINE text
-        int bestSize = -1;
-        for (int fs = MaxFontSize; fs >= MinFontSize; fs--)
-        {
-            // NOTE: this call matches the GDScript logic (word-bound wrapping)
-            var sz = fnt.GetMultilineStringSize(
-                text,
-                HorizontalAlignment.Left,     // alignment for measurement
-                avail.X,                      // wrap width
-                fs,                           // font size
-                -1,                           // no line limit
-                TextServer.LineBreakFlag.WordBound
-            );
-
-            if (sz.X <= avail.X + 0.1f && sz.Y <= avail.Y + 0.1f)
-            {
-                bestSize = fs;
-                break;
-            }
-        }
-
-        if (bestSize == -1)
-            bestSize = MinFontSize;
-
-        // Apply through LabelSettings (authoritative over theme overrides)
-        var ls = EnsureLabelSettings(lbl);
-        if (ls.Font != fnt) ls.Font = fnt;
-        if (ls.FontSize != bestSize) ls.FontSize = bestSize;
-
-        // Make sure what we measured is how we render
-        lbl.AutowrapMode = TextServer.AutowrapMode.Word;
-
-        lbl.QueueRedraw();
-        _fittingLabel = false;
-    }
-
 
     private TextureRect EnsureIcon(bool stretch = true)
     {
@@ -581,6 +554,112 @@ public partial class OmniButton : Control
         return tr;
     }
 
+    // ---------- Text Fitting ----------
+    private void FitLabelText()
+    {
+        if (_fittingLabel) return;
+        _fittingLabel = true;
+
+        var lbl = GetNodeOrNull<Label>("Label");
+        if (lbl == null || !GodotObject.IsInstanceValid(lbl))
+        {
+            _fittingLabel = false;
+            return;
+        }
+
+        var avail = CalculateAvailableArea();
+        if (!IsValidArea(avail))
+        {
+            _fittingLabel = false;
+            return;
+        }
+
+        var fnt = GetRobustFont(lbl);
+        if (fnt == null)
+        {
+            _fittingLabel = false;
+            return;
+        }
+
+        var text = lbl.Text;
+        if (string.IsNullOrEmpty(text))
+        {
+            _fittingLabel = false;
+            return;
+        }
+
+        int bestSize = FindBestFontSize(fnt, text, avail);
+        ApplyFontSettings(lbl, fnt, bestSize);
+
+        _fittingLabel = false;
+    }
+
+    private Vector2 CalculateAvailableArea()
+    {
+        var avail = Size;
+        var sb = GetThemeStylebox("panel", ThemeTypeVariation);
+        if (sb != null)
+        {
+            avail.X -= (float)(sb.GetContentMargin(Side.Left) + sb.GetContentMargin(Side.Right));
+            avail.Y -= (float)(sb.GetContentMargin(Side.Top) + sb.GetContentMargin(Side.Bottom));
+        }
+        return avail;
+    }
+
+    private bool IsValidArea(Vector2 avail)
+    {
+        if ((avail.X <= 1.0f || avail.Y <= 1.0f) && (GodotObject.IsInstanceValid(this)))
+        {
+            if (IsInsideTree() && !IsQueuedForDeletion())
+                CallDeferred(nameof(FitLabelText));
+            return false;
+        }
+        return true;
+    }
+
+    private Font GetRobustFont(Label lbl)
+    {
+        Font fnt = lbl.GetThemeFont("font");
+        if (fnt == null) fnt = lbl.GetThemeDefaultFont();
+        if (fnt == null) fnt = ThemeDB.FallbackFont;
+        return fnt;
+    }
+
+    private int FindBestFontSize(Font fnt, string text, Vector2 avail)
+    {
+        int bestSize = -1;
+        for (int fs = MaxFontSize; fs >= MinFontSize; fs--)
+        {
+            var sz = fnt.GetMultilineStringSize(
+                text,
+                HorizontalAlignment.Left,
+                avail.X,
+                fs,
+                -1,
+                TextServer.LineBreakFlag.WordBound
+            );
+
+            if (sz.X <= avail.X + 0.1f && sz.Y <= avail.Y + 0.1f)
+            {
+                bestSize = fs;
+                break;
+            }
+        }
+
+        return bestSize == -1 ? MinFontSize : bestSize;
+    }
+
+    private void ApplyFontSettings(Label lbl, Font fnt, int bestSize)
+    {
+        var ls = EnsureLabelSettings(lbl);
+        if (ls.Font != fnt) ls.Font = fnt;
+        if (ls.FontSize != bestSize) ls.FontSize = bestSize;
+
+        lbl.AutowrapMode = TextServer.AutowrapMode.Word;
+        lbl.QueueRedraw();
+    }
+
+    // ---------- Visual State Management ----------
     private void ApplyVisualState()
     {
         var tr = EnsureIcon();
@@ -616,6 +695,68 @@ public partial class OmniButton : Control
         return "normal";
     }
 
+    // ---------- Theme Management ----------
+    private void ApplyThemeNow()
+    {
+        if (_themeApplying) return;
+        _themeApplying = true;
+
+        string state = CurrentVisualState();
+        var lbl = GetNodeOrNull<Label>("Label");
+        var tr = EnsureIcon(false);
+
+        ApplyStyleBox();
+        ApplyStateColors(state, lbl, tr);
+        ApplyFonts(lbl);
+
+        _themeApplying = false;
+    }
+
+    private void ApplyStyleBox()
+    {
+        var sb = GetThemeStylebox(T_BG, ThemeTypeVariation);
+        if (sb != null)
+        {
+            var hasOverride = HasThemeStyleboxOverride("panel");
+            var cur = hasOverride ? GetThemeStylebox("panel") : null;
+            if (cur != sb) AddThemeStyleboxOverride("panel", sb);
+        }
+        else
+        {
+            if (HasThemeStyleboxOverride("panel"))
+                RemoveThemeStyleboxOverride("panel");
+        }
+    }
+
+    private void ApplyStateColors(string state, Label lbl, TextureRect tr)
+    {
+        var textCol = GetStateColor(state, T_TEXT_NORMAL, T_TEXT_HOVER, T_TEXT_PRESSED, T_TEXT_DISABLED, Colors.White);
+        var iconTint = GetStateColor(state, T_ICON_TINT_NORMAL, T_ICON_TINT_HOVER, T_ICON_TINT_PRESSED, T_ICON_TINT_DISABLED, Colors.White);
+
+        if (IsInstanceValid(lbl) && lbl.Modulate != textCol)
+            lbl.Modulate = textCol;
+
+        if (IsInstanceValid(tr) && tr.Modulate != iconTint)
+            tr.Modulate = iconTint;
+    }
+
+    private void ApplyFonts(Label lbl)
+    {
+        if (!IsInstanceValid(lbl)) return;
+
+        var fnt = GetThemeFont(T_FONT, ThemeTypeVariation);
+        if (fnt != null && lbl.GetThemeFont("font") != fnt)
+            lbl.AddThemeFontOverride("font", fnt);
+
+        var fsz = GetThemeFontSize(T_FONT_SIZE, ThemeTypeVariation);
+        if (fsz > 0 && lbl.GetThemeFontSize("font_size") != fsz)
+            lbl.AddThemeFontSizeOverride("font_size", fsz);
+
+        // Refit after potential font/size change
+        if (IsInsideTree() && !IsQueuedForDeletion())
+            CallDeferred(nameof(FitLabelText));
+    }
+
     private Color GetStateColor(string state, string nKey, string hKey, string pKey, string dKey, Color fallback)
     {
         switch (state)
@@ -638,57 +779,7 @@ public partial class OmniButton : Control
         }
     }
 
-    private void ApplyThemeNow()
-    {
-        if (_themeApplying) return;
-        _themeApplying = true;
-
-        string state = CurrentVisualState();
-        var lbl = GetNodeOrNull<Label>("Label");
-        var tr = EnsureIcon(false);
-
-        // StyleBox background (optional)
-        var sb = GetThemeStylebox(T_BG, ThemeTypeVariation);
-        if (sb != null)
-        {
-            var hasOverride = HasThemeStyleboxOverride("panel");
-            var cur = hasOverride ? GetThemeStylebox("panel") : null;
-            if (cur != sb) AddThemeStyleboxOverride("panel", sb);
-        }
-        else
-        {
-            if (HasThemeStyleboxOverride("panel"))
-                RemoveThemeStyleboxOverride("panel");
-        }
-
-        // Colors
-        var textCol = GetStateColor(state, T_TEXT_NORMAL, T_TEXT_HOVER, T_TEXT_PRESSED, T_TEXT_DISABLED, Colors.White);
-        var iconTint = GetStateColor(state, T_ICON_TINT_NORMAL, T_ICON_TINT_HOVER, T_ICON_TINT_PRESSED, T_ICON_TINT_DISABLED, Colors.White);
-
-        if (IsInstanceValid(lbl) && lbl.Modulate != textCol)
-            lbl.Modulate = textCol;
-
-        if (IsInstanceValid(tr) && tr.Modulate != iconTint)
-            tr.Modulate = iconTint;
-
-        // Fonts (optional)
-        if (IsInstanceValid(lbl))
-        {
-            var fnt = GetThemeFont(T_FONT, ThemeTypeVariation);
-            if (fnt != null && lbl.GetThemeFont("font") != fnt)
-                lbl.AddThemeFontOverride("font", fnt);
-
-            var fsz = GetThemeFontSize(T_FONT_SIZE, ThemeTypeVariation);
-            if (fsz > 0 && lbl.GetThemeFontSize("font_size") != fsz)
-                lbl.AddThemeFontSizeOverride("font_size", fsz);
-
-            // Refit after potential font/size change
-            CallDeferred(nameof(FitLabelText));
-        }
-
-        _themeApplying = false;
-    }
-
+    // ---------- Material Management ----------
     private ShaderMaterial GetInvertMaterial()
     {
         if (_invertMat != null)
@@ -705,7 +796,7 @@ void fragment() {
         return _invertMat;
     }
 
-    // ---------- Private Helpers ----------
+    // ---------- Utility Methods ----------
     private LabelSettings EnsureLabelSettings(Label lbl)
     {
         var ls = lbl.LabelSettings;
@@ -731,11 +822,6 @@ void fragment() {
         return HasFocus() || PointInside(GetViewport().GetMousePosition());
     }
 
-    private void UnlockPress() => _pressedLock = false;
-    private void UnlockRelease() => _releasedLock = false;
-    private void UnlockToggle() => _toggledLock = false;
-    private void UnlockLog() => _logLock = false;
-
     private Callable AdoptConnectedCallable(StringName sigName, Callable fallback)
     {
         var conns = GetSignalConnectionList(sigName);
@@ -750,9 +836,40 @@ void fragment() {
         return fallback;
     }
 
+    private Array<Dictionary> BuildPropertyList()
+    {
+        var list = new Array<Dictionary>();
+
+        list.Add(new Dictionary
+        {
+            { "name", "Interaction & Actions/EnableToggleActions" },
+            { "type", (int)Variant.Type.Bool },
+            { "usage", (int)PropertyUsageFlags.Default }
+        });
+
+        var usage = (int)PropertyUsageFlags.Default;
+        var usageHidden = (int)PropertyUsageFlags.Storage; // stored but not editable/visible
+
+        list.Add(new Dictionary
+        {
+            { "name", "Interaction & Actions/TogglePressed" },
+            { "type", (int)Variant.Type.Bool },
+            { "usage", EnableToggleActions ? usage : usageHidden }
+        });
+
+        list.Add(new Dictionary
+        {
+            { "name", "Interaction & Actions/ToggledAction" },
+            { "type", (int)Variant.Type.Callable },
+            { "usage", EnableToggleActions ? usage : usageHidden }
+        });
+
+        return list;
+    }
+
+    // ---------- Signal Management ----------
     private void DisconnectAllSignalHandlers()
     {
-        // --- Outgoing connections (this node's signals -> others) ---
         string[] ownSignals =
         {
             "pressed", "toggled", "released", "log", "hover_in", "hover_out"
@@ -760,10 +877,9 @@ void fragment() {
 
         foreach (var sig in ownSignals)
         {
-            var list = GetSignalConnectionList(sig); // Array<Dictionary>
+            var list = GetSignalConnectionList(sig);
             foreach (Godot.Collections.Dictionary conn in list)
             {
-                // Godot 4: "callable" is the stable shape
                 if (conn.TryGetValue("callable", out var callableVar))
                 {
                     var callable = (Callable)callableVar;
@@ -774,59 +890,22 @@ void fragment() {
         }
     }
 
-    // ---------- Default (dispatcher) handlers ----------
-    private void OnPressed()
-    {
-        if (_pressedLock || ButtonDisabled) return;
-        _pressedLock = true;
-
-        _isPointerDown = true;
-        ApplyVisualState();
-        GrabFocus();
-
-        if (EnablePressActions)
-            EmitSignal(SignalName.Pressed);
-
-        if (EnableToggleActions)
-            TogglePressed = !TogglePressed; // setter emits toggled
-
-        CallDeferred(nameof(UnlockPress));
-    }
-
-    private void OnReleased()
-    {
-        if (_releasedLock || ButtonDisabled) return;
-        _releasedLock = true;
-
-        _isPointerDown = false;
-        ApplyVisualState();
-
-        if (EnableReleaseActions)
-            EmitSignal(SignalName.Released);
-
-        CallDeferred(nameof(UnlockRelease));
-    }
-
-    private void OnToggled(bool button_pressed)
-    {
-        if (_toggledLock || !EnableToggleActions || ButtonDisabled) return;
-        _toggledLock = true;
-        EmitSignal(SignalName.Toggled, button_pressed);
-        CallDeferred(nameof(UnlockToggle));
-    }
-
-    private void OnLog(string type, string message)
-    {
-        if (_logLock) return;
-        _logLock = true;
-        EmitSignal(SignalName.Log, type, message);
-        CallDeferred(nameof(UnlockLog));
-    }
-
-    // ---------- Built-in fallback behaviors ----------
+    // ---------- Built-in Fallback Behaviors ----------
     private void RunBuiltInPressed() => RunBuiltInLog("info", $"PressedAction not set; running built-in logic for {Name}.");
     private void RunBuiltInToggled(bool _buttonPressed) => RunBuiltInLog("info", $"ToggledAction not set; running built-in logic for {Name}.");
     private void RunBuiltInReleased() => RunBuiltInLog("info", $"ReleasedAction not set; running built-in logic for {Name}.");
+
+    private void RunBuiltInHoverIn()
+    {
+        PivotOffset = Size / 2.0f;
+        Scale = Scale.Lerp(Vector2.One * HoverScale, HoverLerpSpeed * (float)GetProcessDeltaTime());
+    }
+
+    private void RunBuiltInHoverOut()
+    {
+        PivotOffset = Size / 2.0f;
+        Scale = Scale.Lerp(Vector2.One / HoverScale, HoverLerpSpeed * (float)GetProcessDeltaTime());
+    }
 
     private void RunBuiltInLog(string type, string message)
     {
