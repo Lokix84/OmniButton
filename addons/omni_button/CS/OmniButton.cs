@@ -1,84 +1,98 @@
 using Godot;
 using Godot.Collections;
+using System;
+using System.Collections.Generic;
 
+/// <summary>
+/// Advanced button control with theming, scaling, selection states, and extensive customization options
+/// </summary>
 [Tool]
 public partial class OmniButton : Control
 {
-    // ---------- Signals ----------
+    #region Signals
     [Signal] public delegate void PressedEventHandler();
     [Signal] public delegate void ToggledEventHandler(bool button_pressed);
     [Signal] public delegate void ReleasedEventHandler();
     [Signal] public delegate void HoverInEventHandler();
     [Signal] public delegate void HoverOutEventHandler();
     [Signal] public delegate void LogEventHandler(string type, string message);
+    #endregion
 
-    // ---------- Constants ----------
+    #region Constants & Static Data
     private const string T_TEXT_NORMAL = "text_color";
     private const string T_TEXT_HOVER = "text_color_hover";
     private const string T_TEXT_PRESSED = "text_color_pressed";
     private const string T_TEXT_DISABLED = "text_color_disabled";
-
     private const string T_ICON_TINT_NORMAL = "icon_tint";
     private const string T_ICON_TINT_HOVER = "icon_tint_hover";
     private const string T_ICON_TINT_PRESSED = "icon_tint_pressed";
     private const string T_ICON_TINT_DISABLED = "icon_tint_disabled";
-
-    private const string T_BG = "panel"; // StyleBox
+    private const string T_BG = "panel";
     private const string T_FONT = "font";
     private const string T_FONT_SIZE = "font_size";
 
-    // ---------- Export Properties ----------
+    private static readonly Godot.Collections.Dictionary<string, Color> PresetSelectedColors = new()
+    {
+        ["red"] = new(1.0f, 0.3f, 0.3f, 0.7f),
+        ["green"] = new(0.3f, 1.0f, 0.3f, 0.7f),
+        ["blue"] = new(0.3f, 0.3f, 1.0f, 0.7f),
+        ["yellow"] = new(1.0f, 1.0f, 0.3f, 0.7f),
+        ["purple"] = new(0.8f, 0.3f, 1.0f, 0.7f),
+        ["orange"] = new(1.0f, 0.6f, 0.2f, 0.7f),
+        ["cyan"] = new(0.3f, 1.0f, 1.0f, 0.7f)
+    };
 
-    // General Settings
+    private static readonly Godot.Collections.Dictionary<string, Color> PresetUnselectedColors = new Godot.Collections.Dictionary<string, Color>
+    {
+        ["dark"] = new(0.0f, 0.0f, 0.0f, 0.4f),
+        ["gray"] = new(0.3f, 0.3f, 0.3f, 0.3f),
+        ["red"] = new(0.3f, 0.0f, 0.0f, 0.3f),
+        ["blue"] = new(0.0f, 0.0f, 0.3f, 0.3f)
+    };
+
+    private static readonly string[] OwnSignals = { "pressed", "toggled", "released", "log", "hover_in", "hover_out" };
+
+    private static ShaderMaterial? _sharedInvertMat;
+    #endregion
+
+    #region Exported Properties
+    // General
     [ExportGroup("General Settings")]
     private bool _buttonDisabled = false;
-    [Export]
-    public bool ButtonDisabled
-    {
-        get => _buttonDisabled;
-        set
-        {
-            _buttonDisabled = value;
-            if (value)
-            {
-                _isPointerDown = false;
-                ApplyVisualState();
-            }
-        }
-    }
+    [Export] public bool ButtonDisabled { get => _buttonDisabled; set => SetButtonDisabled(value); }
 
-    // Input & Hit Detection
+    // Input
     [ExportGroup("Input & Hit Detection")]
     [Export] public string ActionName { get; set; } = "ui_accept";
     [Export] public bool RequireFocusForAction { get; set; } = true;
     [Export] public Control? BoundsSource { get; set; }
     [Export] public Vector2 HitSlop { get; set; } = Vector2.Zero;
 
-    // Interaction & Actions
+    // Actions
     [ExportGroup("Interaction & Actions")]
     [Export] public bool EnablePressActions { get; set; } = true;
     [Export] public Callable PressedAction { get; set; }
+    [Export] public bool InvertOnPressIfNoPressedTexture { get; set; } = true;
     [Export] public bool EnableReleaseActions { get; set; } = false;
     [Export] public Callable ReleasedAction { get; set; }
-    [Export] public bool EnableToggleActions { get; set; } = false;
+
+    private bool _enableToggleActions;
+    [Export] public bool EnableToggleActions { get => _enableToggleActions; set => SetToggleEnabled(value); }
     [Export] public Callable ToggledAction { get; set; }
 
     private bool _togglePressed = false;
-    [Export]
-    public bool TogglePressed
-    {
-        get => _togglePressed;
-        set
-        {
-            if (_togglePressed == value) return;
-            _togglePressed = value;
-            ApplyVisualState(); // live swap (tool)
-            if (EnableToggleActions && !Engine.IsEditorHint())
-                EmitSignal(SignalName.Toggled, _togglePressed);
-        }
-    }
+    [Export] public bool TogglePressed { get => _togglePressed; set => SetTogglePressed(value); }
 
-    // Hover and Scaling
+    // Selection States
+    private bool _selected = false;
+    [Export] public bool Selected { get => _selected; set => SetSelectionState(value, _unSelected); }
+    [Export] public Color SelectedColor = new(1.0f, 1.0f, 1.0f, 0.3f);
+
+    private bool _unSelected = false;
+    [Export] public bool UnSelected { get => _unSelected; set => SetSelectionState(_selected, value); }
+    [Export] public Color UnSelectedColor = new(0.0f, 0.0f, 0.0f, 0.2f);
+
+    // Hover
     [ExportGroup("Hover and Scaling")]
     [Export] public bool EnableHoverActions { get; set; } = false;
     [Export] public Callable HoverInAction { get; set; }
@@ -91,224 +105,323 @@ public partial class OmniButton : Control
     [Export] public int MinFontSize { get; set; } = 12;
     [Export] public int MaxFontSize { get; set; } = 100;
 
-    private string _text = "";
-    [Export]
-    public string Text
-    {
-        get => _text;
-        set
-        {
-            if (value == null) value = "";
-            var s = value.ToString();
-            if (s == _text) return;
-            _text = s;
-            DisplayLabel(_text);
-        }
-    }
+    private HorizontalAlignment _horizontalAlignment;
+    [Export] public HorizontalAlignment HorizontalAlignment { get => _horizontalAlignment; set => SetAlignment(value, _verticalAlignment); }
 
-    // Icon
+    private VerticalAlignment _verticalAlignment;
+    [Export] public VerticalAlignment VerticalAlignment { get => _verticalAlignment; set => SetAlignment(_horizontalAlignment, value); }
+
+    private TextServer.AutowrapMode _autowrapMode;
+    [Export] public TextServer.AutowrapMode AutowrapMode { get => _autowrapMode; set => SetAutowrapMode(value); }
+
+    private bool _invertTextIfNoIcon;
+    [Export] public bool InvertTextIfNoIcon { get => _invertTextIfNoIcon; set => SetInvertTextIfNoIcon(value); }
+
+    private string _text = "";
+    [Export] public string Text { get => _text; set => SetText(value); }
+
+    // Icon & Texture
     [ExportGroup("Icon")]
     [Export] public bool IconStretch { get; set; } = true;
     [Export] public bool IconKeepAspect { get; set; } = true;
 
-    // Texture
     [ExportGroup("Texture")]
     private Texture2D? _normalTexture;
-    [Export]
-    public Texture2D? Texture
-    {
-        get => _normalTexture;
-        set
-        {
-            _normalTexture = value;
-            EnsureIcon();
-            ApplyVisualState();
-        }
-    }
+    [Export] public Texture2D? Texture { get => _normalTexture; set => SetTexture(value, true); }
 
     private Texture2D? _pressedTexture;
-    [Export]
-    public Texture2D? PressedTexture
-    {
-        get => _pressedTexture;
-        set
-        {
-            _pressedTexture = value;
-            ApplyVisualState();
-        }
-    }
+    [Export] public Texture2D? PressedTexture { get => _pressedTexture; set => SetTexture(value, false); }
 
-    // Theme & Visuals
+    // Theme
     [ExportGroup("Theme & Visuals")]
     private string _themeTypeName = "OmniButton";
-    [Export]
-    public string ThemeTypeName
-    {
-        get => _themeTypeName;
-        set
-        {
-            _themeTypeName = value;
-            ThemeTypeVariation = value;
-            CallDeferred(nameof(ApplyThemeNow));
-        }
-    }
+    [Export] public string ThemeTypeName { get => _themeTypeName; set => SetThemeTypeName(value); }
+    [Export] public bool InheritThemeToChildren { get; set; } = true;
+
+    [ExportSubgroup("Base Node Theme Variations")]
+    [Export] public string BaseNormalThemeVariation { get; set; } = "normal";
+    [Export] public string BaseHoverThemeVariation { get; set; } = "hover";
+    [Export] public string BasePressedThemeVariation { get; set; } = "pressed";
+    [Export] public string BaseToggledThemeVariation { get; set; } = "toggled";
+
+    [ExportSubgroup("Label Theme Variations")]
+    [Export] public string LabelNormalThemeVariation { get; set; } = "";
+    [Export] public string LabelHoverThemeVariation { get; set; } = "";
+    [Export] public string LabelPressedThemeVariation { get; set; } = "";
+    [Export] public string LabelToggledThemeVariation { get; set; } = "";
+
+    [ExportSubgroup("Icon Theme Variations")]
+    [Export] public string IconNormalThemeVariation { get; set; } = "";
+    [Export] public string IconHoverThemeVariation { get; set; } = "";
+    [Export] public string IconPressedThemeVariation { get; set; } = "";
+    [Export] public string IconToggledThemeVariation { get; set; } = "";
 
     // Logging
     [ExportGroup("Logging")]
     [Export] public Callable LogAction { get; set; }
+    #endregion
 
-    // ---------- Private Fields ----------
+    #region Private State & Caching
     private bool _isPointerDown = false;
-    private ShaderMaterial? _invertMat;
     private float _hoverTargetScale = 1.0f;
     private Vector2 _originalScale = Vector2.One;
     private bool _hovering = false;
     private bool _themeApplying = false;
     private bool _fittingLabel = false;
 
-    // ---------- Godot Lifecycle Methods ----------
-    public override void _EnterTree()
+    // Cached components
+    private Label? _cachedLabel;
+    private TextureRect? _cachedIcon;
+    private ColorRect? _cachedOverlay;
+
+    // Cached state for optimization
+    private string? _lastVisualState;
+    private Color _lastTextColor = Colors.Transparent;
+    private Color _lastIconTint = Colors.Transparent;
+    #endregion
+
+    #region Godot Lifecycle
+    public override void _EnterTree() => Initialize();
+    public override void _ExitTree() => Cleanup();
+    public override void _Ready() => Setup();
+    public override void _Process(double delta) => ProcessHoverScaling(delta);
+    public override void _Notification(int what) => HandleNotifications(what);
+    public override Array<Dictionary> _GetPropertyList() => BuildPropertyList();
+    public override void _UnhandledInput(InputEvent @event) => HandleUnhandledInput(@event);
+    public override void _GuiInput(InputEvent @event) => HandleGuiInput(@event);
+    #endregion
+
+    #region Initialization & Cleanup
+    private void Initialize()
     {
         InitializeCallables();
-        ConnectSignals();
+        if (!Engine.IsEditorHint()) ConnectSignals();
         ConnectMouseEvents();
     }
 
-    public override void _ExitTree()
-    {
-        DisconnectAllSignalHandlers();
-    }
-
-    public override void _Ready()
-    {
-        InitializeComponent();
-        ApplyInitialState();
-        ConnectMinimumSizeChanged();
-    }
-
-    public override void _Process(double delta)
-    {
-        ProcessHoverScaling(delta);
-    }
-
-    public override void _Notification(int what)
-    {
-        HandleNotifications(what);
-    }
-
-    public override Array<Dictionary> _GetPropertyList()
-    {
-        return BuildPropertyList();
-    }
-
-    // ---------- Input Handling ----------
-    public override void _UnhandledInput(InputEvent @event)
-    {
-        HandleUnhandledInput(@event);
-    }
-
-    public override void _GuiInput(InputEvent @event)
-    {
-        HandleGuiInput(@event);
-    }
-
-    // ---------- Initialization Methods ----------
-    private void InitializeCallables()
-    {
-        // Build fallbacks
-        var fbPressed = new Callable(this, nameof(RunBuiltInPressed));
-        var fbReleased = new Callable(this, nameof(RunBuiltInReleased));
-        var fbHoverIn = new Callable(this, nameof(RunBuiltInHoverIn));
-        var fbHoverOut = new Callable(this, nameof(RunBuiltInHoverOut));
-        var fbToggled = new Callable(this, nameof(RunBuiltInToggled));
-        var fbLog = new Callable(this, nameof(RunBuiltInLog));
-
-        // Adopt existing editor connections if present, otherwise use fallbacks
-        PressedAction = AdoptConnectedCallable(SignalName.Pressed, fbPressed);
-        ReleasedAction = AdoptConnectedCallable(SignalName.Released, fbReleased);
-        HoverInAction = AdoptConnectedCallable(SignalName.HoverIn, fbHoverIn);
-        HoverOutAction = AdoptConnectedCallable(SignalName.HoverOut, fbHoverOut);
-        ToggledAction = AdoptConnectedCallable(SignalName.Toggled, fbToggled);
-        LogAction = AdoptConnectedCallable(SignalName.Log, fbLog);
-    }
-
-    private void ConnectSignals()
-    {
-        // Only connect our fallback if the signal has no connections yet
-        if (GetSignalConnectionList(SignalName.Pressed).Count == 0 && PressedAction.Equals(new Callable(this, nameof(RunBuiltInPressed))))
-            Connect(SignalName.Pressed, PressedAction);
-        if (GetSignalConnectionList(SignalName.Released).Count == 0 && ReleasedAction.Equals(new Callable(this, nameof(RunBuiltInReleased))))
-            Connect(SignalName.Released, ReleasedAction);
-        if (GetSignalConnectionList(SignalName.HoverIn).Count == 0 && HoverInAction.Equals(new Callable(this, nameof(RunBuiltInHoverIn))))
-            Connect(SignalName.HoverIn, HoverInAction);
-        if (GetSignalConnectionList(SignalName.HoverOut).Count == 0 && HoverOutAction.Equals(new Callable(this, nameof(RunBuiltInHoverOut))))
-            Connect(SignalName.HoverOut, HoverOutAction);
-        if (GetSignalConnectionList(SignalName.Toggled).Count == 0 && ToggledAction.Equals(new Callable(this, nameof(RunBuiltInToggled))))
-            Connect(SignalName.Toggled, ToggledAction);
-        if (GetSignalConnectionList(SignalName.Log).Count == 0 && LogAction.Equals(new Callable(this, nameof(RunBuiltInLog))))
-            Connect(SignalName.Log, LogAction);
-    }
-
-    private void ConnectMouseEvents()
-    {
-        // Mouse hover signals (guard duplicates)
-        if (!IsConnected("mouse_entered", new Callable(this, nameof(OnMouseEntered))))
-            Connect("mouse_entered", new Callable(this, nameof(OnMouseEntered)));
-        if (!IsConnected("mouse_exited", new Callable(this, nameof(OnMouseExited))))
-            Connect("mouse_exited", new Callable(this, nameof(OnMouseExited)));
-    }
-
-    private void InitializeComponent()
+    private void Setup()
     {
         FocusMode = FocusModeEnum.All;
         BoundsSource ??= this;
         ThemeTypeVariation = ThemeTypeName;
         _originalScale = Scale;
 
-        if (Engine.IsEditorHint())
-            NotifyPropertyListChanged();
+        if (Engine.IsEditorHint()) NotifyPropertyListChanged();
+        if (!string.IsNullOrEmpty(_text)) SetText(_text);
 
-        if (!string.IsNullOrEmpty(_text))
-            Text = _text; // ensures label exists and fits
+        ApplyVisualState();
+        ApplyThemeNow();
+        UpdateOverlay();
+
+        ConnectIfNotConnected("minimum_size_changed", new Callable(this, nameof(OnMinimumSizeChanged)));
     }
 
-    private void ApplyInitialState()
+    private void Cleanup()
     {
+        DisconnectAllSignalHandlers();
+        _cachedLabel = null;
+        _cachedIcon = null;
+        _cachedOverlay = null;
+    }
+
+    private void InitializeCallables()
+    {
+        var fallbacks = new (string name, Callable callable)[]
+        {
+            ("Pressed", new Callable(this, nameof(RunBuiltInPressed))),
+            ("Released", new Callable(this, nameof(RunBuiltInReleased))),
+            ("HoverIn", new Callable(this, nameof(RunBuiltInHoverIn))),
+            ("HoverOut", new Callable(this, nameof(RunBuiltInHoverOut))),
+            ("Toggled", new Callable(this, nameof(RunBuiltInToggled))),
+            ("Log", new Callable(this, nameof(RunBuiltInLog)))
+        };
+
+        foreach (var (name, callable) in fallbacks)
+        {
+            SetCallableProperty(name, AdoptConnectedCallable(name, callable));
+        }
+    }
+
+    private void SetCallableProperty(string name, Callable callable)
+    {
+        switch (name)
+        {
+            case "Pressed": PressedAction = callable; break;
+            case "Released": ReleasedAction = callable; break;
+            case "HoverIn": HoverInAction = callable; break;
+            case "HoverOut": HoverOutAction = callable; break;
+            case "Toggled": ToggledAction = callable; break;
+            case "Log": LogAction = callable; break;
+        }
+    }
+
+    private void ConnectSignals()
+    {
+        var signals = new (string name, Callable callable)[]
+        {
+            ("Pressed", PressedAction),
+            ("Released", ReleasedAction),
+            ("HoverIn", HoverInAction),
+            ("HoverOut", HoverOutAction),
+            ("Toggled", ToggledAction),
+            ("Log", LogAction)
+        };
+
+        foreach (var (name, callable) in signals)
+        {
+            if (GetSignalConnectionList(name).Count == 0)
+                Connect(name, callable);
+        }
+    }
+
+    private void ConnectMouseEvents()
+    {
+        ConnectIfNotConnected("mouse_entered", new Callable(this, nameof(OnMouseEntered)));
+        ConnectIfNotConnected("mouse_exited", new Callable(this, nameof(OnMouseExited)));
+    }
+
+    private void ConnectIfNotConnected(string signal, Callable callable)
+    {
+        if (!IsConnected(signal, callable))
+            Connect(signal, callable);
+    }
+    #endregion
+
+    #region Property Setters (Optimized)
+    private void SetButtonDisabled(bool value)
+    {
+        if (_buttonDisabled == value) return;
+        _buttonDisabled = value;
+        if (value)
+        {
+            _isPointerDown = false;
+            _hovering = false;
+            InvalidateVisualState();
+        }
+    }
+
+    private void SetToggleEnabled(bool value)
+    {
+        if (_enableToggleActions == value) return;
+        _enableToggleActions = value;
+        if (Engine.IsEditorHint()) NotifyPropertyListChanged();
+    }
+
+    private void SetTogglePressed(bool value)
+    {
+        if (_togglePressed == value) return;
+        _togglePressed = value;
+        InvalidateVisualState();
+        if (EnableToggleActions && !Engine.IsEditorHint())
+            EmitSignal(SignalName.Toggled, _togglePressed);
+    }
+
+    private void SetAlignment(HorizontalAlignment hAlign, VerticalAlignment vAlign)
+    {
+        bool changed = _horizontalAlignment != hAlign || _verticalAlignment != vAlign;
+        if (!changed) return;
+
+        _horizontalAlignment = hAlign;
+        _verticalAlignment = vAlign;
+
+        if (_cachedLabel != null && IsInstanceValid(_cachedLabel))
+        {
+            _cachedLabel.HorizontalAlignment = hAlign;
+            _cachedLabel.VerticalAlignment = vAlign;
+        }
+        if (Engine.IsEditorHint()) NotifyPropertyListChanged();
+    }
+
+    private void SetAutowrapMode(TextServer.AutowrapMode mode)
+    {
+        if (_autowrapMode == mode) return;
+        _autowrapMode = mode;
+
+        if (_cachedLabel != null && IsInstanceValid(_cachedLabel))
+        {
+            _cachedLabel.AutowrapMode = mode;
+            SafeCallDeferred(nameof(FitLabelText));
+        }
+        if (Engine.IsEditorHint()) NotifyPropertyListChanged();
+    }
+
+    private void SetInvertTextIfNoIcon(bool value)
+    {
+        if (_invertTextIfNoIcon == value) return;
+        _invertTextIfNoIcon = value;
+        InvalidateVisualState();
+        if (Engine.IsEditorHint()) NotifyPropertyListChanged();
+    }
+
+    private void SetText(string? value)
+    {
+        value ??= "";
+        if (value == _text) return;
+        _text = value;
+
+        var lbl = GetOrCreateLabel();
+        lbl.Text = value;
+        SafeCallDeferred(nameof(FitLabelText));
+    }
+
+    private void SetTexture(Texture2D? texture, bool isNormal)
+    {
+        if (isNormal)
+        {
+            if (_normalTexture == texture) return;
+            _normalTexture = texture;
+            EnsureIcon();
+        }
+        else
+        {
+            if (_pressedTexture == texture) return;
+            _pressedTexture = texture;
+        }
+        InvalidateVisualState();
+    }
+
+    private void SetThemeTypeName(string value)
+    {
+        if (_themeTypeName == value) return;
+        _themeTypeName = value;
+        ThemeTypeVariation = value;
+        SafeCallDeferred(nameof(ApplyThemeNow));
+    }
+
+    public void SetSelectionState(bool selected, bool unselected = false)
+    {
+        if (selected && unselected) unselected = false;
+
+        bool changed = _selected != selected || _unSelected != unselected;
+        if (!changed) return;
+
+        _selected = selected;
+        _unSelected = unselected;
+        UpdateOverlay();
+    }
+
+    private void InvalidateVisualState()
+    {
+        _lastVisualState = null;
         ApplyVisualState();
         ApplyThemeNow();
     }
+    #endregion
 
-    private void ConnectMinimumSizeChanged()
-    {
-        // NEW: re-fit when min size changes (e.g. theme/stylebox changes content size)
-        if (!IsConnected("minimum_size_changed", new Callable(this, nameof(OnMinimumSizeChanged))))
-            Connect("minimum_size_changed", new Callable(this, nameof(OnMinimumSizeChanged)));
-    }
-
-    // ---------- Input Processing ----------
+    #region Input Handling (Optimized)
     private void HandleUnhandledInput(InputEvent @event)
     {
-        if (ButtonDisabled)
-        {
-            OnLog("Warning", $"CustomButton: {Name} Button is disabled. Ignoring unhandled input.");
-            return;
-        }
-        if (string.IsNullOrEmpty(ActionName))
-            return;
+        if (ButtonDisabled || string.IsNullOrEmpty(ActionName)) return;
 
-        // Press
         if (@event.IsActionPressed(ActionName) && ActionAllowed())
         {
             OnPressed();
             GetViewport().SetInputAsHandled();
-            return;
         }
-
-        // Release
-        if (@event.IsActionReleased(ActionName))
+        else if (@event.IsActionReleased(ActionName))
         {
             _isPointerDown = false;
-            ApplyVisualState();
+            InvalidateVisualState();
             if (ActionAllowed())
             {
                 OnReleased();
@@ -319,38 +432,33 @@ public partial class OmniButton : Control
 
     private void HandleGuiInput(InputEvent @event)
     {
-        if (ButtonDisabled)
-        {
-            OnLog("Warning", $"CustomButton: {Name} Button is disabled. Ignoring input.");
-            return;
-        }
+        if (ButtonDisabled) return;
 
-        if (@event is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Left)
+        switch (@event)
         {
-            HandleMouseButton(mb);
-        }
-        else if (@event is InputEventScreenTouch touch)
-        {
-            HandleScreenTouch(touch);
+            case InputEventMouseButton { ButtonIndex: MouseButton.Left } mb:
+                HandleMouseButton(mb);
+                break;
+            case InputEventScreenTouch touch:
+                HandleScreenTouch(touch);
+                break;
         }
     }
 
     private void HandleMouseButton(InputEventMouseButton mb)
     {
-        if (mb.Pressed)
+        bool inside = PointInside(mb.GlobalPosition);
+
+        if (mb.Pressed && inside)
         {
-            if (PointInside(mb.GlobalPosition))
-            {
-                OnPressed();
-                GetViewport().SetInputAsHandled();
-            }
+            OnPressed();
+            GetViewport().SetInputAsHandled();
         }
-        else
+        else if (!mb.Pressed)
         {
             _isPointerDown = false;
-            ApplyVisualState();
-
-            if (PointInside(mb.GlobalPosition))
+            InvalidateVisualState();
+            if (inside)
             {
                 OnReleased();
                 GetViewport().SetInputAsHandled();
@@ -361,98 +469,81 @@ public partial class OmniButton : Control
     private void HandleScreenTouch(InputEventScreenTouch touch)
     {
         var globalPos = GlobalPosition + touch.Position;
-        if (touch.Pressed)
+        bool inside = PointInside(globalPos);
+
+        if (touch.Pressed && inside)
         {
-            if (PointInside(globalPos))
-            {
-                OnPressed();
-                GetViewport().SetInputAsHandled();
-            }
+            OnPressed();
+            GetViewport().SetInputAsHandled();
         }
-        else
+        else if (!touch.Pressed)
         {
             _isPointerDown = false;
-            ApplyVisualState();
-
-            if (PointInside(globalPos))
+            InvalidateVisualState();
+            if (inside)
             {
                 OnReleased();
                 GetViewport().SetInputAsHandled();
             }
         }
     }
+    #endregion
 
-    // ---------- Event Handlers ----------
+    #region Event Handlers
     private void OnPressed()
     {
         if (ButtonDisabled) return;
 
         _isPointerDown = true;
-        ApplyVisualState();
+        InvalidateVisualState();
         GrabFocus();
 
-        if (EnablePressActions)
-            EmitSignal(SignalName.Pressed);
-
-        if (EnableToggleActions)
-            TogglePressed = !TogglePressed;
+        if (EnablePressActions) EmitSignal(SignalName.Pressed);
+        if (EnableToggleActions) TogglePressed = !TogglePressed;
     }
 
     private void OnReleased()
     {
         if (ButtonDisabled) return;
-
-        _isPointerDown = false;
-        ApplyVisualState();
-
-        if (EnableReleaseActions)
-            EmitSignal(SignalName.Released);
+        if (EnableReleaseActions) EmitSignal(SignalName.Released);
     }
 
-    private void OnToggled(bool button_pressed)
-    {
-        if (!EnableToggleActions || ButtonDisabled) return;
-        EmitSignal(SignalName.Toggled, button_pressed);
-    }
-
-    private void OnLog(string type, string message)
-    {
-        EmitSignal(SignalName.Log, type, message);
-    }
+    private void OnLog(string type, string message) => EmitSignal(SignalName.Log, type, message);
 
     private void OnMouseEntered()
     {
         if (ButtonDisabled) return;
         _hovering = true;
+
         if (EnableHoverActions)
         {
             EmitSignal(SignalName.HoverIn);
-            _hoverTargetScale = HoverScale;
+            PivotOffset = Size / 2.0f;
+            _hoverTargetScale = HoverTargetForViewport();
             SetProcess(true);
         }
-        ApplyThemeNow(); // hover tint/colors
+        InvalidateVisualState();
     }
 
     private void OnMouseExited()
     {
         if (ButtonDisabled) return;
         _hovering = false;
+
         if (EnableHoverActions)
         {
             EmitSignal(SignalName.HoverOut);
+            PivotOffset = Size / 2.0f;
             _hoverTargetScale = 1.0f;
             SetProcess(true);
         }
-        ApplyThemeNow(); // revert hover tint/colors
+        InvalidateVisualState();
     }
 
-    private void OnMinimumSizeChanged()
-    {
-        if (IsInsideTree() && !IsQueuedForDeletion())
-            CallDeferred(nameof(FitLabelText));
-    }
+    private void OnMinimumSizeChanged() => SafeCallDeferred(nameof(FitLabelText));
+    #endregion
 
-    // ---------- Process Methods ----------
+    #region Processing & Notifications
     private void ProcessHoverScaling(double delta)
     {
         if (!EnableHoverActions)
@@ -460,138 +551,154 @@ public partial class OmniButton : Control
             SetProcess(false);
             return;
         }
+
         PivotOffset = Size / 2.0f;
         var target = Vector2.One * _hoverTargetScale;
         Scale = Scale.Lerp(target, (float)(HoverLerpSpeed * delta));
+
         if (Scale.DistanceTo(target) < 0.001f)
             SetProcess(false);
     }
 
     private void HandleNotifications(int what)
     {
-        if (what == NotificationResized)
+        switch (what)
         {
-            FitLabelText();
-        }
-        else if (what == NotificationThemeChanged)
-        {
-            CallDeferred(nameof(ApplyThemeNow));
-            CallDeferred(nameof(FitLabelText));
-        }
-        else if (what == NotificationVisibilityChanged)
-        {
-            if (!IsVisibleInTree())
-            {
-                _isPointerDown = false;
-                ApplyVisualState();
-            }
-        }
-        else if (what == NotificationPredelete)
-        {
-            DisconnectAllSignalHandlers();
+            case (int)NotificationResized:
+                FitLabelText();
+                if (_hovering && EnableHoverActions)
+                {
+                    PivotOffset = Size / 2.0f;
+                    _hoverTargetScale = HoverTargetForViewport();
+                    SetProcess(true);
+                }
+                break;
+
+            case (int)NotificationThemeChanged:
+                if (InheritThemeToChildren && Theme != null)
+                    ApplyThemeToChildren();
+
+                _lastVisualState = null; // Force theme refresh
+                SafeCallDeferred(nameof(ApplyThemeNow));
+                SafeCallDeferred(nameof(FitLabelText));
+
+                if (_hovering && EnableHoverActions)
+                {
+                    _hoverTargetScale = HoverTargetForViewport();
+                    SetProcess(true);
+                }
+                break;
+
+            case (int)NotificationVisibilityChanged:
+                if (!IsVisibleInTree())
+                {
+                    _isPointerDown = false;
+                    _hovering = false;
+                    InvalidateVisualState();
+                }
+                break;
+
+            case (int)NotificationPredelete:
+                Cleanup();
+                break;
         }
     }
 
-    // ---------- UI Component Management ----------
-    public void DisplayLabel(string text, Theme theme = null)
+    private void ApplyThemeToChildren()
     {
-        OnLog("Debug", $"CustomButton: {Name} Setting label text to '{text}'...");
-        var lbl = GetOrCreateLabel();
-
-        lbl.Text = text ?? "";
-        lbl.Theme = theme ?? Theme;
-
-        // Ensure we have LabelSettings so we can authoritatively set font + size
-        EnsureLabelSettings(lbl);
-
-        // Fit next frame after layout/theme is ready
-        if (IsInsideTree() && !IsQueuedForDeletion())
-            CallDeferred(nameof(FitLabelText));
+        if (_cachedLabel != null && IsInstanceValid(_cachedLabel))
+            _cachedLabel.Theme = Theme;
+        if (_cachedIcon != null && IsInstanceValid(_cachedIcon))
+            _cachedIcon.Theme = Theme;
     }
+    #endregion
 
+    #region UI Components (Cached)
     private Label GetOrCreateLabel()
     {
-        var lbl = GetNodeOrNull<Label>("Label");
-        if (lbl == null || !GodotObject.IsInstanceValid(lbl))
+        if (_cachedLabel == null || !IsInstanceValid(_cachedLabel))
         {
-            OnLog("Warning", $"CustomButton: {Name} Label is null or invalid. Creating a new label...");
-            lbl = new Label
+            _cachedLabel = GetNodeOrNull<Label>("Label");
+            if (_cachedLabel == null)
             {
-                Name = "Label",
-                MouseFilter = MouseFilterEnum.Ignore,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                AutowrapMode = TextServer.AutowrapMode.Word
-            };
-            lbl.SetAnchorsPreset(LayoutPreset.FullRect);
-            AddChild(lbl);
+                _cachedLabel = CreateChildNode<Label>("Label");
+            }
         }
-        return lbl;
+        ConfigureLabel(_cachedLabel);
+        return _cachedLabel;
     }
 
-    private TextureRect EnsureIcon(bool stretch = true)
+    private TextureRect EnsureIcon()
     {
-        var tr = GetNodeOrNull<TextureRect>("Icon");
-        if (tr == null || !GodotObject.IsInstanceValid(tr))
+        if (_cachedIcon == null || !IsInstanceValid(_cachedIcon))
         {
-            tr = new TextureRect
+            _cachedIcon = GetNodeOrNull<TextureRect>("Icon");
+            if (_cachedIcon == null)
             {
-                Name = "Icon",
-                MouseFilter = MouseFilterEnum.Ignore
-            };
-            tr.SetAnchorsPreset(LayoutPreset.FullRect);
-            AddChild(tr);
+                _cachedIcon = CreateChildNode<TextureRect>("Icon");
+            }
         }
-
-        tr.StretchMode = (stretch && IconStretch)
-            ? TextureRect.StretchModeEnum.Scale
-            : TextureRect.StretchModeEnum.KeepAspectCentered;
-
-        tr.ExpandMode = (stretch && IconStretch)
-            ? TextureRect.ExpandModeEnum.IgnoreSize
-            : TextureRect.ExpandModeEnum.KeepSize;
-
-        return tr;
+        ConfigureIcon(_cachedIcon);
+        return _cachedIcon;
     }
 
-    // ---------- Text Fitting ----------
+    private T CreateChildNode<T>(string name) where T : Control, new()
+    {
+        var node = new T
+        {
+            Name = name,
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        node.SetAnchorsPreset(LayoutPreset.FullRect);
+        AddChild(node);
+        return node;
+    }
+
+    private void ConfigureLabel(Label lbl)
+    {
+        lbl.HorizontalAlignment = HorizontalAlignment;
+        lbl.VerticalAlignment = VerticalAlignment;
+        lbl.AutowrapMode = AutowrapMode;
+        if (InheritThemeToChildren && Theme != null)
+            lbl.Theme = Theme;
+    }
+
+    private void ConfigureIcon(TextureRect tr)
+    {
+        tr.StretchMode = IconStretch ? TextureRect.StretchModeEnum.Scale : TextureRect.StretchModeEnum.KeepAspectCentered;
+        tr.ExpandMode = IconStretch ? TextureRect.ExpandModeEnum.IgnoreSize : TextureRect.ExpandModeEnum.KeepSize;
+
+        if (InheritThemeToChildren && Theme != null)
+            tr.Theme = Theme;
+    }
+    #endregion
+
+    #region Text Fitting (Optimized)
     private void FitLabelText()
     {
-        if (_fittingLabel) return;
+        if (_fittingLabel || _cachedLabel == null || !IsInstanceValid(_cachedLabel) || string.IsNullOrEmpty(_cachedLabel.Text))
+            return;
+
         _fittingLabel = true;
+        try
+        {
+            var avail = CalculateAvailableArea();
+            if (avail.X <= 1.0f || avail.Y <= 1.0f)
+            {
+                SafeCallDeferred(nameof(FitLabelText));
+                return;
+            }
 
-        var lbl = GetNodeOrNull<Label>("Label");
-        if (lbl == null || !GodotObject.IsInstanceValid(lbl))
+            var fnt = GetRobustFont(_cachedLabel);
+            if (fnt == null) return;
+
+            int bestSize = FindBestFontSize(fnt, _cachedLabel.Text, avail);
+            ApplyFontSettings(_cachedLabel, fnt, bestSize);
+        }
+        finally
         {
             _fittingLabel = false;
-            return;
         }
-
-        var avail = CalculateAvailableArea();
-        if (!IsValidArea(avail))
-        {
-            _fittingLabel = false;
-            return;
-        }
-
-        var fnt = GetRobustFont(lbl);
-        if (fnt == null)
-        {
-            _fittingLabel = false;
-            return;
-        }
-
-        var text = lbl.Text;
-        if (string.IsNullOrEmpty(text))
-        {
-            _fittingLabel = false;
-            return;
-        }
-
-        int bestSize = FindBestFontSize(fnt, text, avail);
-        ApplyFontSettings(lbl, fnt, bestSize);
-
-        _fittingLabel = false;
     }
 
     private Vector2 CalculateAvailableArea()
@@ -606,110 +713,116 @@ public partial class OmniButton : Control
         return avail;
     }
 
-    private bool IsValidArea(Vector2 avail)
-    {
-        if ((avail.X <= 1.0f || avail.Y <= 1.0f) && (GodotObject.IsInstanceValid(this)))
-        {
-            if (IsInsideTree() && !IsQueuedForDeletion())
-                CallDeferred(nameof(FitLabelText));
-            return false;
-        }
-        return true;
-    }
-
-    private Font GetRobustFont(Label lbl)
-    {
-        Font fnt = lbl.GetThemeFont("font");
-        if (fnt == null) fnt = lbl.GetThemeDefaultFont();
-        if (fnt == null) fnt = ThemeDB.FallbackFont;
-        return fnt;
-    }
+    private static Font? GetRobustFont(Label lbl) =>
+        lbl.GetThemeFont("font") ?? lbl.GetThemeDefaultFont() ?? ThemeDB.FallbackFont;
 
     private int FindBestFontSize(Font fnt, string text, Vector2 avail)
     {
-        int bestSize = -1;
         for (int fs = MaxFontSize; fs >= MinFontSize; fs--)
         {
-            var sz = fnt.GetMultilineStringSize(
-                text,
-                HorizontalAlignment.Left,
-                avail.X,
-                fs,
-                -1,
-                TextServer.LineBreakFlag.WordBound
-            );
-
+            var sz = fnt.GetMultilineStringSize(text, HorizontalAlignment.Left, avail.X, fs, -1, TextServer.LineBreakFlag.WordBound);
             if (sz.X <= avail.X + 0.1f && sz.Y <= avail.Y + 0.1f)
-            {
-                bestSize = fs;
-                break;
-            }
+                return fs;
         }
-
-        return bestSize == -1 ? MinFontSize : bestSize;
+        return MinFontSize;
     }
 
     private void ApplyFontSettings(Label lbl, Font fnt, int bestSize)
     {
-        var ls = EnsureLabelSettings(lbl);
-        if (ls.Font != fnt) ls.Font = fnt;
-        if (ls.FontSize != bestSize) ls.FontSize = bestSize;
+        var ls = lbl.LabelSettings ??= new LabelSettings();
 
-        lbl.AutowrapMode = TextServer.AutowrapMode.Word;
-        lbl.QueueRedraw();
+        bool changed = false;
+        if (ls.Font != fnt) { ls.Font = fnt; changed = true; }
+        if (ls.FontSize != bestSize) { ls.FontSize = bestSize; changed = true; }
+
+        if (changed)
+        {
+            ConfigureLabel(lbl);
+            lbl.QueueRedraw();
+        }
     }
+    #endregion
 
-    // ---------- Visual State Management ----------
+    #region Visual State & Theme Management (Optimized)
     private void ApplyVisualState()
     {
+        string currentState = CurrentVisualState();
+        if (currentState == _lastVisualState) return; // Skip if state hasn't changed
+
+        _lastVisualState = currentState;
+
         var tr = EnsureIcon();
-        if (tr == null || !GodotObject.IsInstanceValid(tr)) return;
-
         bool usePressed = EnableToggleActions ? TogglePressed : _isPointerDown;
+        var desiredTex = (usePressed && _pressedTexture != null) ? _pressedTexture : _normalTexture;
+        Material? desiredMat = null;
 
-        if (usePressed && _pressedTexture != null)
-        {
-            tr.Material = null;
-            tr.Texture = _pressedTexture;
-        }
-        else if (usePressed && _normalTexture != null)
-        {
-            tr.Texture = _normalTexture;
-            tr.Material = GetInvertMaterial();
-        }
-        else
-        {
-            tr.Texture = _normalTexture;
-            tr.Material = null;
-        }
+        if (usePressed && _pressedTexture == null && _normalTexture != null && InvertOnPressIfNoPressedTexture)
+            desiredMat = GetInvertMaterial();
 
-        ApplyThemeNow(); // update tints/fonts/bg for current state
+        if (tr.Texture != desiredTex) tr.Texture = desiredTex;
+        if (tr.Material != desiredMat) tr.Material = desiredMat;
+
+        ApplyTextInvertIfNeeded(usePressed, desiredTex);
+        ApplyThemeNow();
+    }
+
+    private void ApplyTextInvertIfNeeded(bool usePressed, Texture2D? iconTexture)
+    {
+        if (!InvertTextIfNoIcon || _cachedLabel == null || !IsInstanceValid(_cachedLabel)) return;
+
+        var desiredMat = (iconTexture == null && usePressed) ? GetInvertMaterial() : null;
+        if (_cachedLabel.Material != desiredMat)
+            _cachedLabel.Material = desiredMat;
     }
 
     private string CurrentVisualState()
     {
         if (ButtonDisabled) return "disabled";
-        if (EnableToggleActions && TogglePressed) return "pressed";
+        if (EnableToggleActions && TogglePressed) return "toggled";
         if (_isPointerDown) return "pressed";
         if (_hovering) return "hover";
         return "normal";
     }
 
-    // ---------- Theme Management ----------
     private void ApplyThemeNow()
     {
         if (_themeApplying) return;
         _themeApplying = true;
 
-        string state = CurrentVisualState();
-        var lbl = GetNodeOrNull<Label>("Label");
-        var tr = EnsureIcon(false);
+        try
+        {
+            string state = CurrentVisualState();
 
-        ApplyStyleBox();
-        ApplyStateColors(state, lbl, tr);
-        ApplyFonts(lbl);
+            var baseVariation = GetThemeVariation(state, "base");
+            if (ThemeTypeVariation != baseVariation)
+                ThemeTypeVariation = baseVariation;
 
-        _themeApplying = false;
+            ApplyChildThemeVariations(state);
+            ApplyStyleBox();
+            ApplyStateColors(state);
+            ApplyFonts();
+        }
+        finally
+        {
+            _themeApplying = false;
+        }
+    }
+
+    private void ApplyChildThemeVariations(string state)
+    {
+        if (_cachedLabel != null && IsInstanceValid(_cachedLabel))
+        {
+            var labelVariation = GetThemeVariation(state, "label");
+            _cachedLabel.ThemeTypeVariation = string.IsNullOrEmpty(labelVariation) ? "" : labelVariation;
+        }
+
+        if (_cachedIcon != null && IsInstanceValid(_cachedIcon))
+        {
+            var iconVariation = GetThemeVariation(state, "icon");
+            _cachedIcon.ThemeTypeVariation = iconVariation;
+            if (InheritThemeToChildren && Theme != null)
+                _cachedIcon.Theme = Theme;
+        }
     }
 
     private void ApplyStyleBox()
@@ -717,182 +830,241 @@ public partial class OmniButton : Control
         var sb = GetThemeStylebox(T_BG, ThemeTypeVariation);
         if (sb != null)
         {
-            var hasOverride = HasThemeStyleboxOverride("panel");
-            var cur = hasOverride ? GetThemeStylebox("panel") : null;
+            var cur = HasThemeStyleboxOverride("panel") ? GetThemeStylebox("panel") : null;
             if (cur != sb) AddThemeStyleboxOverride("panel", sb);
         }
-        else
+        else if (HasThemeStyleboxOverride("panel"))
         {
-            if (HasThemeStyleboxOverride("panel"))
-                RemoveThemeStyleboxOverride("panel");
+            RemoveThemeStyleboxOverride("panel");
         }
     }
 
-    private void ApplyStateColors(string state, Label lbl, TextureRect tr)
+    private void ApplyStateColors(string state)
     {
         var textCol = GetStateColor(state, T_TEXT_NORMAL, T_TEXT_HOVER, T_TEXT_PRESSED, T_TEXT_DISABLED, Colors.White);
         var iconTint = GetStateColor(state, T_ICON_TINT_NORMAL, T_ICON_TINT_HOVER, T_ICON_TINT_PRESSED, T_ICON_TINT_DISABLED, Colors.White);
 
-        if (IsInstanceValid(lbl) && lbl.Modulate != textCol)
-            lbl.Modulate = textCol;
+        if (Modulate != Colors.White) Modulate = Colors.White;
 
-        if (IsInstanceValid(tr) && tr.Modulate != iconTint)
-            tr.Modulate = iconTint;
+        // Only update colors if they've changed
+        if (_cachedLabel != null && IsInstanceValid(_cachedLabel))
+        {
+            var desiredTextColor = (_cachedLabel.Material == null) ? textCol : Colors.White;
+            if (_lastTextColor != desiredTextColor)
+            {
+                _cachedLabel.Modulate = desiredTextColor;
+                _lastTextColor = desiredTextColor;
+            }
+        }
+
+        if (_cachedIcon != null && IsInstanceValid(_cachedIcon) && _lastIconTint != iconTint)
+        {
+            _cachedIcon.Modulate = iconTint;
+            _lastIconTint = iconTint;
+        }
     }
 
-    private void ApplyFonts(Label lbl)
+    private void ApplyFonts()
     {
-        if (!IsInstanceValid(lbl)) return;
+        if (_cachedLabel == null || !IsInstanceValid(_cachedLabel)) return;
 
         var fnt = GetThemeFont(T_FONT, ThemeTypeVariation);
-        if (fnt != null && lbl.GetThemeFont("font") != fnt)
-            lbl.AddThemeFontOverride("font", fnt);
+        if (fnt != null && _cachedLabel.GetThemeFont("font") != fnt)
+            _cachedLabel.AddThemeFontOverride("font", fnt);
 
         var fsz = GetThemeFontSize(T_FONT_SIZE, ThemeTypeVariation);
-        if (fsz > 0 && lbl.GetThemeFontSize("font_size") != fsz)
-            lbl.AddThemeFontSizeOverride("font_size", fsz);
+        if (fsz > 0 && _cachedLabel.GetThemeFontSize("font_size") != fsz)
+            _cachedLabel.AddThemeFontSizeOverride("font_size", fsz);
 
-        // Refit after potential font/size change
-        if (IsInsideTree() && !IsQueuedForDeletion())
-            CallDeferred(nameof(FitLabelText));
+        SafeCallDeferred(nameof(FitLabelText));
     }
 
     private Color GetStateColor(string state, string nKey, string hKey, string pKey, string dKey, Color fallback)
     {
-        switch (state)
+        var key = state switch
         {
-            case "hover":
-                if (HasThemeColor(hKey, ThemeTypeVariation)) return GetThemeColor(hKey, ThemeTypeVariation);
-                if (HasThemeColor(nKey, ThemeTypeVariation)) return GetThemeColor(nKey, ThemeTypeVariation);
-                return fallback;
-            case "pressed":
-                if (HasThemeColor(pKey, ThemeTypeVariation)) return GetThemeColor(pKey, ThemeTypeVariation);
-                if (HasThemeColor(nKey, ThemeTypeVariation)) return GetThemeColor(nKey, ThemeTypeVariation);
-                return fallback;
-            case "disabled":
-                if (HasThemeColor(dKey, ThemeTypeVariation)) return GetThemeColor(dKey, ThemeTypeVariation);
-                if (HasThemeColor(nKey, ThemeTypeVariation)) return GetThemeColor(nKey, ThemeTypeVariation);
-                return fallback;
-            default:
-                if (HasThemeColor(nKey, ThemeTypeVariation)) return GetThemeColor(nKey, ThemeTypeVariation);
-                return fallback;
-        }
+            "hover" => HasThemeColor(hKey, ThemeTypeVariation) ? hKey : nKey,
+            "pressed" => HasThemeColor(pKey, ThemeTypeVariation) ? pKey : nKey,
+            "disabled" => HasThemeColor(dKey, ThemeTypeVariation) ? dKey : nKey,
+            _ => nKey
+        };
+        return HasThemeColor(key, ThemeTypeVariation) ? GetThemeColor(key, ThemeTypeVariation) : fallback;
     }
 
-    // ---------- Material Management ----------
-    private ShaderMaterial GetInvertMaterial()
+    private string GetThemeVariation(string state, string type)
     {
-        if (_invertMat != null)
-            return _invertMat;
+        var variation = (type, state) switch
+        {
+            ("base", "hover") => BaseHoverThemeVariation,
+            ("base", "pressed") => BasePressedThemeVariation,
+            ("base", "toggled") => BaseToggledThemeVariation,
+            ("base", _) => BaseNormalThemeVariation,
+            ("label", "hover") => LabelHoverThemeVariation,
+            ("label", "pressed") => LabelPressedThemeVariation,
+            ("label", "toggled") => LabelToggledThemeVariation,
+            ("label", _) => LabelNormalThemeVariation,
+            ("icon", "hover") => IconHoverThemeVariation,
+            ("icon", "pressed") => IconPressedThemeVariation,
+            ("icon", "toggled") => IconToggledThemeVariation,
+            ("icon", _) => IconNormalThemeVariation,
+            _ => ""
+        };
 
-        var shader = new Shader();
-        shader.Code = @"
+        return string.IsNullOrEmpty(variation)
+            ? (type == "base" ? ThemeTypeName : GetThemeVariation(state, "base"))
+            : variation;
+    }
+    #endregion
+
+    #region Material & Effects (Optimized)
+    private static ShaderMaterial GetInvertMaterial()
+    {
+        return _sharedInvertMat ??= new ShaderMaterial
+        {
+            Shader = new Shader
+            {
+                Code = @"
 shader_type canvas_item;
 void fragment() {
     vec4 c = texture(TEXTURE, UV);
     COLOR = vec4(1.0 - c.rgb, c.a);
-}";
-        _invertMat = new ShaderMaterial { Shader = shader };
-        return _invertMat;
+}"
+            }
+        };
     }
 
-    // ---------- Utility Methods ----------
-    private LabelSettings EnsureLabelSettings(Label lbl)
+    private void UpdateOverlay()
     {
-        var ls = lbl.LabelSettings;
-        if (ls == null)
+        bool needsOverlay = _selected || _unSelected;
+
+        if (needsOverlay)
         {
-            ls = new LabelSettings();
-            lbl.LabelSettings = ls;
+            if (_cachedOverlay == null || !IsInstanceValid(_cachedOverlay))
+            {
+                _cachedOverlay = GetNodeOrNull<ColorRect>("Overlay");
+                if (_cachedOverlay == null)
+                {
+                    _cachedOverlay = CreateChildNode<ColorRect>("Overlay");
+                    MoveChild(_cachedOverlay, GetChildCount() - 1);
+                }
+            }
+
+            Color overlayColor = _selected ? SelectedColor : UnSelectedColor;
+            if (_cachedOverlay.Color != overlayColor)
+                _cachedOverlay.Color = overlayColor;
         }
-        return ls;
+        else if (_cachedOverlay != null && IsInstanceValid(_cachedOverlay))
+        {
+            _cachedOverlay.QueueFree();
+            _cachedOverlay = null;
+        }
+    }
+    #endregion
+
+    #region Hover Calculations (Optimized)
+    private float HoverTargetForViewport()
+    {
+        var desired = HoverScale;
+        if (desired <= Scale.X) return desired;
+
+        var rect = GetGlobalRect();
+        if (rect.Size.X <= 0.0f || rect.Size.Y <= 0.0f) return 1.0f;
+
+        var vp = GetViewportRect().Size;
+        var center = rect.Position + rect.Size * 0.5f;
+        var sc = Math.Max(Scale.X, 0.0001f);
+
+        var maxScaleX = (2.0f * Math.Min(center.X, vp.X - center.X) * sc) / Math.Max(rect.Size.X, 0.0001f);
+        var maxScaleY = (2.0f * Math.Min(center.Y, vp.Y - center.Y) * sc) / Math.Max(rect.Size.Y, 0.0001f);
+
+        return Math.Min(desired, Math.Max(0.0001f, Math.Min(maxScaleX, maxScaleY)));
+    }
+    #endregion
+
+    #region Utilities (Optimized)
+    private void SafeCallDeferred(string method, params Variant[] args)
+    {
+        if (IsInsideTree() && !IsQueuedForDeletion())
+        {
+            if (args.Length == 0) CallDeferred(method);
+            else CallDeferred(method, args);
+        }
     }
 
     private bool PointInside(Vector2 globalPoint)
     {
-        var src = (IsInstanceValid(BoundsSource) && BoundsSource != null) ? BoundsSource : this;
+        var src = BoundsSource ?? this;
         var rect = src.GetGlobalRect();
-        rect = rect.GrowIndividual(HitSlop.X, HitSlop.Y, HitSlop.X, HitSlop.Y);
+        if (HitSlop != Vector2.Zero)
+            rect = rect.GrowIndividual(HitSlop.X, HitSlop.Y, HitSlop.X, HitSlop.Y);
         return rect.HasPoint(globalPoint);
     }
 
-    private bool ActionAllowed()
-    {
-        if (RequireFocusForAction) return HasFocus();
-        return HasFocus() || PointInside(GetViewport().GetMousePosition());
-    }
+    private bool ActionAllowed() =>
+        RequireFocusForAction ? HasFocus() : (HasFocus() || PointInside(GetViewport().GetMousePosition()));
 
-    private Callable AdoptConnectedCallable(StringName sigName, Callable fallback)
+    private Callable AdoptConnectedCallable(string sigName, Callable fallback)
     {
         var conns = GetSignalConnectionList(sigName);
         foreach (Dictionary d in conns)
         {
             var c = (Callable)d["callable"];
-            if (c.Target != this)
-                return c;
+            if (c.Target != this) return c;
         }
-        if (conns.Count > 0)
-            return ((Callable)((Dictionary)conns[0])["callable"]);
-        return fallback;
+        return conns.Count > 0 ? (Callable)((Dictionary)conns[0])["callable"] : fallback;
+    }
+    #endregion
+
+    #region Public API Methods (Optimized)
+    public void SetSelected(bool isSelected, Color color = default)
+    {
+        if (color != default && color != new Color(0, 0, 0, 0))
+            SelectedColor = color;
+        SetSelectionState(isSelected, false);
     }
 
-    private Array<Dictionary> BuildPropertyList()
+    public void SetUnSelected(bool isUnSelected, Color color = default)
     {
-        var list = new Array<Dictionary>();
-
-        list.Add(new Dictionary
-        {
-            { "name", "Interaction & Actions/EnableToggleActions" },
-            { "type", (int)Variant.Type.Bool },
-            { "usage", (int)PropertyUsageFlags.Default }
-        });
-
-        var usage = (int)PropertyUsageFlags.Default;
-        var usageHidden = (int)PropertyUsageFlags.Storage; // stored but not editable/visible
-
-        list.Add(new Dictionary
-        {
-            { "name", "Interaction & Actions/TogglePressed" },
-            { "type", (int)Variant.Type.Bool },
-            { "usage", EnableToggleActions ? usage : usageHidden }
-        });
-
-        list.Add(new Dictionary
-        {
-            { "name", "Interaction & Actions/ToggledAction" },
-            { "type", (int)Variant.Type.Callable },
-            { "usage", EnableToggleActions ? usage : usageHidden }
-        });
-
-        return list;
+        if (color != default && color != new Color(0, 0, 0, 0))
+            UnSelectedColor = color;
+        SetSelectionState(false, isUnSelected);
     }
 
-    // ---------- Signal Management ----------
-    private void DisconnectAllSignalHandlers()
-    {
-        string[] ownSignals =
-        {
-            "pressed", "toggled", "released", "log", "hover_in", "hover_out"
-        };
+    public bool IsSelected() => _selected;
+    public bool IsUnSelected() => _unSelected;
+    public void ClearSelectionStates() => SetSelectionState(false, false);
+    public void RefreshOverlay() => UpdateOverlay();
 
-        foreach (var sig in ownSignals)
+    public void SetSelectedWithPreset(bool isSelected, string preset)
+    {
+        var color = PresetSelectedColors.GetValueOrDefault(preset.ToLowerInvariant(), new Color(0.4f, 0.7f, 1.0f, 0.7f));
+        SetSelected(isSelected, color);
+    }
+
+    public void SetUnSelectedWithPreset(bool isUnSelected, string preset)
+    {
+        var color = PresetUnselectedColors.GetValueOrDefault(preset.ToLowerInvariant(), new Color(0.0f, 0.0f, 0.0f, 0.2f));
+        SetUnSelected(isUnSelected, color);
+    }
+
+    public void SetTextAlignment(HorizontalAlignment hAlign, VerticalAlignment vAlign) => SetAlignment(hAlign, vAlign);
+
+    public void SetThemeInheritance(bool enabled)
+    {
+        InheritThemeToChildren = enabled;
+        if (enabled && Theme != null)
+            ApplyThemeToChildren();
+        else
         {
-            var list = GetSignalConnectionList(sig);
-            foreach (Godot.Collections.Dictionary conn in list)
-            {
-                if (conn.TryGetValue("callable", out var callableVar))
-                {
-                    var callable = (Callable)callableVar;
-                    if (IsConnected(sig, callable))
-                        Disconnect(sig, callable);
-                }
-            }
+            if (_cachedLabel != null && IsInstanceValid(_cachedLabel)) _cachedLabel.Theme = null;
+            if (_cachedIcon != null && IsInstanceValid(_cachedIcon)) _cachedIcon.Theme = null;
         }
     }
+    #endregion
 
-    // ---------- Built-in Fallback Behaviors ----------
+    #region Built-in Fallback Behaviors
     private void RunBuiltInPressed() => RunBuiltInLog("info", $"PressedAction not set; running built-in logic for {Name}.");
-    private void RunBuiltInToggled(bool _buttonPressed) => RunBuiltInLog("info", $"ToggledAction not set; running built-in logic for {Name}.");
+    private void RunBuiltInToggled(bool _) => RunBuiltInLog("info", $"ToggledAction not set; running built-in logic for {Name}.");
     private void RunBuiltInReleased() => RunBuiltInLog("info", $"ReleasedAction not set; running built-in logic for {Name}.");
 
     private void RunBuiltInHoverIn()
@@ -904,10 +1076,10 @@ void fragment() {
     private void RunBuiltInHoverOut()
     {
         PivotOffset = Size / 2.0f;
-        Scale = Scale.Lerp(Vector2.One / HoverScale, HoverLerpSpeed * (float)GetProcessDeltaTime());
+        Scale = Scale.Lerp(Vector2.One, HoverLerpSpeed * (float)GetProcessDeltaTime());
     }
 
-    private void RunBuiltInLog(string type, string message)
+    private static void RunBuiltInLog(string type, string message)
     {
         switch (type.ToLowerInvariant())
         {
@@ -916,4 +1088,114 @@ void fragment() {
             default: GD.Print(message); break;
         }
     }
+    #endregion
+
+    #region Property List & Signal Management (Optimized)
+    private static readonly (string name, Variant.Type type, int usage, PropertyHint hint, string? hintString)[] PropertyDefinitions = new[]
+    {
+        ("Interaction & Actions/EnableToggleActions", Variant.Type.Bool, (int)PropertyUsageFlags.Default, PropertyHint.None, null),
+        ("Text & Font/HorizontalAlignment", Variant.Type.Int, (int)PropertyUsageFlags.Default, PropertyHint.Enum, "Left,Center,Right,Fill"),
+        ("Text & Font/VerticalAlignment", Variant.Type.Int, (int)PropertyUsageFlags.Default, PropertyHint.Enum, "Top,Center,Bottom,Fill"),
+        ("Text & Font/AutowrapMode", Variant.Type.Int, (int)PropertyUsageFlags.Default, PropertyHint.Enum, "Off,Arbitrary,Word,WordSmart"),
+        ("Text & Font/InvertTextIfNoIcon", Variant.Type.Bool, (int)PropertyUsageFlags.Default, PropertyHint.None, null),
+        ("Interaction & Actions/Selected", Variant.Type.Bool, (int)PropertyUsageFlags.Default, PropertyHint.None, null),
+        ("Interaction & Actions/SelectedColor", Variant.Type.Vector4, (int)PropertyUsageFlags.Default, PropertyHint.None, null),
+        ("Interaction & Actions/UnSelected", Variant.Type.Bool, (int)PropertyUsageFlags.Default, PropertyHint.None, null),
+        ("Interaction & Actions/UnSelectedColor", Variant.Type.Vector4, (int)PropertyUsageFlags.Default, PropertyHint.None, null),
+        ("Theme & Visuals/BaseNormalThemeVariation", Variant.Type.String, (int)PropertyUsageFlags.Default, PropertyHint.None, null),
+        ("Theme & Visuals/BaseHoverThemeVariation", Variant.Type.String, (int)PropertyUsageFlags.Default, PropertyHint.None, null),
+        ("Theme & Visuals/BasePressedThemeVariation", Variant.Type.String, (int)PropertyUsageFlags.Default, PropertyHint.None, null),
+        ("Theme & Visuals/LabelNormalThemeVariation", Variant.Type.String, (int)PropertyUsageFlags.Default, PropertyHint.None, null),
+        ("Theme & Visuals/LabelHoverThemeVariation", Variant.Type.String, (int)PropertyUsageFlags.Default, PropertyHint.None, null),
+        ("Theme & Visuals/LabelPressedThemeVariation", Variant.Type.String, (int)PropertyUsageFlags.Default, PropertyHint.None, null),
+        ("Theme & Visuals/IconNormalThemeVariation", Variant.Type.String, (int)PropertyUsageFlags.Default, PropertyHint.None, null),
+        ("Theme & Visuals/IconHoverThemeVariation", Variant.Type.String, (int)PropertyUsageFlags.Default, PropertyHint.None, null),
+        ("Theme & Visuals/IconPressedThemeVariation", Variant.Type.String, (int)PropertyUsageFlags.Default, PropertyHint.None, null)
+    };
+
+    private static readonly (string name, Variant.Type type)[] ToggleDependentProperties = new[]
+    {
+        ("Interaction & Actions/TogglePressed", Variant.Type.Bool),
+        ("Interaction & Actions/ToggledAction", Variant.Type.Callable),
+        ("Theme & Visuals/BaseToggledThemeVariation", Variant.Type.String),
+        ("Theme & Visuals/LabelToggledThemeVariation", Variant.Type.String),
+        ("Theme & Visuals/IconToggledThemeVariation", Variant.Type.String)
+    };
+
+    private Array<Dictionary> BuildPropertyList()
+    {
+        var list = new Array<Dictionary>();
+        var usage = (int)PropertyUsageFlags.Default;
+        var usageHidden = (int)PropertyUsageFlags.Storage;
+
+        // Add base properties
+        foreach (var (name, type, propUsage, hint, hintString) in PropertyDefinitions)
+        {
+            var dict = new Dictionary
+            {
+                ["name"] = name,
+                ["type"] = (int)type,
+                ["usage"] = propUsage
+            };
+
+            if (hint != PropertyHint.None)
+            {
+                dict["hint"] = (int)hint;
+                dict["hint_string"] = hintString ?? "";
+            }
+
+            list.Add(dict);
+        }
+
+        // Add toggle-dependent properties
+        foreach (var (name, type) in ToggleDependentProperties)
+        {
+            list.Add(new Dictionary
+            {
+                ["name"] = name,
+                ["type"] = (int)type,
+                ["usage"] = EnableToggleActions ? usage : usageHidden
+            });
+        }
+
+        return list;
+    }
+
+    private void DisconnectAllSignalHandlers()
+    {
+        if (Engine.IsEditorHint()) return;
+
+        // Disconnect own signals
+        foreach (var sig in OwnSignals)
+        {
+            var connections = GetSignalConnectionList(sig);
+            foreach (Dictionary conn in connections)
+            {
+                if (conn.TryGetValue("callable", out var callableVar))
+                {
+                    var callable = (Callable)callableVar;
+                    if (callable.Target == this && IsConnected(sig, callable))
+                        Disconnect(sig, callable);
+                }
+            }
+        }
+
+        // Disconnect incoming connections
+        foreach (var inc in GetIncomingConnections())
+        {
+            if (inc is Dictionary dict &&
+                dict.TryGetValue("source", out var sourceVar) &&
+                dict.TryGetValue("signal", out var signalVar) &&
+                dict.TryGetValue("callable", out var callableVar))
+            {
+                var src = sourceVar.AsGodotObject();
+                var sigName = signalVar.AsString();
+                var call = callableVar.As<Callable>();
+
+                if (IsInstanceValid(src) && call.Target != null && src.IsConnected(sigName, call))
+                    src.Disconnect(sigName, call);
+            }
+        }
+    }
+    #endregion
 }
