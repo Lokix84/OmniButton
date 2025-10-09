@@ -14,6 +14,11 @@ signal error(message: String)
 signal hold
 signal swipe(direction: Vector2)
 
+# Virtual joystick lifecycle + axis
+signal joystick_started
+signal joystick_axis(axis: Vector2)
+signal joystick_ended
+
 # ---------- Constants & Static Data ----------
 const T_TEXT_NORMAL := "text_color"
 const T_TEXT_HOVER := "text_color_hover"
@@ -63,6 +68,9 @@ var _button_disabled := false
 @export var require_focus_for_action: bool = true
 @export var bounds_source: Control
 @export var hit_slop: Vector2 = Vector2.ZERO
+@export var follow_on_press: bool = false
+@export var follow_while_held: bool = false
+@export var clamp_to_bounds: bool = true
 
 # Actions
 @export_group("Interaction & Actions")
@@ -210,7 +218,17 @@ var _theme_type_name: String = "OmniButton"
 
 # Invert
 @export_group("Invert Display")
+@export var invert_on_press: bool = false
+@export var invert_on_toggle: bool = false
 @export var invert_on_hover: bool = false
+
+# Virtual Joystick
+@export_group("Virtual Joystick")
+@export var enable_virtual_joystick: bool = false
+@export var joystick_use_circular_clamp: bool = true
+@export_range(0, 2048, 1) var joystick_radius_px: int = 0 # 0 = auto
+@export_range(0.0, 1.0, 0.01) var joystick_deadzone: float = 0.1
+@export var joystick_reset_on_release: bool = true
 
 # ---------- Private State & Caching ----------
 var _is_pointer_down := false
@@ -227,6 +245,8 @@ var _cooldown_active := false
 var _cooldown_time_left := 0.0
 var _cooldown_rect: ColorRect
 var _hold_fill_rect: ColorRect
+var _vj_active := false
+var _vj_home_global := Vector2.ZERO
 
 # Cached components
 var _cached_label: Label
@@ -497,21 +517,56 @@ func _handle_gui_input(event: InputEvent) -> void:
 				_swipe_start = Vector2.ZERO
 	elif event is InputEventScreenTouch:
 		_handle_screen_touch(event as InputEventScreenTouch)
-	elif event is InputEventMouseMotion and enable_swipe_actions and _is_pointer_down and not _cooldown_active:
+	elif event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
-		if _swipe_start == Vector2.ZERO:
-			_swipe_start = motion.position
-		else:
-			var direction := motion.position - _swipe_start
-			if direction.length() > swipe_threshold:
-				emit_signal("swipe", direction.normalized())
-				_swipe_start = Vector2.ZERO
+		if _is_pointer_down and not _cooldown_active:
+			if enable_virtual_joystick and _vj_active:
+				_move_to_global(motion.global_position)
+				_emit_joystick_axis_for(motion.global_position)
+			elif follow_while_held:
+				_move_to_global(motion.global_position)
+		if enable_swipe_actions and _is_pointer_down and not _cooldown_active:
+			if _swipe_start == Vector2.ZERO:
+				_swipe_start = motion.position
+			else:
+				var direction := motion.position - _swipe_start
+				if direction.length() > swipe_threshold:
+					emit_signal("swipe", direction.normalized())
+					_swipe_start = Vector2.ZERO
+	elif event is InputEventScreenDrag:
+		var drag := event as InputEventScreenDrag
+		if _is_pointer_down and not _cooldown_active:
+			var global_pt := drag.position
+			if enable_virtual_joystick and _vj_active:
+				_move_to_global(global_pt)
+				_emit_joystick_axis_for(global_pt)
+			elif follow_while_held:
+				_move_to_global(global_pt)
+		if enable_swipe_actions and _is_pointer_down and not _cooldown_active:
+			if _swipe_start == Vector2.ZERO:
+				_swipe_start = drag.position
+			else:
+				var direction := drag.position - _swipe_start
+				if direction.length() > swipe_threshold:
+					emit_signal("swipe", direction.normalized())
+					_swipe_start = Vector2.ZERO
 
 func _handle_mouse_button(mb: InputEventMouseButton) -> void:
 	var inside := _point_inside(mb.global_position)
 
 	if mb.pressed and inside:
 		_on_pressed()
+		# Virtual joystick start / follow-on-press
+		if enable_virtual_joystick:
+			_vj_active = true
+			_vj_home_global = global_position + size * 0.5
+			_enable_hover_top_level(true)
+			_move_to_global(mb.global_position)
+			emit_signal("joystick_started")
+			_emit_joystick_axis_for(mb.global_position)
+		elif follow_on_press:
+			_enable_hover_top_level(true)
+			_move_to_global(mb.global_position)
 		if enable_cooldown and cooldown_on_press:
 			call_deferred("_start_cooldown")
 		get_viewport().set_input_as_handled()
@@ -525,6 +580,14 @@ func _handle_mouse_button(mb: InputEventMouseButton) -> void:
 			# Even if released outside, allow cooldown to trigger when configured
 			if enable_cooldown and cooldown_on_release:
 				_start_cooldown()
+		# Virtual joystick end and stop following
+		if _vj_active:
+			emit_signal("joystick_axis", Vector2.ZERO)
+			emit_signal("joystick_ended")
+			if joystick_reset_on_release:
+				global_position = _vj_home_global - size * 0.5
+			_vj_active = false
+		_enable_hover_top_level(false)
 
 func _handle_screen_touch(touch: InputEventScreenTouch) -> void:
 	var global_pos := global_position + touch.position
@@ -532,6 +595,16 @@ func _handle_screen_touch(touch: InputEventScreenTouch) -> void:
 
 	if touch.pressed and inside:
 		_on_pressed()
+		if enable_virtual_joystick:
+			_vj_active = true
+			_vj_home_global = global_position + size * 0.5
+			_enable_hover_top_level(true)
+			_move_to_global(global_pos)
+			emit_signal("joystick_started")
+			_emit_joystick_axis_for(global_pos)
+		elif follow_on_press:
+			_enable_hover_top_level(true)
+			_move_to_global(global_pos)
 		get_viewport().set_input_as_handled()
 	elif not touch.pressed:
 		_is_pointer_down = false
@@ -539,6 +612,13 @@ func _handle_screen_touch(touch: InputEventScreenTouch) -> void:
 		if inside:
 			_on_released()
 			get_viewport().set_input_as_handled()
+		if _vj_active:
+			emit_signal("joystick_axis", Vector2.ZERO)
+			emit_signal("joystick_ended")
+			if joystick_reset_on_release:
+				global_position = _vj_home_global - size * 0.5
+			_vj_active = false
+		_enable_hover_top_level(false)
 
 # ---------- Event Handlers ----------
 func _on_pressed() -> void:
@@ -926,9 +1006,11 @@ func _apply_visual_state() -> void:
 	var desired_mat: Material = null
 
 	var hover_invert := invert_on_hover and _hovering
+	var press_invert := invert_on_press and _is_pointer_down
+	var toggle_invert := invert_on_toggle and enable_toggle_actions and _toggle_pressed
 	if use_pressed and _pressed_texture == null and _normal_texture != null and invert_on_press_if_no_pressed_texture:
 		desired_mat = _get_invert_material()
-	if hover_invert:
+	if hover_invert or press_invert or toggle_invert:
 		desired_mat = _get_invert_material()
 
 	if tr.texture != desired_tex:
@@ -936,13 +1018,13 @@ func _apply_visual_state() -> void:
 	if tr.material != desired_mat:
 		tr.material = desired_mat
 
-	_apply_text_invert(use_pressed, desired_tex, hover_invert)
+	_apply_text_invert(use_pressed, desired_tex, hover_invert, press_invert, toggle_invert)
 	_apply_theme_now()
 
-func _apply_text_invert(use_pressed: bool, icon_texture: Texture2D, hover_invert: bool) -> void:
+func _apply_text_invert(use_pressed: bool, icon_texture: Texture2D, hover_invert: bool, press_invert: bool, toggle_invert: bool) -> void:
 	if _cached_label != null and is_instance_valid(_cached_label):
 		var mat: Material = null
-		if hover_invert:
+		if hover_invert or press_invert or toggle_invert:
 			mat = _get_invert_material()
 		elif invert_text_if_no_icon and icon_texture == null and use_pressed:
 			mat = _get_invert_material()
@@ -951,10 +1033,71 @@ func _apply_text_invert(use_pressed: bool, icon_texture: Texture2D, hover_invert
 
 	if _cached_overlay != null and is_instance_valid(_cached_overlay):
 		var omat: Material = null
-		if hover_invert:
+		if hover_invert or press_invert or toggle_invert:
 			omat = _get_invert_material()
 		if _cached_overlay.material != omat:
 			_cached_overlay.material = omat
+
+# ---------- Movement & Joystick Helpers ----------
+func _move_to_global(pointer_global: Vector2) -> void:
+	var half := size * 0.5
+
+	# When virtual joystick is active, clamp to a circle centered on the home point
+	if _vj_active and joystick_use_circular_clamp:
+		var src := bounds_source if (is_instance_valid(bounds_source) and bounds_source != null) else self
+		var rect := src.get_global_rect()
+		var pointer := pointer_global
+
+		var radius: float = float(joystick_radius_px) if joystick_radius_px > 0 else _compute_auto_joystick_radius(_vj_home_global, rect)
+		var delta := pointer - _vj_home_global
+		var len := delta.length()
+		if len > radius and len > 0.0001:
+			pointer = _vj_home_global + delta / len * radius
+
+		# Also respect rectangular bounds
+		pointer.x = clampf(pointer.x, rect.position.x, rect.position.x + rect.size.x)
+		pointer.y = clampf(pointer.y, rect.position.y, rect.position.y + rect.size.y)
+
+		global_position = pointer - half
+		return
+
+	# Default rectangular clamp follow
+	var target := pointer_global - half
+	if clamp_to_bounds:
+		var src2 := bounds_source if (is_instance_valid(bounds_source) and bounds_source != null) else self
+		var rect2 := src2.get_global_rect()
+		var minp := rect2.position
+		var maxp := rect2.position + rect2.size - size
+		target.x = clampf(target.x, minp.x, maxp.x)
+		target.y = clampf(target.y, minp.y, maxp.y)
+	global_position = target
+
+func _emit_joystick_axis_for(pointer_global: Vector2) -> void:
+	var clamp_rect := (bounds_source if (is_instance_valid(bounds_source) and bounds_source != null) else self).get_global_rect()
+	if hit_slop != Vector2.ZERO:
+		clamp_rect = clamp_rect.grow_individual(hit_slop.x, hit_slop.y, hit_slop.x, hit_slop.y)
+	var clamped := Vector2(
+		clampf(pointer_global.x, clamp_rect.position.x, clamp_rect.position.x + clamp_rect.size.x),
+		clampf(pointer_global.y, clamp_rect.position.y, clamp_rect.position.y + clamp_rect.size.y)
+	)
+	var delta := clamped - _vj_home_global
+	var radius: float = float(joystick_radius_px) if joystick_radius_px > 0 else _compute_auto_joystick_radius(_vj_home_global, clamp_rect)
+	if radius <= 0.001:
+		emit_signal("joystick_axis", Vector2.ZERO)
+		return
+	var axis := delta / radius
+	if axis.length() > 1.0:
+		axis = axis.normalized()
+	if axis.length() < joystick_deadzone:
+		axis = Vector2.ZERO
+	emit_signal("joystick_axis", axis)
+
+func _compute_auto_joystick_radius(home_center_global: Vector2, clamp_rect: Rect2) -> float:
+	var left := home_center_global.x - clamp_rect.position.x
+	var right := (clamp_rect.position.x + clamp_rect.size.x) - home_center_global.x
+	var top := home_center_global.y - clamp_rect.position.y
+	var bottom := (clamp_rect.position.y + clamp_rect.size.y) - home_center_global.y
+	return max(0.0, min(left, right, top, bottom))
 
 func _current_visual_state() -> String:
 	if button_disabled:

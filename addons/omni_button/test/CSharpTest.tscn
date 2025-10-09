@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://d3ukhudxpvpvd"]
+[gd_scene load_steps=17 format=3 uid="uid://d3ukhudxpvpvd"]
 
 [ext_resource type="Script" uid="uid://n54ewwkpv83g" path="res://addons/omni_button/test/CSharpTest.cs" id="1_dqdkr"]
 [ext_resource type="Theme" uid="uid://ckanb5o8kc3u" path="res://addons/omni_button/test/style/UI.tres" id="2_5d3si"]
@@ -14,6 +14,16 @@
 [ext_resource type="Texture2D" uid="uid://l8n04aejxhyq" path="res://addons/omni_button/test/icons/Icon-Potion7.png" id="11_fh7gc"]
 [ext_resource type="Texture2D" uid="uid://b01hwuht0khkc" path="res://addons/omni_button/test/icons/Icon-Potion10.png" id="12_fh7gc"]
 [ext_resource type="Texture2D" uid="uid://7gj2r6qeswvv" path="res://addons/omni_button/test/icons/Icon-Shield5.png" id="14_xgukv"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xgukv"]
+bg_color = Color(0.6, 0.6, 0.6, 0.27450982)
+corner_radius_top_left = 150
+corner_radius_top_right = 150
+corner_radius_bottom_right = 150
+corner_radius_bottom_left = 150
+
+[sub_resource type="Theme" id="Theme_rs1nt"]
+Panel/styles/panel = SubResource("StyleBoxFlat_xgukv")
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -55,6 +65,20 @@ metadata/_custom_type_script = "uid://3msmjo362g7m"
 [node name="Look" type="Control" parent="TouchArea"]
 layout_mode = 2
 size_flags_horizontal = 3
+script = ExtResource("2_dqdkr")
+EnablePressedActions = true
+PressedAction = Callable()
+EnableReleasedActions = true
+ReleasedAction = Callable()
+HoverInAction = Callable()
+HoverOutAction = Callable()
+ToggledAction = Callable()
+HoldAction = Callable()
+SwipeAction = Callable()
+LogAction = Callable()
+WarningAction = Callable()
+ErrorAction = Callable()
+metadata/_custom_type_script = "uid://3msmjo362g7m"
 
 [node name="Gamepad" type="Control" parent="."]
 visible = false
@@ -67,6 +91,15 @@ offset_top = 0.023986816
 offset_right = 0.47998047
 grow_vertical = 0
 pivot_offset = Vector2(150, 150)
+
+[node name="Border" type="Panel" parent="Gamepad"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = SubResource("Theme_rs1nt")
 
 [node name="Up" type="Control" parent="Gamepad"]
 custom_minimum_size = Vector2(100, 100)
@@ -190,13 +223,72 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -50.0
-offset_top = -50.0
-offset_right = 50.0
-offset_bottom = 50.0
+offset_left = -75.0
+offset_top = -75.0
+offset_right = -25.0
+offset_bottom = -25.0
 grow_horizontal = 2
 grow_vertical = 2
-pivot_offset = Vector2(50, 50)
+pivot_offset = Vector2(25, 25)
+script = ExtResource("2_dqdkr")
+IconTexture = ExtResource("7_xgukv")
+PressedAction = Callable()
+ReleasedAction = Callable()
+EnableHoverActions = true
+HoverInAction = Callable()
+HoverOutAction = Callable()
+ToggledAction = Callable()
+HoldAction = Callable()
+EnableSwipeActions = true
+SwipeAction = Callable()
+LogAction = Callable()
+WarningAction = Callable()
+ErrorAction = Callable()
+FollowOnPress = true
+FollowWhileHeld = true
+InvertDisplayOnPress = true
+EnableVirtualJoystick = true
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="LookJoystick" type="Control" parent="."]
+visible = false
+custom_minimum_size = Vector2(300, 300)
+layout_mode = 1
+anchor_left = 0.74
+anchor_top = 0.26900002
+anchor_right = 1.0
+anchor_bottom = 0.731
+offset_left = -0.47998047
+offset_top = -0.31201172
+offset_bottom = 0.3119812
+grow_horizontal = 0
+grow_vertical = 2
+pivot_offset = Vector2(150, 150)
+
+[node name="Border" type="Panel" parent="LookJoystick"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = SubResource("Theme_rs1nt")
+
+[node name="Center" type="Control" parent="LookJoystick"]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -75.0
+offset_top = -75.0
+offset_right = -25.0
+offset_bottom = -25.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(25, 25)
 script = ExtResource("2_dqdkr")
 IconTexture = ExtResource("7_xgukv")
 PressedAction = Callable()
@@ -527,6 +619,33 @@ metadata/_custom_type_script = "uid://3msmjo362g7m"
 
 [node name="ButtonOutputs" type="Control" parent="UI"]
 custom_minimum_size = Vector2(500, 300)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_dqdkr")
+PressedAction = Callable()
+ReleasedAction = Callable()
+HoverInAction = Callable()
+HoverOutAction = Callable()
+ToggledAction = Callable()
+HoldAction = Callable()
+SwipeAction = Callable()
+LogAction = Callable()
+WarningAction = Callable()
+ErrorAction = Callable()
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="ButtonOutput" type="Control" parent="."]
+custom_minimum_size = Vector2(500, 400)
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5

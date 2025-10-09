@@ -119,7 +119,7 @@ LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
 InvertDisplayOnToggle = true
-toggle_pressed = null
+IsToggled = false
 
 [node name="HoverScaleInvert" type="Control" parent="Scroll/VBox/Grid" groups=["Button"]]
 layout_mode = 2

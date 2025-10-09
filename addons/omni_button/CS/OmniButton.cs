@@ -333,6 +333,8 @@ public partial class OmniButton : Control
 
     [ExportGroup("Virtual Joystick")]
     [Export] public bool EnableVirtualJoystick { get; set; } = false;
+    // Use circular clamp (radius from center). If false, use full rectangular space.
+    [Export] public bool JoystickUseCircularClamp { get; set; } = true;
     // Radius used to normalize axis (pixels). 0 means auto: max circle inside clamp rect from the home center.
     [Export(PropertyHint.Range, "0,2048,1")] public int JoystickRadiusPx { get; set; } = 0;
     [Export(PropertyHint.Range, "0.0,1.0,0.01")] public float JoystickDeadzone { get; set; } = 0.1f;
@@ -1579,15 +1581,40 @@ public partial class OmniButton : Control
     private void MoveToGlobal(Vector2 globalPoint)
     {
         var half = Size / 2f;
-        var desired = globalPoint - half;
 
+        // When virtual joystick is active, clamp movement to a circle centered at the home point
+        if (_vjActive && JoystickUseCircularClamp)
+        {
+            var clampRect = GetFollowClampRect();
+            var pointer = globalPoint;
+
+            // Compute circular clamp radius (pixels from center)
+            float radius = JoystickRadiusPx > 0
+                ? JoystickRadiusPx
+                : ComputeAutoJoystickRadius(_vjHomeGlobal, clampRect);
+
+            // Clamp pointer to a circle around the home center
+            var delta = pointer - _vjHomeGlobal;
+            var len = delta.Length();
+            if (len > radius && len > 1e-4f)
+                pointer = _vjHomeGlobal + delta / len * radius;
+
+            // Also respect rectangular bounds to avoid leaving the allowed area
+            pointer.X = Mathf.Clamp(pointer.X, clampRect.Position.X, clampRect.Position.X + clampRect.Size.X);
+            pointer.Y = Mathf.Clamp(pointer.Y, clampRect.Position.Y, clampRect.Position.Y + clampRect.Size.Y);
+
+            GlobalPosition = pointer - half;
+            return;
+        }
+
+        // Default follow behavior uses rectangular clamp (full space of the clamp rect)
+        var desired = globalPoint - half;
         if (ClampToBounds)
         {
             var clamp = GetFollowClampRect();
             desired.X = Mathf.Clamp(desired.X, clamp.Position.X, clamp.Position.X + clamp.Size.X - Size.X);
             desired.Y = Mathf.Clamp(desired.Y, clamp.Position.Y, clamp.Position.Y + clamp.Size.Y - Size.Y);
         }
-
         GlobalPosition = desired;
     }
 
