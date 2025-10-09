@@ -1,0 +1,6 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://cu3vxexrs47ej"]
+
+[ext_resource type="Shader" uid="uid://diy1g4iulrkso" path="res://addons/omni_button/Shader/InvertColor.gdshader" id="1_pl5si"]
+
+[resource]
+shader = ExtResource("1_pl5si")

@@ -1,0 +1,10 @@
+[gd_resource type="Theme" load_steps=3 format=3 uid="uid://ckanb5o8kc3u"]
+
+[ext_resource type="StyleBox" uid="uid://bhn8reyhqea6o" path="res://addons/omni_button/test/style/Selected.tres" id="1_fl1c2"]
+[ext_resource type="StyleBox" uid="uid://pm2mjmy1hg7a" path="res://addons/omni_button/test/style/Unselected.tres" id="2_y1h6b"]
+
+[resource]
+Selected/base_type = &"Panel"
+Selected/styles/panel = ExtResource("1_fl1c2")
+Unselected/base_type = &"Panel"
+Unselected/styles/panel = ExtResource("2_y1h6b")

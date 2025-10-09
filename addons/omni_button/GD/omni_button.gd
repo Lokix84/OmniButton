@@ -1,5 +1,5 @@
 @tool
-class_name OmniButton
+class_name Omni_Button
 extends Control
 
 # ---------- Signals ----------
@@ -9,6 +9,10 @@ signal released
 signal hover_in
 signal hover_out
 signal log(type: String, message: String)
+signal warning(message: String)
+signal error(message: String)
+signal hold
+signal swipe(direction: Vector2)
 
 # ---------- Constants & Static Data ----------
 const T_TEXT_NORMAL := "text_color"
@@ -42,7 +46,7 @@ static var _preset_unselected_colors := {
 	"blue": Color(0.0, 0.0, 0.3, 0.3)
 }
 
-static var _own_signals := ["pressed", "toggled", "released", "log", "hover_in", "hover_out"]
+static var _own_signals := ["pressed", "toggled", "released", "log", "warning", "error", "hover_in", "hover_out", "hold", "swipe"]
 static var _shared_invert_mat: ShaderMaterial
 
 # ---------- Exported Properties ----------
@@ -98,15 +102,17 @@ var _un_selected: bool = false
 # Hover
 @export_group("Hover and Scaling")
 @export var enable_hover_actions: bool = false
+@export var enable_hover_scale: bool = false
 @export var hover_in_action: Callable
 @export var hover_out_action: Callable
-@export var hover_scale: float = 1.25
-@export var hover_lerp_speed: float = 25.0
+@export_range(1.0, 3.0, 0.01) var hover_scale: float = 1.25 # visual zoom factor on hover
+@export_range(0.0, 100.0, 0.1) var hover_lerp_speed: float = 25.0 # speed of hover scale lerp
 
 # Text & Font
 @export_group("Text & Font")
-@export var min_font_size: int = 12
-@export var max_font_size: int = 100
+@export_range(6, 300, 1) var min_font_size: int = 12
+@export_range(6, 300, 1) var max_font_size: int = 100
+@export var label_text_color: Color = Color.WHITE
 
 var _horizontal_alignment: HorizontalAlignment = HORIZONTAL_ALIGNMENT_CENTER
 @export var horizontal_alignment: HorizontalAlignment:
@@ -180,6 +186,32 @@ var _theme_type_name: String = "OmniButton"
 @export_group("Logging")
 @export var log_action: Callable
 
+# Swipe & Hold
+@export_group("Swipe & Hold")
+@export var enable_swipe_actions: bool = false
+@export_range(0.0, 1000.0, 1.0) var swipe_threshold: float = 20.0
+@export var enable_hold_actions: bool = false
+@export_range(0.05, 5.0, 0.05) var hold_duration: float = 0.5
+@export var enable_hold_build_up: bool = false
+@export var hold_fill_color: Color = Color(1, 1, 1, 0.25)
+@export_enum("BottomToTop","TopToBottom","LeftToRight","RightToLeft") var hold_fill_direction: int = 0
+
+# Cooldown
+@export_group("Cooldown")
+@export var enable_cooldown: bool = false
+@export_range(0.05, 60.0, 0.05) var cooldown_duration: float = 1.0
+@export var cooldown_on_press: bool = false
+@export var cooldown_on_release: bool = false
+@export var cooldown_start_filled: bool = false
+@export var cooldown_color: Color = Color(0, 0, 0, 0.4)
+@export_enum("BottomToTop","TopToBottom","LeftToRight","RightToLeft") var cooldown_direction: int = 0
+@export var suspend_hover_scale_during_cooldown: bool = false
+@export var hide_cooldown_during_hold_build_up: bool = true
+
+# Invert
+@export_group("Invert Display")
+@export var invert_on_hover: bool = false
+
 # ---------- Private State & Caching ----------
 var _is_pointer_down := false
 var _hover_target_scale := 1.0
@@ -187,6 +219,14 @@ var _original_scale: Vector2 = Vector2.ONE
 var _hovering := false
 var _theme_applying := false
 var _fitting_label := false
+var _swipe_start := Vector2.ZERO
+var _hold_timer := 0.0
+var _hover_top_level_active := false
+var _saved_global_pos := Vector2.ZERO
+var _cooldown_active := false
+var _cooldown_time_left := 0.0
+var _cooldown_rect: ColorRect
+var _hold_fill_rect: ColorRect
 
 # Cached components
 var _cached_label: Label
@@ -210,6 +250,31 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_process_hover_scaling(delta)
+	# Cooldown ticking
+	if _cooldown_active:
+		_cooldown_time_left = max(0.0, _cooldown_time_left - delta)
+		_update_cooldown_visual()
+		if _cooldown_time_left <= 0.0:
+			_cooldown_active = false
+			if is_instance_valid(_cooldown_rect):
+				_cooldown_rect.visible = false
+	# Hold build-up ticking (while pressed)
+	if enable_hold_actions and enable_hold_build_up and _is_pointer_down:
+		_update_hold_fill_visual()
+		if is_instance_valid(_hold_fill_rect):
+			move_child(_hold_fill_rect, get_child_count() - 1)
+		if hide_cooldown_during_hold_build_up and is_instance_valid(_cooldown_rect):
+			_cooldown_rect.visible = false
+	elif is_instance_valid(_hold_fill_rect):
+		_hold_fill_rect.visible = false
+		if is_instance_valid(_cooldown_rect) and _cooldown_active:
+			_cooldown_rect.visible = true
+	# Hold timing
+	if enable_hold_actions and _is_pointer_down:
+		_hold_timer += delta
+		if _hold_timer >= hold_duration:
+			_hold_timer = -1.0 # prevent repeat
+			emit_signal("hold")
 
 func _notification(what: int) -> void:
 	_handle_notifications(what)
@@ -255,12 +320,12 @@ func _cleanup() -> void:
 
 func _initialize_callables() -> void:
 	var fallbacks := [
-		["pressed", Callable(self, "_run_built_in_pressed")],
-		["released", Callable(self, "_run_built_in_released")],
-		["hover_in", Callable(self, "_run_built_in_hover_in")],
-		["hover_out", Callable(self, "_run_built_in_hover_out")],
-		["toggled", Callable(self, "_run_built_in_toggled")],
-		["log", Callable(self, "_run_built_in_log")]
+		["Pressed", Callable(self, "_run_built_in_pressed")],
+		["Released", Callable(self, "_run_built_in_released")],
+		["HoverIn", Callable(self, "_run_built_in_hover_in")],
+		["HoverOut", Callable(self, "_run_built_in_hover_out")],
+		["Toggled", Callable(self, "_run_built_in_toggled")],
+		["Log", Callable(self, "_run_built_in_log")]
 	]
 
 	for pair in fallbacks:
@@ -268,21 +333,21 @@ func _initialize_callables() -> void:
 
 func _set_callable_property(name: String, callable: Callable) -> void:
 	match name:
-		"pressed": pressed_action = callable
-		"released": released_action = callable
-		"hover_in": hover_in_action = callable
-		"hover_out": hover_out_action = callable
-		"toggled": toggled_action = callable
-		"log": log_action = callable
+		"Pressed": pressed_action = callable
+		"Released": released_action = callable
+		"HoverIn": hover_in_action = callable
+		"HoverOut": hover_out_action = callable
+		"Toggled": toggled_action = callable
+		"Log": log_action = callable
 
 func _connect_signals() -> void:
 	var signals_array := [
-		["pressed", pressed_action],
-		["released", released_action],
-		["hover_in", hover_in_action],
-		["hover_out", hover_out_action],
-		["toggled", toggled_action],
-		["log", log_action]
+		["Pressed", pressed_action],
+		["Released", released_action],
+		["HoverIn", hover_in_action],
+		["HoverOut", hover_out_action],
+		["Toggled", toggled_action],
+		["Log", log_action]
 	]
 
 	for pair in signals_array:
@@ -405,7 +470,7 @@ func _invalidate_visual_state() -> void:
 
 # ---------- Input Handling (Optimized) ----------
 func _handle_unhandled_input(event: InputEvent) -> void:
-	if button_disabled or action_name == "":
+	if button_disabled or action_name == "" or _cooldown_active:
 		return
 
 	if event.is_action_pressed(action_name) and _action_allowed():
@@ -419,21 +484,36 @@ func _handle_unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 func _handle_gui_input(event: InputEvent) -> void:
-	if button_disabled:
+	if button_disabled or _cooldown_active:
 		return
 
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			_handle_mouse_button(mb)
+			if mb.pressed and enable_swipe_actions:
+				_swipe_start = mb.position
+			elif not mb.pressed:
+				_swipe_start = Vector2.ZERO
 	elif event is InputEventScreenTouch:
 		_handle_screen_touch(event as InputEventScreenTouch)
+	elif event is InputEventMouseMotion and enable_swipe_actions and _is_pointer_down and not _cooldown_active:
+		var motion := event as InputEventMouseMotion
+		if _swipe_start == Vector2.ZERO:
+			_swipe_start = motion.position
+		else:
+			var direction := motion.position - _swipe_start
+			if direction.length() > swipe_threshold:
+				emit_signal("swipe", direction.normalized())
+				_swipe_start = Vector2.ZERO
 
 func _handle_mouse_button(mb: InputEventMouseButton) -> void:
 	var inside := _point_inside(mb.global_position)
 
 	if mb.pressed and inside:
 		_on_pressed()
+		if enable_cooldown and cooldown_on_press:
+			call_deferred("_start_cooldown")
 		get_viewport().set_input_as_handled()
 	elif not mb.pressed:
 		_is_pointer_down = false
@@ -441,6 +521,10 @@ func _handle_mouse_button(mb: InputEventMouseButton) -> void:
 		if inside:
 			_on_released()
 			get_viewport().set_input_as_handled()
+		else:
+			# Even if released outside, allow cooldown to trigger when configured
+			if enable_cooldown and cooldown_on_release:
+				_start_cooldown()
 
 func _handle_screen_touch(touch: InputEventScreenTouch) -> void:
 	var global_pos := global_position + touch.position
@@ -460,21 +544,38 @@ func _handle_screen_touch(touch: InputEventScreenTouch) -> void:
 func _on_pressed() -> void:
 	if button_disabled:
 		return
+	if _cooldown_active:
+		return
 
 	_is_pointer_down = true
+	_hold_timer = 0.0
 	_invalidate_visual_state()
 	grab_focus()
 
-	if enable_press_actions:
+	if enable_press_actions and not _cooldown_active:
 		emit_signal("pressed")
-	if enable_toggle_actions:
+	if enable_toggle_actions and not _cooldown_active:
 		toggle_pressed = not toggle_pressed
+	if enable_cooldown and cooldown_on_press:
+		call_deferred("_start_cooldown")
+	if enable_hold_actions and enable_hold_build_up:
+		_hold_timer = 0.0
+		_ensure_hold_fill_rect()
+		_update_hold_fill_visual()
+		set_process(true)
 
 func _on_released() -> void:
 	if button_disabled:
 		return
-	if enable_release_actions:
+	if _cooldown_active:
+		return
+	if enable_release_actions and not _cooldown_active:
 		emit_signal("released")
+	if enable_cooldown and cooldown_on_release:
+		_start_cooldown()
+	if is_instance_valid(_hold_fill_rect):
+		_hold_fill_rect.visible = false
+	_hold_timer = 0.0
 
 func _on_log(type: String, message: String) -> void:
 	emit_signal("log", type, message)
@@ -484,10 +585,14 @@ func _on_mouse_entered() -> void:
 		return
 	_hovering = true
 
-	if enable_hover_actions:
+	if enable_hover_actions and not _cooldown_active:
 		emit_signal("hover_in")
-		pivot_offset = size / 2.0
-		_hover_target_scale = _hover_target_for_viewport()
+
+	if enable_hover_scale:
+		if not (suspend_hover_scale_during_cooldown and _cooldown_active):
+			_update_hover_pivots()
+			_hover_target_scale = _hover_target_for_viewport()
+			_enable_hover_top_level(true)
 		set_process(true)
 	_invalidate_visual_state()
 
@@ -496,10 +601,13 @@ func _on_mouse_exited() -> void:
 		return
 	_hovering = false
 
-	if enable_hover_actions:
+	if enable_hover_actions and not _cooldown_active:
 		emit_signal("hover_out")
-		pivot_offset = size / 2.0
-		_hover_target_scale = 1.0
+
+	if enable_hover_scale:
+		if not (suspend_hover_scale_during_cooldown and _cooldown_active):
+			_update_hover_pivots()
+			_hover_target_scale = 1.0
 		set_process(true)
 	_invalidate_visual_state()
 
@@ -508,25 +616,49 @@ func _on_minimum_size_changed() -> void:
 
 # ---------- Processing & Notifications ----------
 func _process_hover_scaling(delta: float) -> void:
-	if not enable_hover_actions:
-		set_process(false)
+	if not enable_hover_scale:
+		if not _cooldown_active:
+			set_process(false)
 		return
 
-	pivot_offset = size / 2.0
-	var target := Vector2.ONE * _hover_target_scale
-	scale = scale.lerp(target, hover_lerp_speed * delta)
+	if suspend_hover_scale_during_cooldown and _cooldown_active:
+		_update_hover_pivots()
+		var t := hover_lerp_speed * delta
+		if _cached_label != null and is_instance_valid(_cached_label):
+			_lerp_scale_to(_cached_label, Vector2.ONE, t)
+		if _cached_icon != null and is_instance_valid(_cached_icon):
+			_lerp_scale_to(_cached_icon, Vector2.ONE, t)
+		if _cached_overlay != null and is_instance_valid(_cached_overlay):
+			_lerp_scale_to(_cached_overlay, Vector2.ONE, t)
+		_enable_hover_top_level(false)
+		return
 
-	if scale.distance_to(target) < 0.001:
+	_update_hover_pivots()
+	var target := Vector2.ONE * _hover_target_scale
+	var t := hover_lerp_speed * delta
+	var any_anim := false
+	# Scale child visuals, not the container, to avoid layout shifts
+	if _cached_label != null and is_instance_valid(_cached_label):
+		any_anim = _lerp_scale_to(_cached_label, target, t) or any_anim
+	if _cached_icon != null and is_instance_valid(_cached_icon):
+		any_anim = _lerp_scale_to(_cached_icon, target, t) or any_anim
+	if _cached_overlay != null and is_instance_valid(_cached_overlay):
+		any_anim = _lerp_scale_to(_cached_overlay, target, t) or any_anim
+
+	if not any_anim and not _hovering and not _cooldown_active:
 		set_process(false)
+		_enable_hover_top_level(false)
 
 func _handle_notifications(what: int) -> void:
 	match what:
 		NOTIFICATION_RESIZED:
 			_fit_label_text()
-			if _hovering and enable_hover_actions:
-				pivot_offset = size / 2.0
+			if _hovering and enable_hover_scale:
+				_update_hover_pivots()
 				_hover_target_scale = _hover_target_for_viewport()
 				set_process(true)
+			if _cooldown_active:
+				_update_cooldown_visual()
 
 		NOTIFICATION_THEME_CHANGED:
 			if inherit_theme_to_children and theme != null:
@@ -536,9 +668,11 @@ func _handle_notifications(what: int) -> void:
 			_safe_call_deferred("_apply_theme_now")
 			_safe_call_deferred("_fit_label_text")
 
-			if _hovering and enable_hover_actions:
+			if _hovering and enable_hover_scale:
 				_hover_target_scale = _hover_target_for_viewport()
 				set_process(true)
+			if _cooldown_active:
+				_update_cooldown_visual()
 
 		NOTIFICATION_VISIBILITY_CHANGED:
 			if not is_visible_in_tree():
@@ -575,7 +709,7 @@ func _ensure_icon() -> TextureRect:
 func _create_child_node(node_name: String, node_class) -> Control:
 	var node = node_class.new()
 	node.name = node_name
-	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	node.mouse_filter = Control.MOUSE_FILTER_PASS
 	node.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(node)
 	return node
@@ -590,9 +724,130 @@ func _configure_label(lbl: Label) -> void:
 func _configure_icon(tr: TextureRect) -> void:
 	tr.stretch_mode = TextureRect.STRETCH_SCALE if icon_stretch else TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE if icon_stretch else TextureRect.EXPAND_KEEP_SIZE
+	tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 	if inherit_theme_to_children and theme != null:
 		tr.theme = theme
+
+# ---------- Cooldown Helpers ----------
+func _start_cooldown() -> void:
+	if not enable_cooldown:
+		return
+	# Reset transient states so invert-on-press/hover doesn't persist
+	_is_pointer_down = false
+	_hovering = false
+	_enable_hover_top_level(false)
+	_invalidate_visual_state()
+	_cooldown_active = true
+	_cooldown_time_left = cooldown_duration
+	_ensure_cooldown_rect()
+	_update_cooldown_visual()
+	set_process(true)
+
+func _ensure_cooldown_rect() -> void:
+	if _cooldown_rect == null or not is_instance_valid(_cooldown_rect):
+		_cooldown_rect = ColorRect.new()
+		_cooldown_rect.name = "Cooldown"
+		_cooldown_rect.color = cooldown_color
+		_cooldown_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_cooldown_rect)
+	move_child(_cooldown_rect, get_child_count() - 1)
+
+func _ensure_hold_fill_rect() -> void:
+	if _hold_fill_rect == null or not is_instance_valid(_hold_fill_rect):
+		_hold_fill_rect = ColorRect.new()
+		_hold_fill_rect.name = "HoldFill"
+		_hold_fill_rect.color = hold_fill_color
+		_hold_fill_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_hold_fill_rect)
+		move_child(_hold_fill_rect, get_child_count() - 1)
+
+func _update_hold_fill_visual() -> void:
+	_ensure_hold_fill_rect()
+	if _hold_fill_rect == null or not is_instance_valid(_hold_fill_rect):
+		return
+	var total := max(0.0001, hold_duration)
+	var progress := clamp(_hold_timer / total, 0.0, 1.0)
+	var sz := size
+	_hold_fill_rect.color = hold_fill_color
+	match hold_fill_direction:
+		0: # BottomToTop
+			var h : float = sz.y * progress
+			_hold_fill_rect.size = Vector2(sz.x, h)
+			_hold_fill_rect.position = Vector2(0, sz.y - h)
+			_hold_fill_rect.visible = h > 0.0
+		1: # TopToBottom
+			var h2 : float = sz.y * progress
+			_hold_fill_rect.size = Vector2(sz.x, h2)
+			_hold_fill_rect.position = Vector2(0, 0)
+			_hold_fill_rect.visible = h2 > 0.0
+		2: # LeftToRight
+			var w : float = sz.x * progress
+			_hold_fill_rect.size = Vector2(w, sz.y)
+			_hold_fill_rect.position = Vector2(0, 0)
+			_hold_fill_rect.visible = w > 0.0
+		3: # RightToLeft
+			var w2 : float = sz.x * progress
+			_hold_fill_rect.size = Vector2(w2, sz.y)
+			_hold_fill_rect.position = Vector2(sz.x - w2, 0)
+			_hold_fill_rect.visible = w2 > 0.0
+
+func _update_cooldown_visual() -> void:
+	if not enable_cooldown:
+		return
+	_ensure_cooldown_rect()
+	if _cooldown_rect == null or not is_instance_valid(_cooldown_rect):
+		return
+	var total := max(0.0001, cooldown_duration)
+	var remaining := max(0.0, _cooldown_time_left)
+	var progress : float = 1.0 - (remaining / total)
+	var sz := size
+	_cooldown_rect.color = cooldown_color
+	match cooldown_direction:
+		0: # BottomToTop
+			if cooldown_start_filled:
+				var h := sz.y * (1.0 - progress)
+				_cooldown_rect.size = Vector2(sz.x, h)
+				_cooldown_rect.position = Vector2(0, 0)
+				_cooldown_rect.visible = h > 0.0
+			else:
+				var h2 := sz.y * progress
+				_cooldown_rect.size = Vector2(sz.x, h2)
+				_cooldown_rect.position = Vector2(0, sz.y - h2)
+				_cooldown_rect.visible = h2 > 0.0
+		1: # TopToBottom
+			if cooldown_start_filled:
+				var h := sz.y * (1.0 - progress)
+				_cooldown_rect.size = Vector2(sz.x, h)
+				_cooldown_rect.position = Vector2(0, sz.y - h)
+				_cooldown_rect.visible = h > 0.0
+			else:
+				var h2 := sz.y * progress
+				_cooldown_rect.size = Vector2(sz.x, h2)
+				_cooldown_rect.position = Vector2(0, 0)
+				_cooldown_rect.visible = h2 > 0.0
+		2: # LeftToRight
+			if cooldown_start_filled:
+				var w := sz.x * (1.0 - progress)
+				_cooldown_rect.size = Vector2(w, sz.y)
+				_cooldown_rect.position = Vector2(sz.x - w, 0)
+				_cooldown_rect.visible = w > 0.0
+			else:
+				var w2 := sz.x * progress
+				_cooldown_rect.size = Vector2(w2, sz.y)
+				_cooldown_rect.position = Vector2(0, 0)
+				_cooldown_rect.visible = w2 > 0.0
+		3: # RightToLeft
+			if cooldown_start_filled:
+				var w := sz.x * (1.0 - progress)
+				_cooldown_rect.size = Vector2(w, sz.y)
+				_cooldown_rect.position = Vector2(0, 0)
+				_cooldown_rect.visible = w > 0.0
+			else:
+				var w2 := sz.x * progress
+				_cooldown_rect.size = Vector2(w2, sz.y)
+				_cooldown_rect.position = Vector2(sz.x - w2, 0)
+				_cooldown_rect.visible = w2 > 0.0
 
 # ---------- Text Fitting (Optimized) ----------
 func _fit_label_text() -> void:
@@ -670,7 +925,10 @@ func _apply_visual_state() -> void:
 	var desired_tex: Texture2D = _pressed_texture if use_pressed and _pressed_texture != null else _normal_texture
 	var desired_mat: Material = null
 
+	var hover_invert := invert_on_hover and _hovering
 	if use_pressed and _pressed_texture == null and _normal_texture != null and invert_on_press_if_no_pressed_texture:
+		desired_mat = _get_invert_material()
+	if hover_invert:
 		desired_mat = _get_invert_material()
 
 	if tr.texture != desired_tex:
@@ -678,16 +936,25 @@ func _apply_visual_state() -> void:
 	if tr.material != desired_mat:
 		tr.material = desired_mat
 
-	_apply_text_invert_if_needed(use_pressed, desired_tex)
+	_apply_text_invert(use_pressed, desired_tex, hover_invert)
 	_apply_theme_now()
 
-func _apply_text_invert_if_needed(use_pressed: bool, icon_texture: Texture2D) -> void:
-	if not invert_text_if_no_icon or _cached_label == null or not is_instance_valid(_cached_label):
-		return
+func _apply_text_invert(use_pressed: bool, icon_texture: Texture2D, hover_invert: bool) -> void:
+	if _cached_label != null and is_instance_valid(_cached_label):
+		var mat: Material = null
+		if hover_invert:
+			mat = _get_invert_material()
+		elif invert_text_if_no_icon and icon_texture == null and use_pressed:
+			mat = _get_invert_material()
+		if _cached_label.material != mat:
+			_cached_label.material = mat
 
-	var desired_mat = _get_invert_material() if (icon_texture == null and use_pressed) else null
-	if _cached_label.material != desired_mat:
-		_cached_label.material = desired_mat
+	if _cached_overlay != null and is_instance_valid(_cached_overlay):
+		var omat: Material = null
+		if hover_invert:
+			omat = _get_invert_material()
+		if _cached_overlay.material != omat:
+			_cached_overlay.material = omat
 
 func _current_visual_state() -> String:
 	if button_disabled:
@@ -740,7 +1007,7 @@ func _apply_style_box() -> void:
 			remove_theme_stylebox_override("panel")
 
 func _apply_state_colors(state: String) -> void:
-	var text_col := _get_state_color(state, T_TEXT_NORMAL, T_TEXT_HOVER, T_TEXT_PRESSED, T_TEXT_DISABLED, Color.WHITE)
+	var text_col := label_text_color
 	var icon_tint := _get_state_color(state, T_ICON_TINT_NORMAL, T_ICON_TINT_HOVER, T_ICON_TINT_PRESSED, T_ICON_TINT_DISABLED, Color.WHITE)
 
 	if modulate != Color.WHITE:
@@ -838,21 +1105,26 @@ func _update_overlay() -> void:
 # ---------- Hover Calculations (Optimized) ----------
 func _hover_target_for_viewport() -> float:
 	var desired := hover_scale
-	if desired <= scale.x:
-		return desired
-
 	var rect := get_global_rect()
 	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
 		return 1.0
 
-	var vp := get_viewport_rect().size
+	var vp_rect := get_viewport_rect()
 	var center := rect.position + rect.size * 0.5
-	var sc := max(scale.x, 0.0001)
 
-	var max_scale_x: float = (2.0 * min(center.x, vp.x - center.x) * sc) / max(rect.size.x, 0.0001)
-	var max_scale_y: float = (2.0 * min(center.y, vp.y - center.y) * sc) / max(rect.size.y, 0.0001)
+	var half_w := max(0.001, rect.size.x * 0.5)
+	var half_h := max(0.001, rect.size.y * 0.5)
 
-	return min(desired, max(0.0001, min(max_scale_x, max_scale_y)))
+	var left_space := center.x - vp_rect.position.x
+	var right_space := (vp_rect.position.x + vp_rect.size.x) - center.x
+	var top_space := center.y - vp_rect.position.y
+	var bottom_space := (vp_rect.position.y + vp_rect.size.y) - center.y
+
+	var max_scale_x: float = min(left_space / half_w, right_space / half_w)
+	var max_scale_y: float = min(top_space / half_h, bottom_space / half_h)
+	var max_scale := max(1.0, min(max_scale_x, max_scale_y))
+
+	return min(desired, max_scale)
 
 # ---------- Utilities (Optimized) ----------
 func _safe_call_deferred(method: String, args: Array = []) -> void:
@@ -868,6 +1140,35 @@ func _ensure_label_settings(lbl: Label) -> LabelSettings:
 		ls = LabelSettings.new()
 		lbl.label_settings = ls
 	return ls
+
+func _update_hover_pivots() -> void:
+	pivot_offset = size / 2.0
+	if _cached_label != null and is_instance_valid(_cached_label):
+		_cached_label.pivot_offset = _cached_label.size / 2.0
+	if _cached_icon != null and is_instance_valid(_cached_icon):
+		_cached_icon.pivot_offset = _cached_icon.size / 2.0
+	if _cached_overlay != null and is_instance_valid(_cached_overlay):
+		_cached_overlay.pivot_offset = _cached_overlay.size / 2.0
+
+func _lerp_scale_to(node: Control, target: Vector2, t: float) -> bool:
+	if node == null or not is_instance_valid(node):
+		return false
+	var new_scale := node.scale.lerp(target, t)
+	var changed := new_scale.distance_to(target) >= 0.001
+	node.scale = new_scale if changed else target
+	return changed
+
+func _enable_hover_top_level(enable: bool) -> void:
+	if enable and not _hover_top_level_active:
+		_saved_global_pos = global_position
+		top_level = true
+		global_position = _saved_global_pos
+		_hover_top_level_active = true
+	elif not enable and _hover_top_level_active:
+		var gp := global_position
+		top_level = false
+		global_position = gp
+		_hover_top_level_active = false
 
 func _point_inside(global_point: Vector2) -> bool:
 	var src := bounds_source if (is_instance_valid(bounds_source) and bounds_source != null) else self

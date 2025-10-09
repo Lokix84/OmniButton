@@ -1,41 +1,76 @@
-Customized Godot Button Control V 0.01 (Draft)
+﻿OmniButton for Godot 4
+Universal, highly configurable button control available in both C# and GDScript. OmniButton unifies press/release/toggle actions, hover scaling, swipe, hold, dynamic label sizing, and panel/overlay visuals into a single, editorâ€‘friendly node.
 
-The idea was to make a control that could have text or an image that could have touch input capacity and started expanding it from there.
+Why use OmniButton
+- Single node, many behaviors: momentary or toggle, hover zoom, swipe, hold.
+- Works in editor: most properties update live when changed in the Inspector.
+- Two implementations, same features: C# and GDScript stay in parity.
+- Dropâ€‘in: fullâ€‘rect children, crisp icon filtering, smart theme/variant support.
 
+Repository layout
+- addons/omni_button/CS/README.md â€” C# usage and details
+- addons/omni_button/GD/README.md â€” GDScript usage and details
+- addons/omni_button/CS/OmniButton.cs â€” C# implementation
+- addons/omni_button/GD/omni_button.gd â€” GDScript implementation
 
-----------------
-INSTALL
-----------------
-Add omni_button folder to addons folder. There are GDscript and a C# versions of the plugin. Delete the CS or GD folder if you dont plan on using it.
+Features (high level)
+- Press/Release/Toggle with enable flags and signals
+- Hover scaling independent of hover signals; centered, smooth, viewportâ€‘clamped
+- Inversion effects: invert on press, toggle, and hover
+- Dynamic label sizing with min/max font bounds and configurable label text color
+- Icon support with nearest filtering for crisp pixel art
+- Optional panel and overlay visuals (fullâ€‘rect children)
+- Swipe (mouse and touch) and Hold timing
+- Custom hit detection via `bounds_source` and `hit_slop`
 
-----------------
-GET STARED
-----------------
-create a new node
-<img width="911" height="736" alt="image" src="https://github.com/user-attachments/assets/54be2664-ae30-4796-bdfd-4f0d89225bce" />
+Install
+- Copy `addons/omni_button` into your projectâ€™s `addons/` folder.
+- Enable the plugin if using an EditorPlugin (not required to use the nodes).
+- Keep either or both versions (C# and/or GDScript). You can delete the one you wonâ€™t use.
 
-Size the control however you like.
+Quick start
+- C#
+  - Add a node with script `OmniButton.cs` or create via code, then:
+  
+  ```csharp
+  public override void _Ready()
+  {
+      var btn = GetNode<OmniButton>("OmniButton");
+      btn.Connect(OmniButton.SignalName.Pressed, Callable.From(() => GD.Print("Pressed")));
+      btn.EnableHoverScale = true;
+      btn.InvertDisplayOnHover = true;
+      btn.LabelText = "Play";
+  }
+  ```
 
-In code you call DisplayTexture or DisplayLabel to add a texture or label respectively. The button when you run the code wil add a texture or label automatically.
+- GDScript
+  - Add `OmniButton.gd` (class_name) or create via code, then:
 
-For label functionality, you can set a min and max font size and the label will adjust the font to match the area you have available. This can be useful for when you want to create a button that has more dynamic text. 
+  ```gdscript
+  func _ready() -> void:
+      var btn: OmniButton = $OmniButton
+      btn.pressed.connect(func(): print("Pressed"))
+      btn.enable_hover_scale = true
+      btn.invert_on_hover = true
+      btn.text = "Play"
+  ```
 
-You can enable, disable and customize the following actions:
-Press
-Release
-Toggle
-Hover Over
-Hover Out
+Core concepts
+- Signals: pressed, released, toggled(bool), hover_in, hover_out, swipe(Vector2), hold, log/warning/error
+- Editor friendliness: changing display and visual properties updates preview live
+- Safety: hover zoom is clamped to stay within the viewport while able to overflow parent containers
 
-By Default, the control will be marked as a button with press and hover enabled. The default hover behavior is to make the button scale increase to 1.25.
+Going deeper
+- C# specific API, examples, and property groups: see `addons/omni_button/CS/README.md`
+- GDScript specific API, examples, and property groups: see `addons/omni_button/GD/README.md`
 
-The Press, Release and Toggle actions by default will output a log message stating that the button is running built-in logic.
+Compatibility
+- Godot 4.x (GDScript and C#)
+- C#: targets Godotâ€™s .NET/Mono build; ensure the Godot C# export templates are installed
 
-PressAction, ReleaseAction, ToggleAction, HoverInAction and HoverOutAction are Callable properties. Setting those in code will change the functionality of the corresponding signal events.
+Contributing
+- PRs and issues welcome. Aim to keep both implementations in feature parity and the subâ€‘READMEs as the source of truth for versionâ€‘specific details.
 
-----------------
-Logging
-----------------
-There are GD.Print ,GD.PushWarning and GD.PushError outputs throughout the functionality. at present moment it outputs to Godots various consoles.
+License
+- MIT. See LICENSE.
 
-If you have your own logging solution, you can overwrite it just like the other actions. Change the LogAction property. Type and Message are the parameters it takes in. Type is meant to be "Debug", "Info", "Warning" or "Error". 

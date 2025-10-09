@@ -1,225 +1,79 @@
-# OMNIBUTTON — Universal Button Control for Godot
+﻿OmniButton (GDScript)
+Universal, highly configurable `Control`-based button. Unifies press, toggle, hover scaling, swipe, hold, dynamic label sizing, and icon visuals — works at runtime and in the editor (`@tool`).
 
-A highly customizable, feature-rich button built on `Control`. OmniButton unifies **press**, **release**, **toggle**, **hover**, label/text autosizing, and icon textures (with a smart pressed-state fallback) into one drop-in node. Works in-game and live in the editor (`@tool`).
-
----
-
-## ✨ Features
-
-- **Single node, two behaviors**  
-  Momentary press by default; flip a flag to enable **toggle** mode (no separate “type” enum).
-- **Text & autosizing**  
-  Set `.text` (exported). A `Label` child is created if needed and its font size is adjusted to fit.
-- **Icon textures with pressed fallback**  
-  Set `.texture` for normal, `.pressed_texture` optional. If pressed but no `pressed_texture`, OmniButton **inverts** the normal texture with a lightweight shader.
-- **Advanced input handling**  
-  Mouse, touch, and keyboard/action map (`action_name`). Optional **focus requirement**.
-- **Custom hit detection**  
-  Use a different `bounds_source` and expand the touch area with `hit_slop`.
-- **Hover effects**  
-  Built-in scale-on-hover with configurable scale and lerp speed; toggleable at runtime.
-- **Signal-first API**  
-  `pressed`, `released`, `toggled(is_pressed)`, `hover_in`, `hover_out`, and internal `log`.
-- **Editor-friendly**  
-  All features preview in the editor: changing `text`, `texture`, `toggle_pressed`, etc. updates visuals immediately.
-
----
-
-## 📦 Installation
-
-1. Copy the `omni_button` addon folder into your project’s `addons/` directory.
-2. (Optional) Enable the plugin in **Project > Project Settings > Plugins** if you ship an EditorPlugin.  
-3. Add **OmniButton** to your scene:
-   - In the editor: add a **Control** and set its script to `OmniButton.gd` (class_name makes it show up by name), or  
-   - In code:  
-     ```gdscript
-     var btn := OmniButton.new()
-     add_child(btn)
-     ```
-
----
-
-## 🚀 Basic Usage
-
-### Add to scene & connect signals
+Quick start
 
 ```gdscript
 func _ready() -> void:
-	var button: OmniButton = $OmniButton
+    var btn: OmniButton = $OmniButton
 
-	# Momentary press behavior (default):
-	button.pressed.connect(_on_btn_pressed)
-	button.released.connect(_on_btn_released)
+    # Signals
+    btn.pressed.connect(_on_pressed)
+    btn.toggled.connect(func(p): _on_toggled(p))
+    btn.hover_in.connect(_on_hover_in)
+    btn.hover_out.connect(_on_hover_out)
+    btn.swipe.connect(func(dir): _on_swipe(dir))
+    btn.hold.connect(_on_hold)
 
-	# Toggle behavior (enable + subscribe):
-	button.enable_toggle_actions = true
-	button.toggled.connect(_on_btn_toggled)
+    # Display
+    btn.text = "Play"
+    btn.texture = preload("res://icon.png") # Icon child auto‑created
 
-	# Hover feedback (optional):
-	button.enable_hover_actions = true
-	button.hover_in.connect(_on_btn_hover_in)
-	button.hover_out.connect(_on_btn_hover_out)
+    # Behavior
+    btn.enable_press_actions = true
+    btn.enable_release_actions = true
+    btn.enable_toggle_actions = true
+    btn.enable_hover_actions = true      # signals only
+    btn.enable_hover_scale = true        # visual zoom (independent of hover signals)
+    btn.enable_swipe_actions = true
+    btn.enable_hold_actions = true\n    btn.enable_cooldown = true\n    btn.cooldown_on_press = true\n    btn.cooldown_duration = 2.0\n    btn.cooldown_start_filled = false\n    btn.cooldown_color = Color(0,0,0,0.4)
 
-	# Text & texture:
-	button.text = "Play"
-	button.texture = preload("res://ui/play_icon.png")
-	# Optional pressed art:
-	# button.pressed_texture = preload("res://ui/play_icon_pressed.png")
-	# (If omitted, pressed state will invert the normal texture.)
+    # Visual details
+    btn.hover_scale = 1.2
+    btn.hover_lerp_speed = 25.0
+    btn.invert_on_hover = true
+    btn.label_text_color = Color(1, 1, 0) # yellow text
 ```
 
-```gdscript
-func _on_btn_pressed() -> void:
-	print("Pressed!")
+Signals
 
-func _on_btn_released() -> void:
-	print("Released!")
+- `pressed`, `released`, `toggled(bool)`
+- `hover_in`, `hover_out`
+- `swipe(Vector2 direction)`, `hold`
+- `log(type, message)`, `warning(message)`, `error(message)`
 
-func _on_btn_toggled(is_pressed: bool) -> void:
-	print("Toggled: ", is_pressed)
+What’s included
 
-func _on_btn_hover_in() -> void:
-	print("Hover in")
+- Text & autosizing: setting `text` creates/updates a Label child; fonts auto‑fit within size limits.
+- Icon: creates/updates a TextureRect child with `texture`; uses nearest filtering for crisp pixel art.
+- Hover scaling: set `enable_hover_scale = true` to scale label/icon/overlay around their centers. Visuals may overflow parent containers, but scale is clamped to stay inside the main viewport.\n- Invert on hover: set `invert_on_hover = true` to invert visuals while hovering.
+- Swipe & Hold: mouse and touch swipes with `swipe_threshold`; hold emits after `hold_duration` while pressed.
+- Hit testing: change `bounds_source`, expand with `hit_slop`.
 
-func _on_btn_hover_out() -> void:
-	print("Hover out")
-```
+Key properties (by group)
 
----
+- General: `button_disabled`
+- Input & Hit Detection: `action_name`, `require_focus_for_action`, `bounds_source`, `hit_slop`
+- Interaction & Actions: `enable_press_actions`, `pressed_action`, `enable_release_actions`, `released_action`, `enable_toggle_actions`, `toggle_pressed`, `toggled_action`
+- Hover & Scaling: `enable_hover_actions`, `enable_hover_scale`, `hover_in_action`, `hover_out_action`, `hover_scale`, `hover_lerp_speed`
+- Text & Font: `text`, `min_font_size`, `max_font_size`, `horizontal_alignment`, `vertical_alignment`, `autowrap_mode`, `invert_text_if_no_icon`, `label_text_color`
+- Texture: `texture`, `pressed_texture`
+- Theme & Visuals: `theme_type_name`, base/label/icon theme variation exports, `inherit_theme_to_children`
+- Logging: `log_action`
+- Swipe & Hold: `enable_swipe_actions`, `swipe_threshold`, `enable_hold_actions`, `hold_duration`
+- Cooldown: `enable_cooldown`, `cooldown_duration`, `cooldown_on_press`, `cooldown_start_filled`, `cooldown_color`
 
-## ⚙️ Exports & Configuration
+Tips
 
-### General Settings
-- `button_disabled: bool` — disables all interactions and visual state changes.
+- Use `enable_hover_scale` without `enable_hover_actions` if you only want the visual zoom.
+- For touch, increase `hit_slop` to improve usability.
+- Keep hover scale modest; hard clamping prevents overscaling past the viewport.
 
-### Input & Hit Detection
-- `action_name: String = "ui_accept"` — action map name for keyboard/controller.
-- `require_focus_for_action: bool = true` — only trigger action if the control has focus.
-- `bounds_source: Control` — optional alternate node used for hit testing.
-- `hit_slop: Vector2` — expands the clickable/touchable area on all sides.
+Troubleshooting
 
-### Interaction & Actions
-- **Press/Release**
-  - `enable_press_actions: bool = true`
-  - `pressed_action: Callable` *(optional convenience; you can also use signals)*
-  - `enable_release_actions: bool = false`
-  - `released_action: Callable`
-- **Toggle**
-  - `enable_toggle_actions: bool = false` — when `true`, the button maintains state.
-  - `toggle_pressed: bool` — current toggle state (exported; live updates in editor).  
-    Setting this property updates visuals and (in game) emits `toggled(is_pressed)`.
-  - `toggled_action: Callable`
+- “Nothing happens”: ensure `button_disabled == false` and the node has size; confirm parents aren’t consuming input.
+- Hover not scaling: set `enable_hover_scale = true`. Hover signals are optional.
+- Swipe not firing: enable `enable_swipe_actions` and drag while holding LMB (or touch drag). Adjust `swipe_threshold`.
+- Toggle visuals: set `enable_toggle_actions = true`; use `toggle_pressed` to change state programmatically.
 
-### Hover & Scaling
-- `enable_hover_actions: bool = false`
-- `hover_in_action: Callable`, `hover_out_action: Callable`
-- `hover_scale: float = 1.25`
-- `hover_lerp_speed: float = 25.0`
 
-### Text & Font
-- `text: String` — exported property. Setting it creates/updates a `Label` child and autosizes the font.
-- `min_font_size: int = 12`, `max_font_size: int = 100` — font size bounds for autosizing.
-
-### Texture
-- `texture: Texture2D` — normal icon. Creates/updates an `Icon` (`TextureRect`) child.
-- `pressed_texture: Texture2D` — optional pressed icon.  
-  **Fallback**: if pressed/toggled and this is **not set**, OmniButton shows the **inverted** normal texture via a tiny shader.
-
-### Logging
-- `log_action: Callable` — internal logging hook (also exposed via `log` signal).
-
----
-
-## 🔔 Signals
-
-| Signal      | Parameters              | When it fires                                           |
-|-------------|-------------------------|---------------------------------------------------------|
-| `pressed`   | —                       | On mouse/touch press or action trigger (if enabled).    |
-| `released`  | —                       | On mouse/touch release (if enabled).                    |
-| `toggled`   | `button_pressed: bool`  | When toggle state changes (`toggle_pressed` setter).    |
-| `hover_in`  | —                       | Pointer enters the button bounds.                       |
-| `hover_out` | —                       | Pointer exits the button bounds.                        |
-| `log`       | `type, message: String` | Internal/diagnostic logging hook.                       |
-
-> **Note:** In toggle mode, `_on_pressed()` flips `toggle_pressed`; the **setter** updates visuals and emits `toggled` (in game). This avoids double-emits.
-
----
-
-## 🎨 Visual Behavior
-
-- **Pressed state (momentary):** While the pointer is down, OmniButton uses `pressed_texture` if set; otherwise it shows the **inverted** normal texture.
-- **Toggle state:** When `enable_toggle_actions = true`, the visual pressed state follows `toggle_pressed` (again: pressed texture if present, otherwise inverted normal).
-- **Hover:** If `enable_hover_actions = true`, the control scales toward `hover_scale` with `hover_lerp_speed` on enter/exit.
-
----
-
-## 🧭 Advanced Tips
-
-### Custom bounds & hit slop
-```gdscript
-button.bounds_source = $BigInvisibleArea
-button.hit_slop = Vector2(12, 12) # expand touch area on mobile
-```
-
-### Keyboard/controller
-```gdscript
-button.action_name = "ui_accept"
-button.require_focus_for_action = true  # only when focused
-```
-
-### Programmatic toggle
-```gdscript
-button.enable_toggle_actions = true
-button.toggle_pressed = true  # updates visuals and emits `toggled(true)` in game
-```
-
-### Disabled state
-```gdscript
-button.button_disabled = true  # suppresses input + visual changes
-```
-
----
-
-## ✅ Best Practices
-
-- **Pick a mode:** leave toggle off for momentary actions; enable it for on/off state.
-- **Pressed visuals:** Supply `pressed_texture` for explicit art. If not provided, the invert fallback is automatic.
-- **Accessibility:** Provide an action map name and keep keyboard focus paths clear.
-- **Mobile:** Use `hit_slop` to make touch easier.
-- **Performance:** Disable unused groups (hover, release) if not needed.
-
----
-
-## 🔧 Troubleshooting
-
-### Button not responding
-- Ensure `button_disabled == false`.
-- Check size/visibility; make sure no sibling control intercepts input.
-- Verify `MouseFilter` on parents isn’t blocking events.
-
-### Hover not firing
-- Set `enable_hover_actions = true`.
-- Confirm the control receives mouse events and is not covered by another control.
-
-### Keyboard input not working
-- Confirm `action_name` exists in **Project > Input Map**.
-- If `require_focus_for_action = true`, make sure the control can be focused and has focus.
-
-### Toggle signal firing twice
-- Only emit `toggled` from the **`toggle_pressed` setter**; do not emit again in `_on_pressed()`.
-
-### Pressed look doesn’t change
-- Provide `pressed_texture`, or rely on the built-in inversion fallback (ensure `texture` is set).
-
----
-
-## 📄 License
-
-MIT — see `LICENSE`.
-
----
-
-## 🤝 Contributing
-
-Issues and PRs are welcome!  
-Please include minimal repro scenes or scripts when reporting bugs (especially for input/hover/toggle edge cases).
