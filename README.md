@@ -1,76 +1,192 @@
 ﻿OmniButton for Godot 4
-Universal, highly configurable button control available in both C# and GDScript. OmniButton unifies press/release/toggle actions, hover scaling, swipe, hold, dynamic label sizing, and panel/overlay visuals into a single, editorâ€‘friendly node.
+Universal, highly configurable button/joystick control available in both C# and GDScript. OmniButton unifies press/release/toggle, hover scaling, invert-on-state, swipe, hold, cooldown fill, optional panel/overlay visuals, and a virtual joystick mode into a single, editor-friendly node.
 
-Why use OmniButton
-- Single node, many behaviors: momentary or toggle, hover zoom, swipe, hold.
-- Works in editor: most properties update live when changed in the Inspector.
-- Two implementations, same features: C# and GDScript stay in parity.
-- Dropâ€‘in: fullâ€‘rect children, crisp icon filtering, smart theme/variant support.
+Why OmniButton
+- Single node, many behaviors: press/release/toggle/hold/swipe/invert/cooldown.
+- Editor-friendly: properties update live in the Inspector; safe defaults.
+- C# and GDScript parity: same features and signals in both variants.
+- Drop-in UI: full-rect children, crisp icon filtering, theme variations.
 
 Repository layout
-- addons/omni_button/CS/README.md â€” C# usage and details
-- addons/omni_button/GD/README.md â€” GDScript usage and details
-- addons/omni_button/CS/OmniButton.cs â€” C# implementation
-- addons/omni_button/GD/omni_button.gd â€” GDScript implementation
+- addons/omni_button/CS/OmniButton.cs — C# implementation
+- addons/omni_button/GD/omni_button.gd — GDScript implementation
+- addons/omni_button/test/ — simple scenes/scripts demonstrating features
 
-Features (high level)
-- Press/Release/Toggle with enable flags and signals
-- Hover scaling independent of hover signals; centered, smooth, viewportâ€‘clamped
-- Inversion effects: invert on press, toggle, and hover
-- Dynamic label sizing with min/max font bounds and configurable label text color
-- Icon support with nearest filtering for crisp pixel art
-- Optional panel and overlay visuals (fullâ€‘rect children)
-- Swipe (mouse and touch) and Hold timing
-- Custom hit detection via `bounds_source` and `hit_slop`
+Signals
+- Pressed, Released, Toggled(bool), HoverIn, HoverOut, Hold, Swipe(Vector2), SwipeEnded()
+- JoystickStarted, JoystickAxis(Vector2), JoystickEnded
+- Log(string), Warning(string), Error(string)
+
+Quick start (C#)
+- Add OmniButton, wire signals, and toggle features:
+
+```csharp
+public override void _Ready()
+{
+    var btn = GetNode<OmniButton>("%MyButton");
+    btn.ActionMaskBits |= (int)OmniButton.ActionMaskFlags.Pressed;
+    btn.EnableHoverScale = true;
+    btn.InvertModes |= OmniButton.InvertDisplayModes.Hover;
+    btn.EnableSelectedOverlay = true;
+    btn.SelectedColor = new Color(0, 1, 0, 0.5f);
+    btn.Connect(OmniButton.SignalName.Pressed, Callable.From(() => GD.Print("Pressed")));
+    btn.Connect(OmniButton.SignalName.Swipe, Callable.From<Vector2>(dir => GD.Print($"Swipe: {dir}")));
+    btn.Connect(OmniButton.SignalName.SwipeEnded, Callable.From(() => GD.Print("SwipeEnded")));
+}
+```
+
+Feature reference and examples
+
+- State
+  - Disabled, Selected, IsToggled, IsPressed, IsHovering, IsHolding
+  - Example: set Selected to show overlay color.
+    ```csharp
+    btn.EnableSelectedOverlay = true;
+    btn.Selected = true;
+    btn.SelectedColor = new Color(0, 1, 0, 0.5f);
+    ```
+
+- Content Display
+  - EnablePanel, IconTexture, LabelText
+  - Example: icon + text with panel.
+    ```csharp
+    btn.EnablePanel = true;
+    btn.IconTexture = GD.Load<Texture2D>("res://addons/omni_button/test/icons/Icon-Circle1.png");
+    btn.LabelText = "Play";
+    ```
+
+- Actions
+  - ActionMaskBits: flags for Pressed/Released/Hover/Toggle/Hold/Swipe/Log/Warning/Error
+  - InteractionMode: Momentary | ToggleOnPress | ToggleOnRelease
+  - Example: toggle button on press.
+    ```csharp
+    btn.InteractionMode = OmniButton.InteractionModeEnum.ToggleOnPress;
+    btn.ActionMaskBits |= (int)OmniButton.ActionMaskFlags.Toggled;
+    ```
+
+- Hold Build-Up
+  - EnableHoldBuildUp, HoldDuration, HoldFillColor, HoldFillDirection
+  - Example: 1s hold to trigger.
+    ```csharp
+    btn.EnableHoldBuildUp = true;
+    btn.HoldDuration = 1.0f;
+    btn.ActionMaskBits |= (int)OmniButton.ActionMaskFlags.Hold;
+    btn.Connect(OmniButton.SignalName.Hold, Callable.From(() => GD.Print("Hold!")));
+    ```
+
+- Swipe
+  - SwipeThreshold: pixels before Swipe(Vector2) fires.
+  - Swipe init/exit dropdowns (per-device):
+    - TouchSwipeInit: OnHoverIn | OnPressed
+    - TouchSwipeExit: OnHoverOut | OnReleased
+    - MouseSwipeInit: OnPressed | OnHoverIn
+    - MouseSwipeExit: OnReleased | OnHoverOut
+  - Read-only state: IsSwiping
+  - Events: Swipe(direction), SwipeEnded()
+  - Example: arrow icon by swipe direction.
+    ```csharp
+    btn.ActionMaskBits |= (int)OmniButton.ActionMaskFlags.Swipe;
+    btn.SwipeThreshold = 20f;
+    btn.MouseSwipeInit = OmniButton.SwipeInitMode.OnHoverIn;
+    btn.MouseSwipeExit = OmniButton.SwipeExitMode.OnHoverOut;
+    btn.Connect(OmniButton.SignalName.Swipe, Callable.From<Vector2>(dir => btn.IconTexture = GD.Load<Texture2D>(
+        dir.Abs().X >= dir.Abs().Y ? (dir.X >= 0 ? "res://addons/omni_button/test/icons/Icon-RightArrow1.png" : "res://addons/omni_button/test/icons/Icon-LeftArrow1.png")
+                                   : (dir.Y >= 0 ? "res://addons/omni_button/test/icons/Icon-DownArrow1.png"  : "res://addons/omni_button/test/icons/Icon-UpArrow1.png")
+    )));
+    btn.Connect(OmniButton.SignalName.SwipeEnded, Callable.From(() => GD.Print("Swipe ended")));
+    ```
+
+- Input
+  - BoundsSource: optional control to clamp hit/follow/joystick area.
+  - HitSlop: extra pixels around the hit rect.
+  - Example: clamp to parent container.
+    ```csharp
+    btn.BoundsSource = btn.GetParent<Control>();
+    btn.HitSlop = new Vector2(8, 8);
+    ```
+
+- Follow Input
+  - FollowMode = None | FollowBoth | VirtualJoystick
+  - None: does not move when dragged (stationary)
+  - FollowBoth: follows pointer within clamp rect
+  - VirtualJoystick: see next section
+  - Example: draggable button within parent.
+    ```csharp
+    btn.FollowMode = OmniButton.FollowModeEnum.FollowBoth;
+    ```
+
+- Virtual Joystick
+  - EnableVirtualJoystick, ClampShape (Circle/Rectangle)
+  - JoystickRadiusPx | JoystickRectSizePx (0/Zero = auto)
+  - JoystickDeadzone, JoystickSnapToInput, JoystickHideWhenInactive, JoystickResetOnRelease
+  - Events: JoystickStarted, JoystickAxis(Vector2), JoystickEnded
+  - Example: simple stick.
+    ```csharp
+    btn.FollowMode = OmniButton.FollowModeEnum.VirtualJoystick;
+    btn.ClampShape = OmniButton.JoystickClampShape.Circle;
+    btn.JoystickDeadzone = 0.15f;
+    btn.Connect(OmniButton.SignalName.JoystickAxis, Callable.From<Vector2>(axis => GD.Print(axis)));
+    ```
+
+- Cooldown
+  - EnableCooldown, CooldownTrigger (OnPress | OnRelease | OnPressAndRelease)
+  - CooldownDuration, CooldownStartFilled, CooldownColor, CooldownFillDirection
+  - SuspendHoverScaleDuringCooldown, AllowHoldDuringCooldown, HideCooldownDuringHoldBuildUp
+  - Example: 1.5s cooldown on release.
+    ```csharp
+    btn.EnableCooldown = true;
+    btn.CooldownTrigger = OmniButton.CooldownTriggerEnum.OnRelease;
+    btn.CooldownDuration = 1.5f;
+    ```
+
+- Hover Scaling
+  - EnableHoverScale, HoverScale, HoverLerpSpeed
+  - Scaling stays centered; clamped to viewport to avoid clipping.
+  - Example: subtle zoom.
+    ```csharp
+    btn.EnableHoverScale = true;
+    btn.HoverScale = 1.15f;
+    btn.HoverLerpSpeed = 20f;
+    ```
+
+- Label Settings
+  - LabelFont, LabelTextColor, MinFontSize, MaxFontSize
+  - LabelHorizontalAlignment, LabelVerticalAlignment, LabelAutowrap
+  - Example: fit text within.
+    ```csharp
+    btn.LabelText = "Start";
+    btn.MinFontSize = 10;
+    btn.MaxFontSize = 64;
+    ```
+
+- Panel & Icon Settings
+  - PanelThemeType, PanelThemeVariation, PanelStyleBox
+  - IconExpandMode, IconStretchMode, IconFlipH, IconFlipV
+
+- Invert Display
+  - InvertModes flags: Press, Toggle, Hover, Hold
+  - Example: invert on press & hover.
+    ```csharp
+    btn.InvertModes = OmniButton.InvertDisplayModes.Press | OmniButton.InvertDisplayModes.Hover;
+    ```
+
+- Theme Variations
+  - ThemeTypeName, VariantNormal/Pressed/Hover/Toggled/Selected/Disabled
+
+Tips & troubleshooting
+- Ensure ActionMaskBits includes the signals you want (e.g., Swipe, Pressed, Released).
+- When using Mouse Swipe Init = OnHoverIn, swipe continues while inside and ends based on MouseSwipeExit.
+- FollowMode = None ensures the button does not move when dragged.
 
 Install
-- Copy `addons/omni_button` into your projectâ€™s `addons/` folder.
-- Enable the plugin if using an EditorPlugin (not required to use the nodes).
-- Keep either or both versions (C# and/or GDScript). You can delete the one you wonâ€™t use.
-
-Quick start
-- C#
-  - Add a node with script `OmniButton.cs` or create via code, then:
-  
-  ```csharp
-  public override void _Ready()
-  {
-      var btn = GetNode<OmniButton>("OmniButton");
-      btn.Connect(OmniButton.SignalName.Pressed, Callable.From(() => GD.Print("Pressed")));
-      btn.EnableHoverScale = true;
-      btn.InvertDisplayOnHover = true;
-      btn.LabelText = "Play";
-  }
-  ```
-
-- GDScript
-  - Add `OmniButton.gd` (class_name) or create via code, then:
-
-  ```gdscript
-  func _ready() -> void:
-      var btn: OmniButton = $OmniButton
-      btn.pressed.connect(func(): print("Pressed"))
-      btn.enable_hover_scale = true
-      btn.invert_on_hover = true
-      btn.text = "Play"
-  ```
-
-Core concepts
-- Signals: pressed, released, toggled(bool), hover_in, hover_out, swipe(Vector2), hold, log/warning/error
-- Editor friendliness: changing display and visual properties updates preview live
-- Safety: hover zoom is clamped to stay within the viewport while able to overflow parent containers
-
-Going deeper
-- C# specific API, examples, and property groups: see `addons/omni_button/CS/README.md`
-- GDScript specific API, examples, and property groups: see `addons/omni_button/GD/README.md`
+- Copy `addons/omni_button` into your project’s `addons/` folder.
+- Use either C# or GDScript variant (or both). No extra setup is required.
 
 Compatibility
-- Godot 4.x (GDScript and C#)
-- C#: targets Godotâ€™s .NET/Mono build; ensure the Godot C# export templates are installed
+- Godot 4.x (C# and GDScript). For C#, install Godot .NET support templates.
 
 Contributing
-- PRs and issues welcome. Aim to keep both implementations in feature parity and the subâ€‘READMEs as the source of truth for versionâ€‘specific details.
+- Issues and PRs welcome. Please keep C# and GDScript in feature parity.
 
 License
 - MIT. See LICENSE.
-

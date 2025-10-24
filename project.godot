@@ -15,6 +15,10 @@ run/main_scene="uid://b7nlnllxbfp5y"
 config/features=PackedStringArray("4.5", "C#", "Forward Plus")
 config/icon="res://addons/omni_button/OmniButton.png"
 
+[display]
+
+window/stretch/mode="canvas_items"
+
 [dotnet]
 
 project/assembly_name="OmniButton"

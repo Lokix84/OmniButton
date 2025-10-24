@@ -1,0 +1,424 @@
+[gd_scene load_steps=18 format=3 uid="uid://d3ukhudxpvpvd"]
+
+[ext_resource type="Script" uid="uid://n54ewwkpv83g" path="res://addons/omni_button/test/CSharpTest.cs" id="1_dqdkr"]
+[ext_resource type="Theme" uid="uid://ckanb5o8kc3u" path="res://addons/omni_button/test/style/UI.tres" id="2_5d3si"]
+[ext_resource type="Script" uid="uid://3msmjo362g7m" path="res://addons/omni_button/CS/OmniButton.cs" id="2_dqdkr"]
+[ext_resource type="Texture2D" uid="uid://c8gpacmdt8yrf" path="res://addons/omni_button/test/icons/Icon-UpArrow1.png" id="3_honpn"]
+[ext_resource type="Texture2D" uid="uid://ruv70baanys7" path="res://addons/omni_button/test/icons/Icon-Sword1.png" id="4_5d3si"]
+[ext_resource type="Texture2D" uid="uid://b5lx4c8vwy73h" path="res://addons/omni_button/test/icons/Icon-DownArrow1.png" id="4_7ixqu"]
+[ext_resource type="StyleBox" uid="uid://pm2mjmy1hg7a" path="res://addons/omni_button/test/style/Unselected.tres" id="4_y4g7e"]
+[ext_resource type="Texture2D" uid="uid://c1ecj2g07rj4n" path="res://addons/omni_button/test/icons/Icon-LeftArrow1.png" id="5_fh7gc"]
+[ext_resource type="Texture2D" uid="uid://c0aaku6680sid" path="res://addons/omni_button/test/icons/Icon-RightArrow1.png" id="6_2wksf"]
+[ext_resource type="Texture2D" uid="uid://d3na4mhfwnpqk" path="res://addons/omni_button/test/icons/Icon-Circle1.png" id="7_xgukv"]
+[ext_resource type="Texture2D" uid="uid://b14lr3jagn4ip" path="res://addons/omni_button/test/icons/Icon-Circle5.png" id="8_rs1nt"]
+[ext_resource type="Texture2D" uid="uid://rwqys46yqk5i" path="res://addons/omni_button/test/icons/Icon-Potion6.png" id="9_7ixqu"]
+[ext_resource type="Texture2D" uid="uid://l8n04aejxhyq" path="res://addons/omni_button/test/icons/Icon-Potion7.png" id="11_fh7gc"]
+[ext_resource type="Texture2D" uid="uid://b01hwuht0khkc" path="res://addons/omni_button/test/icons/Icon-Potion10.png" id="12_fh7gc"]
+[ext_resource type="Texture2D" uid="uid://7gj2r6qeswvv" path="res://addons/omni_button/test/icons/Icon-Shield5.png" id="14_xgukv"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xgukv"]
+bg_color = Color(0.6, 0.6, 0.6, 0.27450982)
+corner_radius_top_left = 150
+corner_radius_top_right = 150
+corner_radius_bottom_right = 150
+corner_radius_bottom_left = 150
+
+[sub_resource type="Theme" id="Theme_rs1nt"]
+Panel/styles/panel = SubResource("StyleBoxFlat_xgukv")
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_dqdkr")
+
+[node name="TouchArea" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Move" type="Control" parent="TouchArea"]
+layout_mode = 2
+size_flags_horizontal = 3
+script = ExtResource("2_dqdkr")
+EnablePressedActions = true
+PressedAction = Callable()
+EnableReleasedActions = true
+ReleasedAction = Callable()
+HoverInAction = Callable()
+HoverOutAction = Callable()
+ToggledAction = Callable()
+HoldAction = Callable()
+SwipeAction = Callable()
+LogAction = Callable()
+WarningAction = Callable()
+ErrorAction = Callable()
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="Look" type="Control" parent="TouchArea"]
+layout_mode = 2
+size_flags_horizontal = 3
+script = ExtResource("2_dqdkr")
+EnablePressedActions = true
+PressedAction = Callable()
+EnableReleasedActions = true
+ReleasedAction = Callable()
+HoverInAction = Callable()
+HoverOutAction = Callable()
+ToggledAction = Callable()
+HoldAction = Callable()
+SwipeAction = Callable()
+LogAction = Callable()
+WarningAction = Callable()
+ErrorAction = Callable()
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="Gamepad" type="Control" parent="."]
+visible = false
+custom_minimum_size = Vector2(300, 300)
+layout_mode = 1
+anchor_top = 0.537
+anchor_right = 0.26000002
+anchor_bottom = 1.0
+offset_top = 0.023986816
+offset_right = 0.47998047
+grow_vertical = 0
+pivot_offset = Vector2(150, 150)
+
+[node name="Border" type="Panel" parent="Gamepad"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = SubResource("Theme_rs1nt")
+
+[node name="Up" type="Control" parent="Gamepad"]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -50.0
+offset_right = 50.0
+offset_bottom = 100.0
+grow_horizontal = 2
+pivot_offset = Vector2(50, 50)
+script = ExtResource("2_dqdkr")
+IconTexture = ExtResource("3_honpn")
+PressedAction = Callable()
+ReleasedAction = Callable()
+EnableHoverActions = true
+HoverInAction = Callable()
+HoverOutAction = Callable()
+ToggledAction = Callable()
+HoldAction = Callable()
+SwipeAction = Callable()
+LogAction = Callable()
+WarningAction = Callable()
+ErrorAction = Callable()
+InvertDisplayOnHover = true
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="Down" type="Control" parent="Gamepad"]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -50.0
+offset_top = -100.0
+offset_right = 50.0
+grow_horizontal = 2
+grow_vertical = 0
+pivot_offset = Vector2(50, 50)
+script = ExtResource("2_dqdkr")
+IconTexture = ExtResource("4_7ixqu")
+PressedAction = Callable()
+ReleasedAction = Callable()
+EnableHoverActions = true
+HoverInAction = Callable()
+HoverOutAction = Callable()
+ToggledAction = Callable()
+HoldAction = Callable()
+SwipeAction = Callable()
+LogAction = Callable()
+WarningAction = Callable()
+ErrorAction = Callable()
+InvertDisplayOnHover = true
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="Left" type="Control" parent="Gamepad"]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_top = -50.0
+offset_right = 100.0
+offset_bottom = 50.0
+grow_vertical = 2
+pivot_offset = Vector2(50, 50)
+script = ExtResource("2_dqdkr")
+IconTexture = ExtResource("5_fh7gc")
+PressedAction = Callable()
+ReleasedAction = Callable()
+EnableHoverActions = true
+HoverInAction = Callable()
+HoverOutAction = Callable()
+ToggledAction = Callable()
+HoldAction = Callable()
+SwipeAction = Callable()
+LogAction = Callable()
+WarningAction = Callable()
+ErrorAction = Callable()
+InvertDisplayOnHover = true
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="Right" type="Control" parent="Gamepad"]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -100.0
+offset_top = -50.0
+offset_bottom = 50.0
+grow_horizontal = 0
+grow_vertical = 2
+pivot_offset = Vector2(50, 50)
+script = ExtResource("2_dqdkr")
+IconTexture = ExtResource("6_2wksf")
+PressedAction = Callable()
+ReleasedAction = Callable()
+EnableHoverActions = true
+HoverInAction = Callable()
+HoverOutAction = Callable()
+ToggledAction = Callable()
+HoldAction = Callable()
+SwipeAction = Callable()
+LogAction = Callable()
+WarningAction = Callable()
+ErrorAction = Callable()
+InvertDisplayOnHover = true
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="Center" type="Control" parent="Gamepad"]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -75.0
+offset_top = -75.0
+offset_right = -25.0
+offset_bottom = -25.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(50, 50)
+script = ExtResource("2_dqdkr")
+IconTexture = ExtResource("7_xgukv")
+PressedAction = Callable()
+ReleasedAction = Callable()
+EnableHoverActions = true
+HoverInAction = Callable()
+HoverOutAction = Callable()
+ToggledAction = Callable()
+HoldAction = Callable()
+EnableSwipeActions = true
+SwipeAction = Callable()
+LogAction = Callable()
+WarningAction = Callable()
+ErrorAction = Callable()
+EnableVirtualJoystick = true
+FollowOnPress = true
+FollowWhileHeld = true
+InvertDisplayOnPress = true
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="LookJoystick" type="Control" parent="."]
+visible = false
+custom_minimum_size = Vector2(300, 300)
+layout_mode = 1
+anchor_left = 0.74
+anchor_top = 0.26900002
+anchor_right = 1.0
+anchor_bottom = 0.731
+offset_left = -0.47998047
+offset_top = -0.31201172
+offset_bottom = 0.3119812
+grow_horizontal = 0
+grow_vertical = 2
+pivot_offset = Vector2(150, 150)
+
+[node name="Border" type="Panel" parent="LookJoystick"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = SubResource("Theme_rs1nt")
+
+[node name="Center" type="Control" parent="LookJoystick"]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -75.0
+offset_top = -75.0
+offset_right = -25.0
+offset_bottom = -25.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(50, 50)
+script = ExtResource("2_dqdkr")
+IconTexture = ExtResource("7_xgukv")
+PressedAction = Callable()
+ReleasedAction = Callable()
+EnableHoverActions = true
+HoverInAction = Callable()
+HoverOutAction = Callable()
+ToggledAction = Callable()
+HoldAction = Callable()
+EnableSwipeActions = true
+SwipeAction = Callable()
+LogAction = Callable()
+WarningAction = Callable()
+ErrorAction = Callable()
+EnableVirtualJoystick = true
+FollowOnPress = true
+FollowWhileHeld = true
+InvertDisplayOnPress = true
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="UI" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="PlayerInfoHUD" type="Control" parent="UI"]
+custom_minimum_size = Vector2(300, 100)
+layout_mode = 1
+anchor_left = 0.022000002
+anchor_top = 0.039
+anchor_right = 0.282
+anchor_bottom = 0.193
+offset_left = -0.34400177
+offset_top = -0.27200127
+offset_right = 0.13598633
+offset_bottom = -0.06400299
+mouse_filter = 2
+
+[node name="GeneralInfoHUD" type="Control" parent="UI"]
+custom_minimum_size = Vector2(400, 100)
+layout_mode = 1
+anchor_left = 0.326
+anchor_top = 0.039
+anchor_right = 0.674
+anchor_bottom = 0.193
+offset_left = 0.44799805
+offset_top = -0.27200127
+offset_right = -0.44799805
+offset_bottom = -0.06400299
+grow_horizontal = 2
+
+[node name="Icons" type="Control" parent="UI"]
+custom_minimum_size = Vector2(200, 100)
+layout_mode = 1
+anchor_left = 0.71800005
+anchor_top = 0.039
+anchor_right = 0.97800004
+anchor_bottom = 0.193
+offset_left = -0.13604736
+offset_top = -0.27200127
+offset_right = 0.34399414
+offset_bottom = -0.06400299
+grow_horizontal = 0
+
+[node name="PressButton" type="Control" parent="UI/Icons"]
+custom_minimum_size = Vector2(100, 50)
+layout_mode = 1
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("2_dqdkr")
+IconTexture = ExtResource("8_rs1nt")
+LabelText = "Press Button"
+PressedAction = Callable()
+ReleasedAction = Callable()
+HoverInAction = Callable()
+HoverOutAction = Callable()
+ToggledAction = Callable()
+HoldAction = Callable()
+SwipeAction = Callable()
+LogAction = Callable()
+WarningAction = Callable()
+ErrorAction = Callable()
+EnableHoverScale = true
+LabelTextColor = Color(0, 0, 0, 1)
+LabelAutowrap = 3
+IconExpandMode = 1
+IconStretchMode = 5
+IconFlipH = true
+InvertModes = 1
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="ToggleButton" type="Control" parent="UI/Icons"]
+custom_minimum_size = Vector2(100, 50)
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -40.0
+offset_bottom = 40.0
+grow_horizontal = 0
+script = ExtResource("2_dqdkr")
+IconTexture = ExtResource("8_rs1nt")
+LabelText = "Toggle Button"
+PressedAction = Callable()
+ReleasedAction = Callable()
+HoverInAction = Callable()
+HoverOutAction = Callable()
+ToggledAction = Callable()
+HoldAction = Callable()
+SwipeAction = Callable()
+LogAction = Callable()
+WarningAction = Callable()
+ErrorAction = Callable()
+EnableHoverScale = true
+LabelTextColor = Color(0, 0, 0, 1)
+LabelAutowrap = 3
+IconExpandMode = 1
+IconStretchMode = 5
+InvertModes = 2
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="HoldButton" type="Control" parent="UI/Icons"]
+custom_minimum_size = Vector2(100, 50)
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anch

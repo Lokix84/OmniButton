@@ -1,6 +1,7 @@
 using Godot;
 using System;
 using System.Collections.Generic;
+using OmniButtonKit;
 
 public partial class CSharpTest : Control
 {
@@ -11,10 +12,10 @@ public partial class CSharpTest : Control
 
     private Control _gamepad;
     private OmniButton _center;
-    private OmniButton _moveArea;
+    private Control _moveArea;
     private Control _lookjoystick;
     private OmniButton _lookcenter;
-    private OmniButton _lookArea;
+    private Control _lookArea;
 
     private OmniButton _up, _down, _left, _right;
     private OmniButton _lastHover;
@@ -22,20 +23,31 @@ public partial class CSharpTest : Control
     // Selected item list support
     private Node _selectedContainer;
     private readonly List<OmniButton> _selectedButtons = new();
-
+    private OmniButton _usedButton;
     // Logger
     private OmniButton _output;
 
     public override void _Ready()
     {
-        _moveArea = GetNode<OmniButton>("TouchArea/Move");
-        _lookArea = GetNode<OmniButton>("TouchArea/Look");
+        _moveArea = GetNode<Control>("TouchArea/Move");
+        _lookArea = GetNode<Control>("TouchArea/Look");
+        _moveArea.MouseFilter = MouseFilterEnum.Stop;
+        _lookArea.MouseFilter = MouseFilterEnum.Stop;
         _gamepad = GetNode<Control>("Gamepad");
         _center = GetNode<OmniButton>("Gamepad/Center");
+        // Configure Move thumb to use built-in VirtualJoystick with the Gamepad as clamp and ring
+        _center.ApplyVirtualJoystick();
         _center.BoundsSource = _gamepad; // confine joystick to gamepad area
+        _center.EnableJoystickArea = true;                 // show ring while active
+        _center.JoystickAreaUseRectForClamp = true;        // rectangular ring sized from clamp
+        _center.JoystickAreaPersistent = false;            // hide when not active
         _lookjoystick = GetNode<Control>("LookJoystick");
         _lookcenter = GetNode<OmniButton>("LookJoystick/Center");
+        // Configure Look thumb to use built-in defaults and circle ring in its own area
+        _lookcenter.ApplyVirtualJoystick();
         _lookcenter.BoundsSource = _lookjoystick;
+        _lookcenter.JoystickHideWhenInactive = true;       // only show look thumb during use
+        _lookcenter.EnableJoystickArea = true;              // use built-in circular ring (default)
 
         _up = GetNodeOrNull<OmniButton>("Gamepad/Up");
         _down = GetNodeOrNull<OmniButton>("Gamepad/Down");
@@ -49,6 +61,7 @@ public partial class CSharpTest : Control
         // Discover selected item container (adjust path if yours differs)
         _selectedContainer = GetNodeOrNull<Node>("UI/HotbarHUD/SingleSelectList")
                              ?? GetNodeOrNull<Node>("SelectedItems");
+        _usedButton = GetNode<OmniButton>("UI/Actions/UseItem");
         if (_selectedContainer != null)
             WireSelectedItems(_selectedContainer);
 
@@ -253,10 +266,17 @@ public partial class CSharpTest : Control
 
     private void OnSelectedItemPressed(OmniButton clicked)
     {
+        _usedButton.Selected = true;
+        _usedButton.Disabled = true;
         for (int i = 0; i < _selectedButtons.Count; i++)
         {
             var b = _selectedButtons[i];
             b.Selected = b == clicked;
+            if (b == clicked)
+            {
+                _usedButton.Selected = false;
+                _usedButton.Disabled = false;
+            }
         }
     }
 
@@ -329,5 +349,44 @@ public partial class CSharpTest : Control
     {
         if (!obj.IsConnected(signal, callable))
             obj.Connect(signal, callable);
+    }
+
+    public void _on_swipe_button_swipe(Vector2 direction, OmniButton source)
+    {
+        // Decide dominant cardinal axis by comparing absolute components
+        var d = direction; // already normalized by OmniButton
+        string path;
+        if (Mathf.Abs(d.X) >= Mathf.Abs(d.Y))
+        {
+            // Horizontal dominates
+            path = d.X >= 0
+                ? "res://addons/omni_button/test/icons/Icon-RightArrow1.png"
+                : "res://addons/omni_button/test/icons/Icon-LeftArrow1.png";
+        }
+        else
+        {
+            // Vertical dominates
+            path = d.Y <= 0
+                ? "res://addons/omni_button/test/icons/Icon-DownArrow1.png"
+                : "res://addons/omni_button/test/icons/Icon-UpArrow1.png";
+        }
+
+        // Update the swiped button's icon
+        if (GodotObject.IsInstanceValid(source))
+            source.IconTexture = GD.Load<Texture2D>(path);
+
+        // Optional: reflect in the output logger
+        if (GodotObject.IsInstanceValid(_output))
+            _output.LabelText = $"[SwipeButton] Swipe: {direction} -> {System.IO.Path.GetFileNameWithoutExtension(path)}";
+    }
+    public void _on_swipe_button_swipe_ended(OmniButton source)
+    {
+        // Restore the swiped button's icon to default
+        if (GodotObject.IsInstanceValid(source))
+            source.IconTexture = GD.Load<Texture2D>("res://addons/omni_button/test/icons/Icon-Circle5.png");
+
+        // Optional: reflect in the output logger
+        if (GodotObject.IsInstanceValid(_output))
+            _output.LabelText = $"[SwipeButton] Swipe Ended";
     }
 }

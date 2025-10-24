@@ -189,7 +189,13 @@ A) Zero-code, automatic mode
   - EnableVirtualJoystick = true
   - BoundsSource = the Control that defines the joystick area (or leave null to use parent/viewport)
   - JoystickDeadzone = 0.1 (adjust)
-  - JoystickRadiusPx = 0 (auto) or a pixel radius
+  - Shape: circle or rectangle
+    - Circle: `JoystickUseCircularClamp = true` (default)
+      - `JoystickRadiusPx = 0` (auto) or a pixel radius
+    - Rectangle: `JoystickUseCircularClamp = false`
+      - `JoystickRectSizePx = Vector2.Zero` (auto) or a pixel size
+  - Snapping: `JoystickSnapToInput = true` to dynamically move under input; `false` keeps it fixed
+  - Visibility: `JoystickHideWhenInactive = true` hides until active; shows on press and hides on release
   - JoystickResetOnRelease = true
 
 - Connect these signals:
@@ -203,7 +209,7 @@ btn.Connect(OmniButton.SignalName.JoystickEnded,   Callable.From(() => GD.Print(
 Behavior:
 
 - On press inside the button, it jumps under the pointer and follows while held.
-- Axis is normalized to -1..1 (unit circle), with deadzone. Clamped to BoundsSource/parent/viewport.
+- Axis is normalized to -1..1 (circle uses radius; rectangle uses per-axis extents), with deadzone. Clamped to BoundsSource/parent/viewport.
 - On release, it emits JoystickAxis(Vector2.Zero), JoystickEnded, and snaps back if JoystickResetOnRelease is true.
 
 B) Programmatic control (for composite gamepads)
