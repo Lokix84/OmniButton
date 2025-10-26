@@ -72,6 +72,12 @@ public partial class CSharpTest : Control
 
         if (_output != null)
         {
+            // Keep autosize on for logger to avoid overflow; prefer RichText + wrap
+            _output.EnableTextAutoSize = true;
+            _output.FixedFontSize = 0;
+            _output.LabelHorizontalAlignment = HorizontalAlignment.Left;
+            _output.LabelAutowrap = TextServer.AutowrapMode.Word;
+            _output.RichLabelUseBBCode = true;
             _output.LabelText = "Logger ready";
             ConnectAllButtonsToOutput(_output);
         }
@@ -323,26 +329,26 @@ public partial class CSharpTest : Control
         void SetOut(string msg)
         {
             if (GodotObject.IsInstanceValid(output))
-                output.LabelText = msg;
+                output.RichLabelText = msg;
         }
 
-        SafeConnect(btn, OmniButton.SignalName.Pressed, Callable.From(() => SetOut($"[{btn.Name}] Pressed")));
-        SafeConnect(btn, OmniButton.SignalName.Released, Callable.From(() => SetOut($"[{btn.Name}] Released")));
-        SafeConnect(btn, OmniButton.SignalName.Toggled, Callable.From<bool>(v => SetOut($"[{btn.Name}] Toggled: {v}")));
-        SafeConnect(btn, OmniButton.SignalName.HoverIn, Callable.From(() => SetOut($"[{btn.Name}] HoverIn")));
-        SafeConnect(btn, OmniButton.SignalName.HoverOut, Callable.From(() => SetOut($"[{btn.Name}] HoverOut")));
-        SafeConnect(btn, OmniButton.SignalName.Hold, Callable.From(() => SetOut($"[{btn.Name}] Hold")));
-        SafeConnect(btn, OmniButton.SignalName.Swipe, Callable.From<Vector2>(dir => SetOut($"[{btn.Name}] Swipe: {dir}")));
+        SafeConnect(btn, OmniButton.SignalName.Pressed, Callable.From(() => SetOut($"[b][{btn.Name}][/b] Pressed")));
+        SafeConnect(btn, OmniButton.SignalName.Released, Callable.From(() => SetOut($"[b][{btn.Name}][/b] Released")));
+        SafeConnect(btn, OmniButton.SignalName.Toggled, Callable.From<bool>(v => SetOut($"[b][{btn.Name}][/b] Toggled: {v}")));
+        SafeConnect(btn, OmniButton.SignalName.HoverIn, Callable.From(() => SetOut($"[b][{btn.Name}][/b] HoverIn")));
+        SafeConnect(btn, OmniButton.SignalName.HoverOut, Callable.From(() => SetOut($"[b][{btn.Name}][/b] HoverOut")));
+        SafeConnect(btn, OmniButton.SignalName.Hold, Callable.From(() => SetOut($"[b][{btn.Name}][/b] Hold")));
+        SafeConnect(btn, OmniButton.SignalName.Swipe, Callable.From<Vector2>(dir => SetOut($"[b][{btn.Name}][/b] Swipe: {dir}")));
 
         // If using virtual joystick on any button, log those too
-        SafeConnect(btn, OmniButton.SignalName.JoystickStarted, Callable.From(() => SetOut($"[{btn.Name}] JoystickStarted")));
-        SafeConnect(btn, OmniButton.SignalName.JoystickAxis, Callable.From<Vector2>(axis => SetOut($"[{btn.Name}] JoystickAxis: {axis}")));
-        SafeConnect(btn, OmniButton.SignalName.JoystickEnded, Callable.From(() => SetOut($"[{btn.Name}] JoystickEnded")));
+        SafeConnect(btn, OmniButton.SignalName.JoystickStarted, Callable.From(() => SetOut($"[b][{btn.Name}][/b] JoystickStarted")));
+        SafeConnect(btn, OmniButton.SignalName.JoystickAxis, Callable.From<Vector2>(axis => SetOut($"[b][{btn.Name}][/b] JoystickAxis: {axis}")));
+        SafeConnect(btn, OmniButton.SignalName.JoystickEnded, Callable.From(() => SetOut($"[b][{btn.Name}][/b] JoystickEnded")));
 
         // Optional: log custom messages
-        SafeConnect(btn, OmniButton.SignalName.Log, Callable.From<string>(m => SetOut($"[{btn.Name}] Log: {m}")));
-        SafeConnect(btn, OmniButton.SignalName.Warning, Callable.From<string>(m => SetOut($"[{btn.Name}] Warn: {m}")));
-        SafeConnect(btn, OmniButton.SignalName.Error, Callable.From<string>(m => SetOut($"[{btn.Name}] Error: {m}")));
+        SafeConnect(btn, OmniButton.SignalName.Log, Callable.From<string>(m => SetOut($"[b][{btn.Name}][/b] Log: {m}")));
+        SafeConnect(btn, OmniButton.SignalName.Warning, Callable.From<string>(m => SetOut($"[b][{btn.Name}][/b] Warn: {m}")));
+        SafeConnect(btn, OmniButton.SignalName.Error, Callable.From<string>(m => SetOut($"[b][{btn.Name}][/b] Error: {m}")));
     }
 
     private void SafeConnect(GodotObject obj, StringName signal, Callable callable)

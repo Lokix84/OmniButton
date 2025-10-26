@@ -135,6 +135,10 @@ public partial class OmniButton : Control
     }
     public enum BackgroundMode { None = 0, UsePanel = 1, UseTexture = 2 }
     private BackgroundMode _backgroundMode = BackgroundMode.None;
+
+    /// <summary>
+    /// Optional icon texture displayed inside the button
+    /// </summary>
     [Export]
     public Texture2D? IconTexture
     {
@@ -148,6 +152,10 @@ public partial class OmniButton : Control
         }
     }
     private Texture2D? _iconTexture;
+
+    /// <summary>
+    /// Plain text shown using Label. Leave empty when using RichLabelText
+    /// </summary>
     [Export]
     public string LabelText
     {
@@ -162,6 +170,9 @@ public partial class OmniButton : Control
     }
     private string _labelText = "";
 
+    /// <summary>
+    /// Rich text (BBCode) shown using RichTextLabel. Leave empty to use LabelText
+    /// </summary>
     [Export]
     public string RichLabelText
     {
@@ -176,6 +187,7 @@ public partial class OmniButton : Control
     }
     private string _richLabelText = "";
 
+    // Interpret RichLabelText as BBCode
     [Export] public bool RichLabelUseBBCode { get; set; } = true;
     /// <summary>
     /// When true, shows a full-rect ColorRect overlay whenever either Selected or IsToggled is true.
@@ -211,11 +223,25 @@ public partial class OmniButton : Control
     private string _panelThemeVariation = "";
     [Export] public StyleBox? PanelStyleBox { get => _panelStyleBox; set { _panelStyleBox = value; ApplyPanelStyling(); RefreshEditorVisual(); } }
     private StyleBox? _panelStyleBox;
-    // Background as texture (when Background == UseTexture)
+    /// <summary>
+    /// Optional background texture when Background = UseTexture
+    /// </summary>
     [Export] public Texture2D? BackgroundTexture { get; set; }
+    /// <summary>
+    /// Expand mode for background texture
+    /// </summary>
     [Export] public TextureRect.ExpandModeEnum BackgroundExpandMode { get; set; } = TextureRect.ExpandModeEnum.FitWidthProportional;
+    /// <summary>
+    /// Stretch mode for background texture
+    /// </summary>
     [Export] public TextureRect.StretchModeEnum BackgroundStretchMode { get; set; } = TextureRect.StretchModeEnum.Scale;
+    /// <summary>
+    /// Flip background texture horizontally
+    /// </summary>
     [Export] public bool BackgroundFlipH { get; set; } = false;
+    /// <summary>
+    /// Flip background texture vertically
+    /// </summary>
     [Export] public bool BackgroundFlipV { get; set; } = false;
     #endregion
     #region Icon(Exported Properties)
@@ -231,20 +257,50 @@ public partial class OmniButton : Control
     #endregion
     #region Label(Exported Properties)
     [ExportSubgroup("Label Settings")]
+    /// <summary>
+    /// Optional font resource applied to Label/RichText
+    /// </summary>
     [Export] public Font? LabelFont { get => _labelFont; set { _labelFont = value; RefreshEditorVisual(); } }
     private Font? _labelFont;
+    /// <summary>
+    /// Text color for Label/RichText (default_color)
+    /// </summary>
     [Export] public Color LabelTextColor { get => _labelTextColor; set { _labelTextColor = value; RefreshEditorVisual(); } }
     private Color _labelTextColor = Colors.White;
+    [Export] public Vector2 TextFitPadding { get; set; } = new Vector2(12, 4);
+    /// <summary>
+    /// Minimum font size used by autosize
+    /// </summary>
     [Export(PropertyHint.Range, "6,300,1")]
     public int MinFontSize { get => _minFontSize; set { _minFontSize = value; FitLabelText(); } }
     private int _minFontSize = 12;
+    /// <summary>
+    /// Maximum font size used by autosize
+    /// </summary>
     [Export(PropertyHint.Range, "6,300,1")]
     public int MaxFontSize { get => _maxFontSize; set { _maxFontSize = value; FitLabelText(); } }
     private int _maxFontSize = 100;
+    /// <summary>
+    /// When > 0 forces this fixed size and bypasses autosize
+    /// </summary>
+    [Export(PropertyHint.Range, "0,300,1")] public int FixedFontSize { get; set; } = 0;
+    /// <summary>
+    /// Enable dynamic auto-sizing of Label/RichText within control bounds
+    /// </summary>
+    [Export] public bool EnableTextAutoSize { get; set; } = true;
+    /// <summary>
+    /// Horizontal alignment for Label/RichText text
+    /// </summary>
     [Export] public HorizontalAlignment LabelHorizontalAlignment { get => _labelHAlign; set { _labelHAlign = value; RefreshEditorVisual(); } }
     private HorizontalAlignment _labelHAlign = HorizontalAlignment.Center;
+    /// <summary>
+    /// Vertical alignment for Label text
+    /// </summary>
     [Export] public VerticalAlignment LabelVerticalAlignment { get => _labelVAlign; set { _labelVAlign = value; RefreshEditorVisual(); } }
     private VerticalAlignment _labelVAlign = VerticalAlignment.Center;
+    /// <summary>
+    /// Autowrap mode for Label/RichText; affects autosize
+    /// </summary>
     [Export] public TextServer.AutowrapMode LabelAutowrap { get => _labelAutowrap; set { _labelAutowrap = value; RefreshEditorVisual(); } }
     private TextServer.AutowrapMode _labelAutowrap = TextServer.AutowrapMode.Word;
     #endregion
@@ -369,7 +425,13 @@ public partial class OmniButton : Control
     #endregion
     #region Input(Exported Properties)
     [ExportGroup("Input")]
+    /// <summary>
+    /// Optional external Control whose rect defines input bounds
+    /// </summary>
     [Export] public Control? BoundsSource { get; set; }
+    /// <summary>
+    /// Extra inset/outset for hit detection (pixels)
+    /// </summary>
     [Export] public Vector2 HitSlop { get; set; } = Vector2.Zero;
     /// <summary>
     /// Determines how the button reacts to pointer drags while pressed.
@@ -386,6 +448,9 @@ public partial class OmniButton : Control
     #region Follow(Exported Properties)
     [ExportGroup("Follow Input")]
     private FollowModeEnum _followMode = FollowModeEnum.None;
+    /// <summary>
+    /// Follow pointer while pressed or act as a virtual joystick
+    /// </summary>
     [Export]
     public FollowModeEnum FollowMode
     {
@@ -415,6 +480,9 @@ public partial class OmniButton : Control
     #region Virtual Joystick(Exported Properties)
     [ExportSubgroup("Virtual Joystick")]
     private bool _enableVirtualJoystick = false;
+    /// <summary>
+    /// Enable virtual joystick behavior and signals
+    /// </summary>
     [Export]
     public bool EnableVirtualJoystick
     {
@@ -437,32 +505,80 @@ public partial class OmniButton : Control
     }
     public enum JoystickClampShape { Circle = 0, Rectangle = 1 }
     private JoystickClampShape _clampShape = JoystickClampShape.Circle;
+    /// <summary>
+    /// Clamp shape used for virtual joystick movement
+    /// </summary>
     [Export]
     public JoystickClampShape ClampShape
     {
         get => _clampShape;
         set { _clampShape = value; SafeNotifyPropertyListChanged(); }
     }
+    /// <summary>
+    /// Circle clamp radius in pixels (0 = auto)
+    /// </summary>
     [Export(PropertyHint.Range, "0,4096,1")] public int JoystickRadiusPx { get; set; } = 0;
+    /// <summary>
+    /// Rectangle clamp size in pixels (0 = auto)
+    /// </summary>
     [Export] public Vector2 JoystickRectSizePx { get; set; } = Vector2.Zero;
+    /// <summary>
+    /// Deadzone for joystick axis output
+    /// </summary>
     [Export(PropertyHint.Range, "0.0,1.0,0.01")] public float JoystickDeadzone { get; set; } = 0.1f;
+    /// <summary>
+    /// Snap the visual to pointer while active
+    /// </summary>
     [Export] public bool JoystickSnapToInput { get; set; } = true;
+    /// <summary>
+    /// Hide control when joystick is inactive (runtime)
+    /// </summary>
     [Export] public bool JoystickHideWhenInactive { get; set; } = false;
+    /// <summary>
+    /// Return visual to home on release
+    /// </summary>
     [Export] public bool JoystickResetOnRelease { get; set; } = true;
 
     // Virtual joystick area ring (optional static background)
     [ExportSubgroup("Virtual Joystick Area")]
+    /// <summary>
+    /// Draw an area ring for the joystick clamp zone
+    /// </summary>
     [Export] public bool EnableJoystickArea { get; set; } = false;
+    /// <summary>
+    /// Keep area ring visible when inactive
+    /// </summary>
     [Export] public bool JoystickAreaPersistent { get; set; } = false;
+    /// <summary>
+    /// Color of the joystick area ring
+    /// </summary>  
     [Export] public Color JoystickAreaColor { get; set; } = new Color(1, 1, 1, 0.25f);
+    /// <summary>
+    /// Ring thickness in pixels
+    /// </summary>
     [Export(PropertyHint.Range, "0,64,1")] public int JoystickAreaThickness { get; set; } = 2;
+    /// <summary>
+    /// Force rectangle clamp for area ring
+    /// </summary>
     [Export] public bool JoystickAreaUseRectForClamp { get; set; } = false;
+    /// <summary>
+    /// External Control to host the area ring (optional)
+    /// </summary>
     [Export] public NodePath JoystickAreaExternalPath { get; set; } = new NodePath("");
 
     // Virtual joystick default thumb (shown when no IconTexture is provided)
     [ExportSubgroup("Virtual Joystick Thumb")]
+    /// <summary>
+    /// Show default circular thumb when no icon is provided
+    /// </summary>
     [Export] public bool EnableDefaultThumb { get; set; } = true;
+    /// <summary>
+    /// Size of default thumb relative to control
+    /// </summary>
     [Export(PropertyHint.Range, "0.1,1.0,0.01")] public float DefaultThumbSizeRatio { get; set; } = 0.6f;
+    /// <summary>
+    /// Color of default thumb
+    /// </summary>
     [Export] public Color DefaultThumbColor { get; set; } = new Color(1, 1, 1, 0.9f);
     #endregion
     [ExportSubgroup("Legacy Flags (Compat)")]
@@ -477,6 +593,9 @@ public partial class OmniButton : Control
     }
     [ExportGroup("Cooldown")]
     private bool _enableCooldown = false;
+    /// <summary>
+    /// Enable cooldown fill overlay and timing
+    /// </summary>
     [Export]
     public bool EnableCooldown
     {
@@ -514,22 +633,64 @@ public partial class OmniButton : Control
         get => _cooldownTrigger;
         set { _cooldownTrigger = value; SafeNotifyPropertyListChanged(); }
     }
+    /// <summary>
+    /// Duration of cooldown in seconds
+    /// </summary>
     [Export(PropertyHint.Range, "0.05,60.0,0.05")] public float CooldownDuration { get; set; } = 1.0f;
+    /// <summary>
+    /// Start with overlay fully filled and empty over time
+    /// </summary>
     [Export] public bool CooldownStartFilled { get; set; } = false;
+    /// <summary>
+    /// Color used for cooldown overlay
+    /// </summary>
     [Export] public Color CooldownColor { get; set; } = new Color(0, 0, 0, 0.4f);
+    /// <summary>
+    /// Direction the cooldown overlay fills/empties
+    /// </summary>
     [Export] public CooldownDirection CooldownFillDirection { get; set; } = CooldownDirection.BottomToTop;
+    /// <summary>
+    /// Temporarily disable hover scaling during active cooldown
+    /// </summary>
     [Export] public bool SuspendHoverScaleDuringCooldown { get; set; } = false;
+    /// <summary>
+    /// Allow hold actions while cooldown is active
+    /// </summary>
     [Export] public bool AllowHoldDuringCooldown { get; set; } = false;
+    /// <summary>
+    /// Hide cooldown overlay while hold build-up is visible
+    /// </summary>
     [Export] public bool HideCooldownDuringHoldBuildUp { get; set; } = true;
     #endregion
     #region Theme Variations(Exported Properties)
     [ExportGroup("Theme Variations")]
+    /// <summary>
+    /// Theme type name used for style lookups
+    /// </summary>
     [Export] public string ThemeTypeName { get; set; } = "OmniButton";
+    /// <summary>
+    /// Theme variation for normal state
+    /// </summary>
     [Export] public string VariantNormal { get; set; } = "normal";
+    /// <summary>
+    /// Theme variation for pressed state
+    /// </summary>
     [Export] public string VariantPressed { get; set; } = "pressed";
+    /// <summary>
+    /// Theme variation for hover state
+    /// </summary>
     [Export] public string VariantHover { get; set; } = "hover";
+    /// <summary>
+    /// Theme variation for toggled state
+    /// </summary>
     [Export] public string VariantToggled { get; set; } = "toggled";
+    /// <summary>
+    /// Theme variation for selected state
+    /// </summary>
     [Export] public string VariantSelected { get; set; } = "selected";
+    /// <summary>
+    /// Theme variation for disabled state
+    /// </summary>
     [Export] public string VariantDisabled { get; set; } = "disabled";
     #endregion
     #region Private State
@@ -1495,62 +1656,212 @@ public partial class OmniButton : Control
     }
     private void FitLabelText()
     {
-        if (_fittingLabel) return;
-        // Prefer rich label if present
-        if (_richLabel != null && IsInstanceValid(_richLabel) && !string.IsNullOrEmpty(_richLabelText))
+        // Fixed font size takes precedence regardless of auto-size
+        if (FixedFontSize > 0)
         {
-            _fittingLabel = true;
-            try
+            if (_label != null && IsInstanceValid(_label))
             {
-                var avail = CalculateAvailableArea();
-                if (avail.X <= 1.0f || avail.Y <= 1.0f) return;
-                var fnt = LabelFont ?? ThemeDB.FallbackFont;
-                if (fnt == null) return;
-                string plain = System.Text.RegularExpressions.Regex.Replace(_richLabelText, "\\[[^\\]]+\\]", string.Empty);
-                int best = FindBestFontSize(fnt, plain, avail);
-                _richLabel.AddThemeFontOverride("normal_font", fnt);
-                _richLabel.AddThemeFontSizeOverride("normal_font_size", best);
+                _label.AddThemeFontSizeOverride("font_size", FixedFontSize);
+                _label.UpdateMinimumSize();
             }
-            finally { _fittingLabel = false; }
+            if (_richLabel != null && IsInstanceValid(_richLabel))
+            {
+                ApplyRichLabelFontSizeOnly(FixedFontSize);
+            }
             return;
         }
-        if (_label == null || !IsInstanceValid(_label) || string.IsNullOrEmpty(_label.Text)) return;
+        if (!EnableTextAutoSize) return;
+        if (_fittingLabel) return;
+        if (_richLabel != null && IsInstanceValid(_richLabel) && !string.IsNullOrEmpty(_richLabelText))
+        {
+            FitRichTextLabel();
+            return;
+        }
+        if (_label != null && IsInstanceValid(_label) && !string.IsNullOrEmpty(_label.Text))
+        {
+            FitPlainLabel();
+        }
+    }
+
+    // Keep Label and RichTextLabel sizing separate so Label remains stable while we iterate on RichText
+    private void FitPlainLabel()
+    {
         _fittingLabel = true;
         try
         {
             var avail = CalculateAvailableArea();
-            if (avail.X <= 1.0f || avail.Y <= 1.0f) return;
+            if (avail.X <= 1.0f || avail.Y <= 1.0f)
+            {
+                CallDeferred(nameof(FitPlainLabel));
+                return;
+            }
             var fnt = GetRobustFont(_label);
             if (fnt == null) return;
-            int bestSize = FindBestFontSize(fnt, _label.Text, avail);
+            float wrap = (LabelAutowrap != TextServer.AutowrapMode.Off) ? avail.X : -1f;
+            string text = _label.Text ?? string.Empty;
+            int bestSize = FindBestFontSize(fnt, text, avail, wrap);
             ApplyFontSettings(_label, fnt, bestSize);
+            _label.UpdateMinimumSize();
+            _label.QueueRedraw();
+            int guard2 = 0;
+            while (bestSize > MinFontSize && guard2 < 64)
+            {
+                var sz = MeasureParagraph(fnt, text, wrap, bestSize);
+                if (sz.X <= avail.X && sz.Y <= avail.Y) break;
+                bestSize--;
+                ApplyFontSettings(_label, fnt, bestSize);
+                _label.UpdateMinimumSize();
+                _label.QueueRedraw();
+                guard2++;
+            }
         }
         finally { _fittingLabel = false; }
     }
+
+    private int _richCurrentFontSize = -1;
+    private int _richVerifyPasses = 0;
+    private void FitRichTextLabel()
+    {
+        _fittingLabel = true;
+        try
+        {
+            var avail = CalculateAvailableArea();
+            if (avail.X <= 1.0f || avail.Y <= 1.0f)
+            {
+                CallDeferred(nameof(FitRichTextLabel));
+                return;
+            }
+            var fnt = LabelFont ?? ThemeDB.FallbackFont;
+            if (fnt == null) return;
+                string plain = StripKnownBBCode(_richLabelText);
+            float wrap = (LabelAutowrap != TextServer.AutowrapMode.Off) ? avail.X : -1f;
+            int best = FindBestFontSize(fnt, plain, avail, wrap);
+            ApplyRichLabelFontOverrides(_richLabel, fnt, best);
+            _richLabel.UpdateMinimumSize();
+            _richLabel.QueueRedraw();
+            _richCurrentFontSize = best;
+            // Quick clamp pass
+            int guard = 0;
+            while (best > MinFontSize && guard < 32)
+            {
+                var overH = _richLabel.GetContentHeight() > avail.Y;
+                var sz = MeasureParagraph(fnt, plain, wrap, best);
+                var overW = sz.X > avail.X;
+                if (!overH && !overW) break;
+                best--;
+                ApplyRichLabelFontOverrides(_richLabel, fnt, best);
+                _richCurrentFontSize = best;
+                guard++;
+            }
+            // Deferred verification to allow layout to settle
+            _richVerifyPasses = 0;
+            CallDeferred(nameof(VerifyRichTextFit));
+        }
+        finally { _fittingLabel = false; }
+    }
+
+    private void VerifyRichTextFit()
+    {
+        if (_richLabel == null || !IsInstanceValid(_richLabel)) return;
+        var avail = CalculateAvailableArea();
+        // Small safety margin for padding/layout differences
+        avail = new Vector2(Mathf.Max(1, avail.X - 2), Mathf.Max(1, avail.Y - 2));
+        if (avail.X <= 1.0f || avail.Y <= 1.0f) return;
+        var fnt = LabelFont ?? ThemeDB.FallbackFont;
+        if (fnt == null) return;
+        string plain = StripKnownBBCode(_richLabelText ?? string.Empty);
+        float wrap = (LabelAutowrap != TextServer.AutowrapMode.Off) ? avail.X : -1f;
+        int size = _richCurrentFontSize > 0 ? _richCurrentFontSize : MinFontSize;
+        int guard = 0;
+        // Ensure latest layout info
+        _richLabel.UpdateMinimumSize();
+        _richLabel.QueueRedraw();
+        while (size > MinFontSize && guard < 64)
+        {
+            bool overH = _richLabel.GetContentHeight() > avail.Y;
+            var wsize = MeasureParagraph(fnt, plain, wrap, size).X;
+            bool overW = wsize > avail.X;
+            if (!overH && !overW) break;
+            size--;
+            ApplyRichLabelFontOverrides(_richLabel, fnt, size);
+            _richLabel.UpdateMinimumSize();
+            _richLabel.QueueRedraw();
+            _richCurrentFontSize = size;
+            guard++;
+        }
+        // If still overflowing (layout not settled), retry next frame with a cap on passes
+        bool stillOver = _richLabel.GetContentHeight() > avail.Y || MeasureParagraph(fnt, plain, wrap, size).X > avail.X;
+        if (stillOver && _richVerifyPasses < 8)
+        {
+            _richVerifyPasses++;
+            CallDeferred(nameof(VerifyRichTextFit));
+        }
+    }
+
+    private void ApplyRichLabelFontSizeOnly(int fontSize)
+    {
+        if (_richLabel == null || !IsInstanceValid(_richLabel)) return;
+        foreach (var key in new[] { "normal_font_size", "bold_font_size", "italics_font_size", "bold_italics_font_size", "mono_font_size" })
+            _richLabel.AddThemeFontSizeOverride(key, fontSize);
+        _richLabel.UpdateMinimumSize();
+    }
     private Vector2 CalculateAvailableArea()
     {
-        return Size - new Vector2(8, 8);
+        var pad = TextFitPadding;
+        return new Vector2(Mathf.Max(1, Size.X - Mathf.Max(0, pad.X)), Mathf.Max(1, Size.Y - Mathf.Max(0, pad.Y)));
     }
     private Font? GetRobustFont(Label label)
     {
         return label.GetThemeFont("font") ?? ThemeDB.FallbackFont;
     }
-    private int FindBestFontSize(Font font, string text, Vector2 availableArea)
+    private int FindBestFontSize(Font font, string text, Vector2 availableArea, float wrapWidth = -1f)
     {
-        int bestSize = MinFontSize;
-        for (int size = MinFontSize; size <= MaxFontSize; size++)
+        int lo = MinFontSize;
+        int hi = MaxFontSize;
+        int best = lo;
+        while (lo <= hi)
         {
-            var textSize = font.GetStringSize(text, HorizontalAlignment.Left, -1, size);
+            int mid = (lo + hi) / 2;
+            var textSize = MeasureParagraph(font, text, wrapWidth, mid);
             if (textSize.X <= availableArea.X && textSize.Y <= availableArea.Y)
             {
-                bestSize = size;
+                best = mid;
+                lo = mid + 1; // try larger
             }
             else
             {
-                break;
+                hi = mid - 1; // too big
             }
         }
-        return bestSize;
+        return best;
+    }
+
+    private Vector2 MeasureParagraph(Font font, string text, float wrapWidth, int fontSize)
+    {
+        if (font == null) return Vector2.Zero;
+        var para = new TextParagraph();
+        para.Alignment = LabelHorizontalAlignment;
+        if (wrapWidth > 0) para.Width = wrapWidth; // 0 = no wrap
+        para.AddString(text ?? string.Empty, font, fontSize);
+        return para.GetSize();
+    }
+
+    // Remove only known BBCode tags; preserve bracketed literals like "[PressButton]"
+    private static readonly System.Text.RegularExpressions.Regex BbcodeTagRegex =
+        new(System.Text.RegularExpressions.Regex.Escape("[") + @"/?(b|i|u|s|code|url|color|center|left|right|p|br|wave|rainbow|tornado|pulse|shake|fade|font|img|table|cell|ol|ul|li|indent|quote)(=[^\]]+)?\]",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    private string StripKnownBBCode(string src)
+    {
+        if (string.IsNullOrEmpty(src)) return string.Empty;
+        return BbcodeTagRegex.Replace(src, m =>
+        {
+            var v = m.Value.ToLower();
+            // convert line/paragraph breaks to spaces for measurement
+            if (v.StartsWith("[br") || v == "[br]" || v.StartsWith("[p") || v == "[p]")
+                return " ";
+            return string.Empty;
+        });
     }
     #endregion
     #region Visual State & Theme
@@ -1609,7 +1920,10 @@ public partial class OmniButton : Control
             _richLabel.HorizontalAlignment = LabelHorizontalAlignment;
             _richLabel.AutowrapMode = LabelAutowrap;
             if (LabelFont != null)
-                _richLabel.AddThemeFontOverride("normal_font", LabelFont);
+            {
+                foreach (var key in new[] { "normal_font", "bold_font", "italics_font", "bold_italics_font", "mono_font" })
+                    _richLabel.AddThemeFontOverride(key, LabelFont);
+            }
             _richLabel.AddThemeColorOverride("default_color", _labelTextColor);
             ApplyInvert(_richLabel);
         }
@@ -1646,6 +1960,14 @@ public partial class OmniButton : Control
         label.AddThemeFontOverride("font", font);
         label.AddThemeFontSizeOverride("font_size", fontSize);
     }
+    private void ApplyRichLabelFontOverrides(RichTextLabel rtl, Font font, int fontSize)
+    {
+        if (rtl == null || !IsInstanceValid(rtl)) return;
+        foreach (var key in new[] { "normal_font", "bold_font", "italics_font", "bold_italics_font", "mono_font" })
+            rtl.AddThemeFontOverride(key, font);
+        foreach (var key in new[] { "normal_font_size", "bold_font_size", "italics_font_size", "bold_italics_font_size", "mono_font_size" })
+            rtl.AddThemeFontSizeOverride(key, fontSize);
+    }
     private void InvalidateVisualState()
     {
         _lastVisualState = null;
@@ -1660,6 +1982,8 @@ public partial class OmniButton : Control
         {
             if (_label != null && IsInstanceValid(_label))
                 _label.Theme = Theme;
+            if (_richLabel != null && IsInstanceValid(_richLabel))
+                _richLabel.Theme = Theme;
             if (_icon != null && IsInstanceValid(_icon))
                 _icon.Theme = Theme;
         }
@@ -1672,6 +1996,8 @@ public partial class OmniButton : Control
     {
         if (_label != null && IsInstanceValid(_label))
             _label.Theme = Theme;
+        if (_richLabel != null && IsInstanceValid(_richLabel))
+            _richLabel.Theme = Theme;
         if (_icon != null && IsInstanceValid(_icon))
             _icon.Theme = Theme;
     }
@@ -2195,7 +2521,10 @@ public partial class OmniButton : Control
     }
     public void StartVirtualJoystickAt(Vector2 globalPoint)
     {
-        if (!EnableVirtualJoystick) return;
+        // Allow programmatic start if either the explicit flag is on
+        // or this button is configured to use VirtualJoystick follow mode.
+        if (!EnableVirtualJoystick && FollowMode != FollowModeEnum.VirtualJoystick)
+            return;
         _vjActive = true;
         _vjHomeGlobal = GlobalPosition + Size / 2f;
         // Keep visuals consistent with a press
