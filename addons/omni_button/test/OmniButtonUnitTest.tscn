@@ -1,0 +1,34 @@
+[gd_scene load_steps=6 format=3 uid="uid://bdme6ksrgafle"]
+
+[ext_resource type="Script" uid="uid://uafxnaoh5tbm" path="res://addons/omni_button/test/OmniButtonUnitTest.cs" id="1"]
+[ext_resource type="Texture2D" uid="uid://rwqys46yqk5i" path="res://addons/omni_button/test/icons/Icon-Potion6.png" id="2_nu58u"]
+[ext_resource type="Texture2D" uid="uid://b14lr3jagn4ip" path="res://addons/omni_button/test/icons/Icon-Circle5.png" id="3_86jrg"]
+[ext_resource type="Theme" uid="uid://ckanb5o8kc3u" path="res://addons/omni_button/test/style/UI.tres" id="4_80py0"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_amq68"]
+bg_color = Color(0, 0, 0, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_blend = true
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[node name="OmniButtonUnitTest" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+IconSample = ExtResource("2_nu58u")
+BackgroundTextureSample = ExtResource("3_86jrg")
+BackgroundPanelStyleBoxSample = SubResource("StyleBoxFlat_amq68")
+SelectedColorSample = Color(1, 0.3882353, 0.32156864, 0.44705883)
+CooldownColorSample = Color(0.47843137, 0.6431373, 1, 0.5803922)
+HoldFillColorSample = Color(0, 0.89411765, 0, 0.47058824)
+OverrideTheme = ExtResource("4_80py0")
