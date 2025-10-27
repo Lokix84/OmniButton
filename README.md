@@ -152,6 +152,8 @@ Feature reference and examples
 - Label Settings
   - LabelFont, LabelTextColor, MinFontSize, MaxFontSize
   - LabelHorizontalAlignment, LabelVerticalAlignment, LabelAutowrap
+  - RichLabelText for formatted text; enable RichLabelUseBBCode to parse BBCode.
+    See BBCode reference: https://docs.godotengine.org/en/latest/tutorials/ui/bbcode_in_richtextlabel.html
   - Example: fit text within.
     ```csharp
     btn.LabelText = "Start";

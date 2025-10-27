@@ -1,262 +1,169 @@
-﻿# OmniButton (C#)
+# OmniButton (C#) — Full Reference
 
-Universal, highly configurable button control for Godot 4 (C#). OmniButton extends Control and provides:
+Universal, highly configurable Control for Godot 4 (.NET) that unifies press/release/toggle, hover scaling, invert‑on‑state, swipe, hold, cooldown fill, overlays, background panel/texture, and an optional virtual joystick. All features are editor‑friendly and driven by exported properties and signals.
 
-- Signals and callables for Press/Release/Toggle/Hover/Hold/Swipe and logging
-- Auto-managed children: Panel, Icon, Label, Selected/Toggled Overlay, Cooldown, Hold buildup
-- Visual helpers: invert on press/toggle/hover, hover scaling, auto-fit label
-- Input helpers: bounds source, hit slop, follow-on-press, follow-while-held
-- Built-in virtual joystick mode (plug-and-play)
+Minimum Godot: 4.x (.NET)
 
-Minimum Godot: 4.x (mono)
-
-## Quick start
-
-- Add an OmniButton to your scene (Add Node → OmniButton).
-- Optional visuals: EnablePanel, LabelText, IconTexture, EnableSelectedOverlay.
-- Optional behavior: EnablePressedActions, EnableReleasedActions, EnableToggleActions, EnableHoverActions, EnableHoldActions, EnableSwipeActions, EnableLogActions, etc.
-- Connect signals using strongly-typed names.
-
-Example
-
-```csharp
-public override void _Ready()
-{
-    var btn = GetNode<OmniButton>("%Play");
-
-    // Connect signals
-    btn.Connect(OmniButton.SignalName.Pressed,  Callable.From(OnPressed));
-    btn.Connect(OmniButton.SignalName.Released, Callable.From(OnReleased));
-    btn.Connect(OmniButton.SignalName.Toggled,  Callable.From<bool>(OnToggled));
-    btn.Connect(OmniButton.SignalName.HoverIn,  Callable.From(OnHoverIn));
-    btn.Connect(OmniButton.SignalName.HoverOut, Callable.From(OnHoverOut));
-    btn.Connect(OmniButton.SignalName.Swipe,    Callable.From<Vector2>(OnSwipe));
-
-    // Visuals
-    btn.LabelText = "Play";
-    btn.EnablePanel = true;                       // adds a Panel child (full rect)
-    btn.EnableSelectedOverlay = true;             // overlay when Selected or IsToggled
-    btn.Selected = true;                          // show overlay immediately
-
-    // Behavior toggles
-    btn.EnablePressedActions = true;
-    btn.EnableReleasedActions = true;
-    btn.EnableToggleActions = true;
-    btn.EnableHoverActions = true;
-    btn.EnableSwipeActions = true;
-    btn.EnableHoldActions = true;
-}
-```
+Contents
+- Signals
+- Exported Properties (by group)
+- Public API (functions)
+- Behavior Notes and Examples
+- Panel/Theme Styling
+- Troubleshooting
 
 ## Signals
+- `Pressed` — Emitted on press when enabled by `ActionMaskBits`.
+- `Released` — Emitted on release when enabled.
+- `Toggled(bool pressed)` — Emitted when InteractionMode toggles on/off.
+- `HoverIn`, `HoverOut` — Emitted on pointer enter/exit when enabled.
+- `Hold` — Emitted once after `HoldDuration` build‑up completes.
+- `Swipe(Vector2 direction)` — Emitted with a normalized direction during swipe.
+- `SwipeEnded()` — Emitted when a swipe session ends.
+- `JoystickStarted`, `JoystickAxis(Vector2 axis)`, `JoystickEnded` — Virtual joystick lifecycle and axes (−1..1).
+- `Log(string)`, `Warning(string)`, `Error(string)` — Optional logging signals.
 
-- Pressed, Released
-- Toggled(bool pressed)
-- HoverIn, HoverOut
-- Hold (after HoldDuration while pressed)
-- Swipe(Vector2 direction)
-- Log(string message), Warning(string message), Error(string message)
-- Virtual Joystick: JoystickStarted, JoystickAxis(Vector2 axis), JoystickEnded
+Tip: Use `OmniButton.SignalName.*` for robust, refactor‑safe signal names.
 
-Tip: Use OmniButton.SignalName.\* for robust names.
+## Exported Properties
 
-## Inspector overview
+### State
+- `Disabled` — Blocks input and visual reactions.
+- `Selected` — Marks selected; shows overlay when enabled.
+- `IsToggled` — Current toggle state.
+- `IsPressed`, `IsHovering`, `IsHolding` — Live state flags; primarily driven by input but may be set to force visuals.
 
-State
+### Presets
+- `PresetSelection` — Apply a preset (Basic, Toggle, Hold, Swipe, Draggable, VirtualJoystick). Any edits switch to Custom.
 
-- Disabled
-- Selected, IsToggled, IsPressed, IsHovering, IsHolding (runtime visual flags; prefer using actions/signals to drive logic)
+### Content Display
+- `Background` — `None | UsePanel | UseTexture`.
+- `IconTexture` — Optional icon texture.
+- `LabelText` — Plain `Label` text. Use this or Rich.
+- `RichLabelText` — `RichTextLabel` content; pair with `RichLabelUseBBCode`.
+- `RichLabelUseBBCode` — Interpret `RichLabelText` as BBCode.
+- `EnableSelectedOverlay` — Show overlay when `Selected` or `IsToggled`.
+- `SelectedColor` — Overlay color.
 
-Content Display
+### Background Settings
+- `PanelThemeType` — Theme class (default "Panel").
+- `PanelThemeVariation` — Theme type variation.
+- `PanelStyleBox` — Explicit style override for the panel (optional).
+- `BackgroundTexture` — Texture when `Background = UseTexture`.
+- `BackgroundExpandMode`, `BackgroundStretchMode` — TextureRect sizing.
+- `BackgroundFlipH`, `BackgroundFlipV` — Flip background texture.
 
-- EnablePanel: adds a Panel child (full-rect). Styled by theme or PanelStyleBox override.
-- IconTexture: shows a TextureRect child.
-- LabelText: shows a Label child.
-- EnableSelectedOverlay: shows an overlay ColorRect when Selected or IsToggled.
-- SelectedColor, UnselectedColor: overlay tint colors.
+### Icon Settings
+- `IconExpandMode`, `IconStretchMode` — Icon sizing modes.
+- `IconFlipH`, `IconFlipV` — Flip icon.
 
-Panel Settings
+### Label Settings
+- `LabelFont` — Font override for Label/RichTextLabel.
+- `LabelTextColor` — Label font color; RichTextLabel `default_color`.
+- `EnableTextAutoSize` — Autosize text to fit the available area.
+- `FixedFontSize` — If > 0, force this size and bypass autosize.
+- `MinFontSize`, `MaxFontSize` — Autosize bounds.
+- `TextFitPadding` — Symmetric margin reserved by autosize (reduces available area before measuring).
+- `LabelHorizontalAlignment`, `LabelVerticalAlignment`, `LabelAutowrap` — Layout and wrap.
+- `LabelPadding` — Universal padding for text (X adds to left+right, Y adds to top+bottom).
+- `LabelAdditionalPaddingLeft`, `LabelAdditionalPaddingTop`, `LabelAdditionalPaddingRight`, `LabelAdditionalPaddingBottom` — Additional per‑side padding added cumulatively on top of `LabelPadding`.
+- RichText BBCode reference — https://docs.godotengine.org/en/latest/tutorials/ui/bbcode_in_richtextlabel.html
 
-- PanelThemeVariation: Theme type-variation used by the child Panel (e.g., “primary”).
-- PanelStyleBox: optional hard override of the Panel’s “panel” stylebox.
-- PanelThemeType: exported for completeness; Godot uses the Panel class for lookups.
+Effect: Increasing any padding reduces the measured area for autosize (smaller font) and insets the rendered text away from the edges.
 
-Icon Settings
+### Invert Display
+- `InvertModes` — Flags: `Press | Toggle | Hover | Hold`. Applies a simple invert shader to children (icon/label/overlay) while active.
 
-- IconExpandMode, IconStretchMode, IconFlipH, IconFlipV.
+### Hover Scaling
+- `EnableHoverScale` — Enable hover zoom.
+- `HoverScale` — Target scale (e.g., 1.15).
+- `HoverLerpSpeed` — Interpolation speed.
 
-Label Settings
+### Actions
+- `ActionMaskBits` — Flags that determine which actions emit:
+  `Pressed, Released, Hover, Toggle, Hold, Swipe, Log, Warning, Error`.
+- `ActionMask` — Typed enum wrapper for `ActionMaskBits`.
+- Optional callables invoked when assigned: `PressedAction`, `ReleasedAction`, `HoverInAction`, `HoverOutAction`, `ToggledAction`, `HoldAction`, `SwipeAction`, `LogAction`, `WarningAction`, `ErrorAction`.
+- `InteractionMode` — `Momentary | ToggleOnPress | ToggleOnRelease`.
 
-- LabelFont (optional), LabelTextColor
-- MinFontSize, MaxFontSize (auto-fit limits)
-- LabelHorizontalAlignment, LabelVerticalAlignment, LabelAutowrap
+### Input
+- `BoundsSource` — Optional `Control` whose rect clamps hit/follow/joystick; falls back to parent or viewport.
+- `HitSlop` — Extra pixels around the hit rect.
 
-Invert Display
+### Follow Input
+- `FollowMode` — `None | FollowBoth | VirtualJoystick`.
+  - None — Stationary; only state/visuals change.
+  - FollowBoth — Follows pointer while pressed (within clamp rect).
+  - VirtualJoystick — Engage joystick behavior (see below).
 
-- InvertDisplayOnPress, InvertDisplayOnToggle, InvertDisplayOnHover
-  Note: Panel isn’t tinted; overlay/icon/label get visual effects so theme styles remain intact.
+### Virtual Joystick
+- `EnableVirtualJoystick` — Enables joystick behavior regardless of `FollowMode`.
+- `ClampShape` — `Circle | Rectangle`.
+- `JoystickRadiusPx` — Circle radius (0 = auto from clamp area).
+- `JoystickRectSizePx` — Rectangle size (Zero = auto from clamp area).
+- `JoystickDeadzone` — Axes below this magnitude read as zero.
+- `JoystickSnapToInput` — Move button center to input while active.
+- `JoystickHideWhenInactive` — Hide Control when not in a joystick session.
+- `JoystickResetOnRelease` — Return to original position when released.
+- Joystick Area ring (when present): `EnableJoystickArea`, `JoystickAreaPersistent`, `JoystickAreaUseRectForClamp`, `JoystickAreaClampInsetPx`, `JoystickAreaRadiusPx`, `JoystickAreaThicknessPx`, `JoystickAreaColor`.
 
-Input
+### Cooldown
+- `EnableCooldown` — Blocks input between triggers.
+- `CooldownTrigger` — `OnPress | OnRelease | OnPressAndRelease`.
+- `CooldownDuration` — Seconds.
+- `CooldownStartFilled` — Starts filled then empties (or vice‑versa).
+- `CooldownColor` — Fill color.
+- `CooldownFillDirection` — Direction of fill.
+- `SuspendHoverScaleDuringCooldown` — Optionally suspend hover scale during cooldown.
+- `AllowHoldDuringCooldown` — Optionally allow hold during cooldown.
+- `HideCooldownDuringHoldBuildUp` — Hide cooldown while hold fill overlay is visible.
 
-- BoundsSource: Control whose rect constrains movement and hit tests; falls back to parent or viewport.
-- HitSlop: grows hit bounds for touch comfort.
+### Theme Variations
+- `VariantNormal`, `VariantPressed`, `VariantHover`, `VariantToggled`, `VariantSelected`, `VariantDisabled` — Theme type variations used if present in your Theme.
 
-Swipe & Hold
+## Public API (Functions)
+- `StartCooldown()` — Begins cooldown (if `EnableCooldown`), updates the cooldown fill and enables processing.
+- `IsSwiping` (property) — True while a swipe session is active.
+- `StartVirtualJoystickAt(Vector2 globalPoint)` — Begin a joystick session at a screen point. Emits `JoystickStarted` and the first `JoystickAxis`.
+- `UpdateVirtualJoystick(Vector2 globalPoint)` — Update an active joystick session; emits `JoystickAxis`.
+- `StopVirtualJoystick()` — End joystick session; emits zero axis and `JoystickEnded`. Optionally resets position and hides when configured.
+- Logging helpers — `PrintLog(string)`, `DefaultLog(string)`, `PrintWarn(string)`; convenience wrappers that also emit logging signals.
 
-- SwipeThreshold (pixels)
-- HoldDuration (sec), EnableHoldBuildUp, HoldFillColor, HoldFillDirection (Top/Bottom/Left/Right)
+Lifecycle (overrides; normally not called directly)
+- `_EnterTree()` — Initialize internal state, connect handlers.
+- `_ExitTree()` — Cleanup and clear references to transient children.
+- `_Ready()` — Build children and apply visuals; editor‑safe.
+- `_Process(double delta)` — Drives hover scaling and hold build‑up visuals.
+- `_UnhandledInput(InputEvent)` — Ensures releases/swipe/joystick finalize even if cursor leaves the control.
+- `_GuiInput(InputEvent)` — Central router for press/release/drag/hover/swipe/joystick.
+- `_Notification(int what)` — React to resize/theme/visibility/editor hints and refresh visuals.
 
-Follow Input
+## Behavior Notes and Examples
+- Toggle
+  - `InteractionMode = ToggleOnPress; ActionMaskBits |= (int)OmniButton.ActionMaskFlags.Toggled;`
+- Hover Scale
+  - Enable even if you don’t need hover signals for a subtle zoom: `EnableHoverScale = true; HoverScale = 1.15f;`
+- Corner count label
+  - Bottom‑right alignment plus padding:
+    - `LabelHorizontalAlignment = Right; LabelVerticalAlignment = Bottom;`
+    - `LabelPadding = new Vector2(0,0);`
+    - `LabelAdditionalPaddingRight = 6; LabelAdditionalPaddingBottom = 6;`
+- Swipe (mouse hover‑init)
+  - `MouseSwipeInit = OnHoverIn; MouseSwipeExit = OnHoverOut; SwipeThreshold = 20f;`
+- Cooldown on release
+  - `EnableCooldown = true; CooldownTrigger = OnRelease; CooldownDuration = 1.5f;`
+- Virtual joystick
+  - `FollowMode = VirtualJoystick; ClampShape = Circle; JoystickDeadzone = 0.15f;`
+  - Use `BoundsSource` to define the clamp region.
 
-- FollowOnPress: jump under pointer on press.
-- FollowWhileHeld: follow pointer while held.
-- ClampToBounds: keep within BoundsSource/parent/viewport.
-
-Cooldown
-
-- EnableCooldown, CooldownDuration
-- CooldownOnPress, CooldownOnRelease
-- CooldownStartFilled, CooldownColor, CooldownFillDirection
-- SuspendHoverScaleDuringCooldown
-- AllowHoldDuringCooldown
-- HideCooldownDuringHoldBuildUp
-
-Theme Variations
-
-- ThemeTypeName, VariantNormal/Pressed/Hover/Toggled/Selected/Disabled
-  Note: These are available for theme binding; Panel styling is handled via PanelThemeVariation or PanelStyleBox.
-
-## Display details
-
-- Panel: full-rect Panel (Theme-driven; not tinted). Set PanelStyleBox to override.
-- Label: auto-fit between MinFontSize..MaxFontSize into the control’s padded area.
-- Overlay: ColorRect for selected/toggled tint. Use SelectedColor/UnselectedColor.
-- Cooldown: ColorRect fill, direction and color configurable.
-- Hold buildup: ColorRect grow fill during hold buildup.
-
-## Behavior examples
-
-Toggle
-
-```csharp
-btn.EnableToggleActions = true;
-btn.Connect(OmniButton.SignalName.Toggled, Callable.From<bool>(on => GD.Print($"Toggled: {on}")));
-```
-
-Hold (with buildup)
-
-```csharp
-btn.EnableHoldActions = true;
-btn.EnableHoldBuildUp = true;
-btn.HoldDuration = 1.0f;
-btn.Connect(OmniButton.SignalName.Hold, Callable.From(() => GD.Print("Hold!")));
-```
-
-Swipe
-
-```csharp
-btn.EnableSwipeActions = true;
-btn.SwipeThreshold = 32f;
-btn.Connect(OmniButton.SignalName.Swipe, Callable.From<Vector2>(dir => GD.Print($"Swipe {dir}")));
-```
-
-Cooldown
-
-```csharp
-btn.EnableCooldown = true;
-btn.CooldownOnPress = true;     // or CooldownOnRelease
-btn.CooldownDuration = 2.0f;
-btn.CooldownFillDirection = OmniButton.CooldownDirection.LeftToRight;
-```
-
-Follow input
-
-```csharp
-btn.BoundsSource = GetNode<Control>("%TouchArea");
-btn.FollowOnPress = true;
-btn.FollowWhileHeld = true;
-btn.ClampToBounds = true; // default
-```
-
-## Virtual Joystick (built-in)
-
-Two ways to use:
-
-A) Zero-code, automatic mode
-
-- Set on the OmniButton:
-
-  - EnableVirtualJoystick = true
-  - BoundsSource = the Control that defines the joystick area (or leave null to use parent/viewport)
-  - JoystickDeadzone = 0.1 (adjust)
-  - Shape: circle or rectangle
-    - Circle: `JoystickUseCircularClamp = true` (default)
-      - `JoystickRadiusPx = 0` (auto) or a pixel radius
-    - Rectangle: `JoystickUseCircularClamp = false`
-      - `JoystickRectSizePx = Vector2.Zero` (auto) or a pixel size
-  - Snapping: `JoystickSnapToInput = true` to dynamically move under input; `false` keeps it fixed
-  - Visibility: `JoystickHideWhenInactive = true` hides until active; shows on press and hides on release
-  - JoystickResetOnRelease = true
-
-- Connect these signals:
-
-```csharp
-btn.Connect(OmniButton.SignalName.JoystickStarted, Callable.From(() => GD.Print("Joystick start")));
-btn.Connect(OmniButton.SignalName.JoystickAxis,    Callable.From<Vector2>(axis => MoveCharacter(axis)));
-btn.Connect(OmniButton.SignalName.JoystickEnded,   Callable.From(() => GD.Print("Joystick end")));
-```
-
-Behavior:
-
-- On press inside the button, it jumps under the pointer and follows while held.
-- Axis is normalized to -1..1 (circle uses radius; rectangle uses per-axis extents), with deadzone. Clamped to BoundsSource/parent/viewport.
-- On release, it emits JoystickAxis(Vector2.Zero), JoystickEnded, and snaps back if JoystickResetOnRelease is true.
-
-B) Programmatic control (for composite gamepads)
-Use the public API if you need to spawn or centralize logic:
-
-```csharp
-// Center OmniButton in your gamepad container
-center.EnableVirtualJoystick = true;
-center.BoundsSource = GetNode<Control>("%Gamepad");
-
-// When user taps your Move area:
-center.StartVirtualJoystickAt(GetViewport().GetMousePosition());
-
-// Each drag/motion:
-center.UpdateVirtualJoystick(globalPointer);
-
-// On release:
-center.StopVirtualJoystick();
-```
-
-Notes:
-
-- OmniButton internally sets MouseFilter during joystick sessions so hover on other controls can still work.
-- Axis is computed from the “home” center (at press time) to the clamped pointer position.
-- Use BoundsSource to constrain movement inside a specific container (e.g., your gamepad background).
-
-## Panel styling with Theme
-
-- Assign a Theme to your OmniButton (Inspector → Theme).
-- In your Theme resource, define class Panel → Styles → panel, and optional Variations (e.g., “primary”).
-- On the OmniButton, set:
-  - EnablePanel = true
-  - PanelThemeVariation = "primary" (or leave empty for default)
-  - PanelStyleBox empty to use the Theme (set it only to hard-override)
-
-Tip: Overlay color can obscure borders; lower SelectedColor alpha if needed.
-
-## Tips
-
-- EnableHoverScale for a lightweight visual zoom even if you don’t need HoverIn/Out signals.
-- HitSlop adds padding to improve touchability.
-- Use BoundsSource whenever you want constrained movement, including FollowOnPress/FollowWhileHeld and Virtual Joystick.
-- Avoid manually tinting the Panel; use Overlay or invert effects on icon/label/overlay.
+## Panel/Theme Styling
+- Assign a Theme to OmniButton. The panel (when `Background = UsePanel`) resolves style from Theme class `Panel` with optional `ThemeTypeVariation`.
+- Clear `PanelStyleBox` to let Theme drive the look; set it only when you need a hard override.
+- Prefer using the overlay for selection color instead of tinting the panel.
 
 ## Troubleshooting
+- No signals — Ensure `ActionMaskBits` includes them and `Disabled` is false.
+- Text hugging edges — Increase `LabelPadding` and/or additional per‑side padding; autosize respects the cumulative padding.
+- Editor visuals stale — Toggling a property forces a redraw; the control queues redraws on relevant inspector changes.
+- Disposed object errors — The control validates child nodes before access and clears references during cleanup.
 
-- Scene parse errors at line 1: ensure .tscn is saved as UTF-8 (no BOM) and first char is “[”.
-- “Signal not found”: connect with OmniButton.SignalName.\* (not the delegate type).
-- Panel style “looks wrong”: Panel isn’t tinted; Theme must provide Panel → Styles → panel or set PanelStyleBox.
-- ObjectDisposedException on save/reload: update to the latest OmniButton (managed children are not serialized; references are cleared when freed).

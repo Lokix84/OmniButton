@@ -273,7 +273,7 @@ public partial class OmniButton : Control
     /// </summary>
     [Export(PropertyHint.Range, "6,300,1")]
     public int MinFontSize { get => _minFontSize; set { _minFontSize = value; FitLabelText(); } }
-    private int _minFontSize = 12;
+    private int _minFontSize = 6;
     /// <summary>
     /// Maximum font size used by autosize
     /// </summary>
@@ -299,10 +299,25 @@ public partial class OmniButton : Control
     [Export] public VerticalAlignment LabelVerticalAlignment { get => _labelVAlign; set { _labelVAlign = value; RefreshEditorVisual(); } }
     private VerticalAlignment _labelVAlign = VerticalAlignment.Center;
     /// <summary>
+    /// Universal text padding (pixels). X applies to left and right, Y to top and bottom.
+    /// This is a base inset applied to both Label and RichTextLabel.
+    /// </summary>
+    [Export] public Vector2 LabelPadding { get => _labelPadding; set { _labelPadding = value; RefreshEditorVisual(); } }
+    private Vector2 _labelPadding = Vector2.Zero;
+    /// <summary>
+    /// Additional per-side text padding (pixels). These values are added on top of the universal LabelPadding.
+    /// Use to nudge a specific side (e.g., only bottom/right for corner-aligned counts).
+    /// </summary>
+    [Export(PropertyHint.Range, "0,4096,1")] public float LabelAdditionalPaddingLeft { get => _labelPadLeft; set { _labelPadLeft = value; RefreshEditorVisual(); } }
+    [Export(PropertyHint.Range, "0,4096,1")] public float LabelAdditionalPaddingTop { get => _labelPadTop; set { _labelPadTop = value; RefreshEditorVisual(); } }
+    [Export(PropertyHint.Range, "0,4096,1")] public float LabelAdditionalPaddingRight { get => _labelPadRight; set { _labelPadRight = value; RefreshEditorVisual(); } }
+    [Export(PropertyHint.Range, "0,4096,1")] public float LabelAdditionalPaddingBottom { get => _labelPadBottom; set { _labelPadBottom = value; RefreshEditorVisual(); } }
+    private float _labelPadLeft = 0f, _labelPadTop = 0f, _labelPadRight = 0f, _labelPadBottom = 0f;
+    /// <summary>
     /// Autowrap mode for Label/RichText; affects autosize
     /// </summary>
     [Export] public TextServer.AutowrapMode LabelAutowrap { get => _labelAutowrap; set { _labelAutowrap = value; RefreshEditorVisual(); } }
-    private TextServer.AutowrapMode _labelAutowrap = TextServer.AutowrapMode.Word;
+    private TextServer.AutowrapMode _labelAutowrap = TextServer.AutowrapMode.Off;
     #endregion
     #region Invert Display(Exported Properties)
     /// <summary>
@@ -1201,12 +1216,17 @@ public partial class OmniButton : Control
     {
         DisconnectAllSignalHandlers();
         _label = null;
+        _richLabel = null;
         _icon = null;
         _overlay = null;
         _cooldown = null;
         _holdFill = null;
+        if (_panel != null && IsInstanceValid(_panel)) { RemoveChild(_panel); _panel.QueueFree(); }
+        _panel = null;
         if (_defaultThumb != null && IsInstanceValid(_defaultThumb)) { RemoveChild(_defaultThumb); _defaultThumb.QueueFree(); }
         _defaultThumb = null;
+        if (_vjAreaPanel != null && IsInstanceValid(_vjAreaPanel)) { RemoveChild(_vjAreaPanel); _vjAreaPanel.QueueFree(); }
+        _vjAreaPanel = null;
     }
     #endregion
     #region Processing
@@ -1495,10 +1515,13 @@ public partial class OmniButton : Control
         _panel = null;
         _icon = null;
         _label = null;
+        _richLabel = null;
         _overlay = null;
         _cooldown = null;
         _holdFill = null;
         _background = null;
+        _defaultThumb = null;
+        _vjAreaPanel = null;
         // 0 - Panel (background)
         if (Background == BackgroundMode.UsePanel)
         {
@@ -1549,6 +1572,7 @@ public partial class OmniButton : Control
             _richLabel.MouseFilter = MouseFilterEnum.Pass;
             AddChild(_richLabel);
             _richLabel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+            ApplyLabelPaddingOffsets(_richLabel);
         }
         else if (!string.IsNullOrEmpty(_labelText))
         {
@@ -1632,15 +1656,16 @@ public partial class OmniButton : Control
     private void ReorderChildren()
     {
         int idx = 0;
-        if (_panel != null) MoveChild(_panel, idx++);
-        else if (_background != null) MoveChild(_background, idx++);
-        if (_icon != null) MoveChild(_icon, idx++);
-        else if (_defaultThumb != null) MoveChild(_defaultThumb, idx++);
-        if (_label != null) MoveChild(_label, idx++);
-        else if (_richLabel != null) MoveChild(_richLabel, idx++);
-        if (_overlay != null) MoveChild(_overlay, idx++);
-        if (_cooldown != null) MoveChild(_cooldown, idx++);
-        if (_holdFill != null) MoveChild(_holdFill, idx++);
+        bool Alive(Control n) => n != null && IsInstanceValid(n) && n.GetParent() == this;
+        if (Alive(_panel)) MoveChild(_panel, idx++);
+        else if (Alive(_background)) MoveChild(_background, idx++);
+        if (Alive(_icon)) MoveChild(_icon, idx++);
+        else if (Alive(_defaultThumb)) MoveChild(_defaultThumb, idx++);
+        if (Alive(_label)) MoveChild(_label, idx++);
+        else if (Alive(_richLabel)) MoveChild(_richLabel, idx++);
+        if (Alive(_overlay)) MoveChild(_overlay, idx++);
+        if (Alive(_cooldown)) MoveChild(_cooldown, idx++);
+        if (Alive(_holdFill)) MoveChild(_holdFill, idx++);
     }
     #endregion
     #region Label Font Sizing
@@ -1651,6 +1676,7 @@ public partial class OmniButton : Control
         _label.VerticalAlignment = LabelVerticalAlignment;
         _label.AutowrapMode = LabelAutowrap;
         _label.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        ApplyLabelPaddingOffsets(_label);
         if (LabelFont != null)
             _label.AddThemeFontOverride("font", LabelFont);
     }
@@ -1733,7 +1759,7 @@ public partial class OmniButton : Control
             }
             var fnt = LabelFont ?? ThemeDB.FallbackFont;
             if (fnt == null) return;
-                string plain = StripKnownBBCode(_richLabelText);
+            string plain = StripKnownBBCode(_richLabelText);
             float wrap = (LabelAutowrap != TextServer.AutowrapMode.Off) ? avail.X : -1f;
             int best = FindBestFontSize(fnt, plain, avail, wrap);
             ApplyRichLabelFontOverrides(_richLabel, fnt, best);
@@ -1808,7 +1834,10 @@ public partial class OmniButton : Control
     private Vector2 CalculateAvailableArea()
     {
         var pad = TextFitPadding;
-        return new Vector2(Mathf.Max(1, Size.X - Mathf.Max(0, pad.X)), Mathf.Max(1, Size.Y - Mathf.Max(0, pad.Y)));
+        GetEffectiveLabelPadding(out float l, out float t, out float r, out float b);
+        float horiz = Mathf.Max(0, pad.X) + Mathf.Max(0, l) + Mathf.Max(0, r);
+        float vert = Mathf.Max(0, pad.Y) + Mathf.Max(0, t) + Mathf.Max(0, b);
+        return new Vector2(Mathf.Max(1, Size.X - horiz), Mathf.Max(1, Size.Y - vert));
     }
     private Font? GetRobustFont(Label label)
     {
@@ -1881,7 +1910,7 @@ public partial class OmniButton : Control
             _overlay = CreateChildNodeAtPosition<ColorRect>("Overlay", GetChildCount());
         }
         // Panel
-        if (Background == BackgroundMode.UsePanel && _panel != null)
+        if (Background == BackgroundMode.UsePanel && _panel != null && IsInstanceValid(_panel))
         {
             _panel.Visible = true;
             _panel.Modulate = Colors.White;
@@ -1890,7 +1919,7 @@ public partial class OmniButton : Control
             ApplyInvert(_panel);
         }
         // Icon
-        if (_icon != null)
+        if (_icon != null && IsInstanceValid(_icon))
         {
             _icon.Texture = IconTexture;
             _icon.FlipH = IconFlipH;
@@ -1901,7 +1930,7 @@ public partial class OmniButton : Control
             ApplyInvert(_icon);
         }
         // Label
-        if (_label != null)
+        if (_label != null && IsInstanceValid(_label))
         {
             _label.Text = LabelText;
             _label.HorizontalAlignment = LabelHorizontalAlignment;
@@ -1910,10 +1939,11 @@ public partial class OmniButton : Control
             if (LabelFont != null)
                 _label.AddThemeFontOverride("font", LabelFont);
             _label.AddThemeColorOverride("font_color", _labelTextColor);
+            ApplyLabelPaddingOffsets(_label);
             ApplyInvert(_label);
         }
         // Rich Label
-        if (_richLabel != null)
+        if (_richLabel != null && IsInstanceValid(_richLabel))
         {
             _richLabel.BbcodeEnabled = RichLabelUseBBCode;
             _richLabel.Text = _richLabelText;
@@ -1925,6 +1955,7 @@ public partial class OmniButton : Control
                     _richLabel.AddThemeFontOverride(key, LabelFont);
             }
             _richLabel.AddThemeColorOverride("default_color", _labelTextColor);
+            ApplyLabelPaddingOffsets(_richLabel);
             ApplyInvert(_richLabel);
         }
         // Overlay
@@ -1939,6 +1970,9 @@ public partial class OmniButton : Control
             _cooldown.Color = CooldownColor;
         if (_holdFill != null && IsInstanceValid(_holdFill))
             _holdFill.Color = HoldFillColor;
+
+        // Maintain correct draw order after any add/remove during state application
+        ReorderChildren();
     }
     private void ApplyInvert(Control node)
     {
@@ -2077,6 +2111,35 @@ public partial class OmniButton : Control
             flat.BgColor = DefaultThumbColor;
             flat.CornerRadiusTopLeft = flat.CornerRadiusTopRight = flat.CornerRadiusBottomLeft = flat.CornerRadiusBottomRight = r;
         }
+    }
+
+    private void ApplyLabelPaddingOffsets(Control node)
+    {
+        if (node == null || !IsInstanceValid(node)) return;
+        GetEffectiveLabelPadding(out float l, out float t, out float r, out float b);
+        node.AnchorLeft = 0f; node.AnchorTop = 0f; node.AnchorRight = 1f; node.AnchorBottom = 1f;
+        node.OffsetLeft = Mathf.Max(0, l);
+        node.OffsetTop = Mathf.Max(0, t);
+        node.OffsetRight = -Mathf.Max(0, r);
+        node.OffsetBottom = -Mathf.Max(0, b);
+        if (Engine.IsEditorHint())
+        {
+            node.UpdateMinimumSize();
+            node.QueueRedraw();
+            QueueRedraw();
+        }
+    }
+
+    private void GetEffectiveLabelPadding(out float left, out float top, out float right, out float bottom)
+    {
+        // Universal base padding (symmetric)
+        float lr = _labelPadding.X;
+        float tb = _labelPadding.Y;
+        // Add per-side additional padding
+        left = lr + _labelPadLeft;
+        right = lr + _labelPadRight;
+        top = tb + _labelPadTop;
+        bottom = tb + _labelPadBottom;
     }
 
     /// <summary>
