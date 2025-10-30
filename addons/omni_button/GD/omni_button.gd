@@ -26,6 +26,7 @@ enum FollowModeEnum {None = 0, FollowBoth = 3, VirtualJoystick = 4}
 enum JoystickClampShape {Circle = 0, Rectangle = 1}
 enum SwipeInitMode {OnHoverIn = 0, OnPressed = 1}
 enum SwipeExitMode {OnHoverOut = 0, OnReleased = 1}
+enum CooldownTriggerEnum {None = 0, OnPress = 1, OnRelease = 2, OnPressAndRelease = 3}
 
 # InvertModes and ActionMask bit flags
 const INVERT_PRESS := 1
@@ -170,11 +171,19 @@ var _enable_selected_overlay := false
 @export_subgroup("Label Settings")
 @export var LabelFont: Font
 @export var LabelTextColor: Color = Color.WHITE
-@export_range(6, 300, 1) var MinFontSize: int = 12
+@export var EnableTextAutoSize: bool = true
+@export var TextFitPadding: Vector2 = Vector2(12, 4)
+@export_range(6, 300, 1) var MinFontSize: int = 6
 @export_range(6, 300, 1) var MaxFontSize: int = 100
+@export_range(0, 300, 1) var FixedFontSize: int = 0
 @export var LabelHorizontalAlignment: HorizontalAlignment = HORIZONTAL_ALIGNMENT_CENTER
 @export var LabelVerticalAlignment: VerticalAlignment = VERTICAL_ALIGNMENT_CENTER
-@export var LabelAutowrap: TextServer.AutowrapMode = TextServer.AUTOWRAP_WORD
+@export var LabelAutowrap: TextServer.AutowrapMode = TextServer.AUTOWRAP_OFF
+@export var LabelPadding: Vector2 = Vector2.ZERO
+@export_range(0, 4096, 1) var LabelAdditionalPaddingLeft: float = 0.0
+@export_range(0, 4096, 1) var LabelAdditionalPaddingTop: float = 0.0
+@export_range(0, 4096, 1) var LabelAdditionalPaddingRight: float = 0.0
+@export_range(0, 4096, 1) var LabelAdditionalPaddingBottom: float = 0.0
 
 # Invert Display
 @export_subgroup("Invert Display")
@@ -257,8 +266,7 @@ enum InteractionModeEnum {Momentary = 0, ToggleOnPress = 1, ToggleOnRelease = 2}
 @export_group("Cooldown")
 @export var EnableCooldown: bool = false
 @export_range(0.05, 60.0, 0.05) var CooldownDuration: float = 1.0
-@export var CooldownOnPress: bool = false
-@export var CooldownOnRelease: bool = false
+@export var CooldownTrigger: CooldownTriggerEnum = CooldownTriggerEnum.None
 @export var CooldownStartFilled: bool = false
 @export var CooldownColor: Color = Color(0, 0, 0, 0.4)
 @export var CooldownFillDirection: int = CooldownDirection.BottomToTop
@@ -282,10 +290,14 @@ var _hold_timer := 0.0
 var _cooldown_active := false
 var _cooldown_time_left := 0.0
 var _swipe_start := Vector2.ZERO
+var _swipe_origin := Vector2.ZERO
+var _is_swiping := false
+var _touch_swipe_eligible := false
 var _hover_top_level_active := false
 var _saved_global_pos := Vector2.ZERO
 var _vj_active := false
 var _vj_home_global := Vector2.ZERO
+var _vj_saved_mouse_filter := MOUSE_FILTER_STOP
 var _panel: Panel
 var _background_tex: TextureRect
 var _icon: TextureRect
@@ -295,6 +307,8 @@ var _overlay: ColorRect
 var _cooldown: ColorRect
 var _hold_fill: ColorRect
 var _invert_material: ShaderMaterial
+var _default_thumb: Panel
+var _vj_area_panel: Panel
 var _fitting_label := false
 var _last_visual_state: String
 var _theme_applying := false
@@ -391,19 +405,28 @@ func _process(delta: float) -> void:
 			if is_instance_valid(_cooldown): _cooldown.visible = false
 			if is_instance_valid(_cooldown): _cooldown.size = Vector2.ZERO; _cooldown.position = Vector2.ZERO
 
+	# Keep exported state properties in sync (editor friendliness)
+	Selected = _selected
+	IsToggled = _is_toggled
+	IsPressed = _is_pressed
+	IsHovering = _is_hovering
+	IsHolding = _is_holding
+
 func _notification(what: int) -> void:
 	match what:
 		NOTIFICATION_RESIZED:
 			_fit_label_text()
 			if Background == BackgroundMode.UsePanel: queue_redraw()
+			if _default_thumb != null and is_instance_valid(_default_thumb): _update_default_thumb_visual()
 			if _is_hovering and EnableHoverScale:
 				_update_hover_pivots(); _hover_target_scale = _hover_target_for_viewport(); set_process(true)
 		NOTIFICATION_THEME_CHANGED:
 			if theme != null: _apply_theme_to_children()
 			_last_visual_state = ""; _apply_theme_now(); _apply_panel_styling(); _fit_label_text()
+			if _default_thumb != null and is_instance_valid(_default_thumb): _update_default_thumb_visual()
 			if _is_hovering and EnableHoverScale: _hover_target_scale = _hover_target_for_viewport(); set_process(true)
 		NOTIFICATION_VISIBILITY_CHANGED:
-			if not is_visible_in_tree(): _is_pressed = false; _is_hovering = false; _invalidate_visual_state()
+			if not is_visible_in_tree(): _is_pressed = false; _is_hovering = false; _is_holding = false; _is_swiping = false; _invalidate_visual_state()
 		NOTIFICATION_PREDELETE:
 			_exit_tree()
 
@@ -414,6 +437,22 @@ func _gui_input(event: InputEvent) -> void:
 	var inside := _input_inside(event)
 	if EnableCooldown and _cooldown_active: return
 
+	# Screen touch swipe eligibility tracking
+	if event is InputEventScreenTouch:
+		var st := event as InputEventScreenTouch
+		if st.pressed:
+			_touch_swipe_eligible = _input_inside(st)
+			if TouchSwipeInit == SwipeInitMode.OnPressed and _touch_swipe_eligible:
+				_swipe_origin = st.position
+				_is_swiping = false
+				_swipe_start = Vector2.ZERO
+		else:
+			if TouchSwipeExit == SwipeExitMode.OnReleased:
+				_is_swiping = false
+				emit_signal("swipe_ended")
+			_swipe_start = Vector2.ZERO
+			_touch_swipe_eligible = false
+
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		var mb := event as InputEventMouseButton
 		if mb.pressed:
@@ -421,6 +460,8 @@ func _gui_input(event: InputEvent) -> void:
 			_is_pressed = true
 			_hold_timer = 0.0
 			_is_holding = false
+			_is_swiping = false
+			_swipe_origin = mb.position
 
 			if EnableVirtualJoystick or FollowMode == FollowModeEnum.VirtualJoystick:
 				_vj_active = true
@@ -430,6 +471,9 @@ func _gui_input(event: InputEvent) -> void:
 				if JoystickHideWhenInactive: visible = true
 				emit_signal("joystick_started")
 				_emit_joystick_axis_for(mb.global_position)
+				if EnableJoystickArea:
+					_ensure_and_refresh_joystick_area(_vj_home_global)
+					_set_joystick_area_visible(true)
 			elif FollowMode == FollowModeEnum.FollowBoth:
 				_enable_top_level(true)
 				_move_to_global(mb.global_position)
@@ -439,12 +483,13 @@ func _gui_input(event: InputEvent) -> void:
 			if _action_enabled(ACT_PRESSED):
 				emit_signal("pressed")
 				if PressedAction.is_valid(): PressedAction.call()
-			if InteractionMode == InteractionModeEnum.ToggleOnPress:
+			# Toggle on press for explicit ToggleOnPress, or momentary+Toggle action
+			if InteractionMode == InteractionModeEnum.ToggleOnPress or (InteractionMode == InteractionModeEnum.Momentary and _action_enabled(ACT_TOGGLE)):
 				_is_toggled = not _is_toggled
 				_update_overlay()
 				emit_signal("toggled", _is_toggled)
 				if ToggledAction.is_valid(): ToggledAction.call(_is_toggled)
-			if EnableCooldown and CooldownOnPress:
+			if EnableCooldown and (CooldownTrigger == CooldownTriggerEnum.OnPress or CooldownTrigger == CooldownTriggerEnum.OnPressAndRelease):
 				call_deferred("_start_cooldown")
 			if EnableHoldBuildUp and not _is_holding:
 				_hold_timer = 0.0
@@ -455,11 +500,13 @@ func _gui_input(event: InputEvent) -> void:
 			_apply_visual_state()
 		else:
 			_is_pressed = false
+			_is_holding = false
+			_is_swiping = false
 			_swipe_start = Vector2.ZERO
 			if _action_enabled(ACT_RELEASED) and inside:
 				emit_signal("released")
 				if ReleasedAction.is_valid(): ReleasedAction.call()
-			if EnableCooldown and CooldownOnRelease:
+			if EnableCooldown and (CooldownTrigger == CooldownTriggerEnum.OnRelease or CooldownTrigger == CooldownTriggerEnum.OnPressAndRelease):
 				_start_cooldown()
 			if is_instance_valid(_hold_fill): _remove_hold_fill()
 
@@ -471,8 +518,11 @@ func _gui_input(event: InputEvent) -> void:
 				if JoystickHideWhenInactive:
 					visible = false
 				_vj_active = false
+				if EnableJoystickArea and not JoystickAreaPersistent:
+					_set_joystick_area_visible(false)
 			_enable_top_level(false)
-			if InteractionMode == InteractionModeEnum.ToggleOnRelease and inside:
+			# Toggle on release regardless of inside to mirror C# behavior
+			if InteractionMode == InteractionModeEnum.ToggleOnRelease:
 				_is_toggled = not _is_toggled
 				_update_overlay()
 				emit_signal("toggled", _is_toggled)
@@ -487,6 +537,18 @@ func _gui_input(event: InputEvent) -> void:
 			_emit_joystick_axis_for(mm.global_position)
 		elif FollowMode == FollowModeEnum.FollowBoth:
 			_move_to_global(mm.global_position)
+		# Swipe detection while pressed (mouse motion)
+		if _action_enabled(ACT_SWIPE):
+			if _swipe_start == Vector2.ZERO:
+				_swipe_start = mm.position
+			else:
+				var direction := mm.position - _swipe_start
+				if direction.length() > SwipeThreshold:
+					emit_signal("swipe", direction.normalized())
+					if SwipeAction.is_valid(): SwipeAction.call(direction.normalized())
+					_swipe_start = Vector2.ZERO
+		# Update swiping state
+		_is_swiping = (mm.position - _swipe_origin).length() > SwipeThreshold
 
 	elif _is_pressed and event is InputEventScreenDrag:
 		var sd := event as InputEventScreenDrag
@@ -496,10 +558,30 @@ func _gui_input(event: InputEvent) -> void:
 			_emit_joystick_axis_for(sd.position)
 		elif FollowMode == FollowModeEnum.FollowBoth:
 			_move_to_global(sd.position)
+		# Swipe detection while pressed (touch drag)
+		if _action_enabled(ACT_SWIPE):
+			var inside_drag := _input_inside(sd)
+			var allow_swipe := _touch_swipe_eligible if TouchSwipeInit == SwipeInitMode.OnPressed else inside_drag
+			var end_on_hover_out := (TouchSwipeExit == SwipeExitMode.OnHoverOut)
+			if (not allow_swipe) or (end_on_hover_out and not inside_drag):
+				_is_swiping = false
+				emit_signal("swipe_ended")
+				_swipe_start = Vector2.ZERO
+			else:
+				if _swipe_start == Vector2.ZERO:
+					_swipe_start = sd.position
+				else:
+					var direction3 := sd.position - _swipe_start
+					if direction3.length() > SwipeThreshold:
+						emit_signal("swipe", direction3.normalized())
+						if SwipeAction.is_valid(): SwipeAction.call(direction3.normalized())
+						_swipe_start = Vector2.ZERO
+		# Update swiping state
+		_is_swiping = _input_inside(sd) and (sd.position - _swipe_origin).length() > SwipeThreshold
 
 	elif event is InputEventScreenTouch:
 		var st := event as InputEventScreenTouch
-		var gp := global_position + st.position
+		var gp := st.position
 		if st.pressed and inside:
 			_is_pressed = true
 			_hold_timer = 0.0
@@ -512,6 +594,9 @@ func _gui_input(event: InputEvent) -> void:
 				if JoystickHideWhenInactive: visible = true
 				emit_signal("joystick_started")
 				_emit_joystick_axis_for(gp)
+				if EnableJoystickArea:
+					_ensure_and_refresh_joystick_area(_vj_home_global)
+					_set_joystick_area_visible(true)
 			elif FollowMode == FollowModeEnum.FollowBoth:
 				_enable_top_level(true)
 				_move_to_global(gp)
@@ -521,6 +606,9 @@ func _gui_input(event: InputEvent) -> void:
 			_apply_visual_state()
 		elif not st.pressed:
 			_is_pressed = false
+			_is_holding = false
+			_is_swiping = false
+			_swipe_start = Vector2.ZERO
 			if _action_enabled(ACT_RELEASED) and inside:
 				emit_signal("released")
 				if ReleasedAction.is_valid(): ReleasedAction.call()
@@ -532,6 +620,8 @@ func _gui_input(event: InputEvent) -> void:
 				if JoystickHideWhenInactive:
 					visible = false
 				_vj_active = false
+				if EnableJoystickArea and not JoystickAreaPersistent:
+					_set_joystick_area_visible(false)
 			_enable_top_level(false)
 			_apply_visual_state()
 
@@ -556,6 +646,46 @@ func _gui_input(event: InputEvent) -> void:
 				emit_signal("swipe", direction2.normalized())
 				if SwipeAction.is_valid(): SwipeAction.call(direction2.normalized())
 				_swipe_start = Vector2.ZERO
+	elif _action_enabled(ACT_SWIPE) and MouseSwipeInit == SwipeInitMode.OnHoverIn and event is InputEventMouseMotion:
+		var hover_motion := event as InputEventMouseMotion
+		var inside_move := _input_inside(hover_motion)
+		if not inside_move:
+			if MouseSwipeExit == SwipeExitMode.OnHoverOut:
+				_is_swiping = false
+				_swipe_start = Vector2.ZERO
+				emit_signal("swipe_ended")
+		else:
+			if _swipe_start == Vector2.ZERO:
+				_swipe_start = hover_motion.global_position
+				_swipe_origin = hover_motion.global_position
+			else:
+				var directionh := hover_motion.global_position - _swipe_start
+				if directionh.length() > SwipeThreshold:
+					emit_signal("swipe", directionh.normalized())
+					# Keep session alive by advancing the anchor
+					_swipe_start = hover_motion.global_position
+			# remain in swiping state while inside; exit controlled by MouseSwipeExit
+			_is_swiping = true
+
+func _unhandled_input(event: InputEvent) -> void:
+	# End active interactions on off-control mouse release (parity with C#)
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not (event as InputEventMouseButton).pressed:
+		if _is_pressed or _vj_active or _is_swiping:
+			_is_pressed = false
+			_is_holding = false
+			_is_swiping = false
+			emit_signal("swipe_ended")
+			if is_instance_valid(_hold_fill): _remove_hold_fill()
+			if _vj_active:
+				emit_signal("joystick_axis", Vector2.ZERO)
+				emit_signal("joystick_ended")
+				if JoystickResetOnRelease:
+					global_position = _vj_home_global - size * 0.5
+				if JoystickHideWhenInactive:
+					visible = false
+				_vj_active = false
+			_enable_top_level(false)
+			_apply_visual_state()
 
 func _connect_mouse_events() -> void:
 	_connect_if_not_connected("mouse_entered", Callable(self, "_on_mouse_entered"))
@@ -564,11 +694,14 @@ func _connect_mouse_events() -> void:
 func _on_mouse_entered() -> void:
 	if _disabled: return
 	_is_hovering = true
+	# Initialize hover-based swipe origin if enabled
+	if MouseSwipeInit == SwipeInitMode.OnHoverIn:
+		_swipe_origin = get_global_mouse_position()
+		if _swipe_start == Vector2.ZERO:
+			_swipe_start = get_global_mouse_position()
 	if _action_enabled(ACT_HOVER) and not (EnableCooldown and _cooldown_active):
 		emit_signal("hover_in")
 		if HoverInAction.is_valid(): HoverInAction.call()
-	if _action_enabled(ACT_SWIPE) and MouseSwipeInit == SwipeInitMode.OnHoverIn:
-		_swipe_start = get_local_mouse_position()
 	if EnableHoverScale:
 		if not (EnableCooldown and _cooldown_active and SuspendHoverScaleDuringCooldown):
 			_update_hover_pivots()
@@ -584,7 +717,9 @@ func _on_mouse_exited() -> void:
 		emit_signal("hover_out")
 		if HoverOutAction.is_valid(): HoverOutAction.call()
 	if _action_enabled(ACT_SWIPE) and MouseSwipeExit == SwipeExitMode.OnHoverOut:
-		_swipe_start = Vector2.ZERO; emit_signal("swipe_ended")
+		_is_swiping = false
+		_swipe_start = Vector2.ZERO
+		emit_signal("swipe_ended")
 	if EnableHoverScale:
 		if not (EnableCooldown and _cooldown_active and SuspendHoverScaleDuringCooldown):
 			_update_hover_pivots()
@@ -605,6 +740,8 @@ func _setup_children() -> void:
 	_overlay = null
 	_cooldown = null
 	_hold_fill = null
+	_default_thumb = null
+	_vj_area_panel = null
 
 	if Background == BackgroundMode.UsePanel:
 		_panel = Panel.new()
@@ -621,8 +758,10 @@ func _setup_children() -> void:
 		_background_tex.stretch_mode = BackgroundStretchMode
 		_background_tex.flip_h = BackgroundFlipH
 		_background_tex.flip_v = BackgroundFlipV
+		_background_tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		add_child(_background_tex)
 		_ensure_full_rect(_background_tex)
+		_background_tex.mouse_filter = MOUSE_FILTER_PASS
 
 	if _icon_texture != null:
 		_icon = TextureRect.new()
@@ -635,8 +774,16 @@ func _setup_children() -> void:
 		_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		add_child(_icon)
 		_ensure_full_rect(_icon)
+		_icon.mouse_filter = MOUSE_FILTER_PASS
 
 	_set_label_text()
+
+	# Default thumb for virtual joystick when no icon is provided
+	var want_vj := (FollowMode == FollowModeEnum.VirtualJoystick) or EnableVirtualJoystick
+	var need_default_thumb := want_vj and EnableDefaultThumb and _icon_texture == null
+	if need_default_thumb:
+		_ensure_default_thumb()
+		_update_default_thumb_visual()
 
 	_update_overlay()
 
@@ -653,6 +800,7 @@ func _update_overlay() -> void:
 		_overlay = ColorRect.new()
 		_overlay.name = "Overlay"
 		_overlay.color = SelectedColor
+		_overlay.mouse_filter = MOUSE_FILTER_PASS
 		add_child(_overlay)
 		_ensure_full_rect(_overlay)
 	elif (not need) and alive:
@@ -685,11 +833,15 @@ func _remove_hold_fill() -> void:
 
 func _reorder_children() -> void:
 	var idx := 0
+	# Background (panel preferred over texture)
 	if _panel != null: move_child(_panel, idx); idx += 1
-	if _background_tex != null: move_child(_background_tex, idx); idx += 1
+	elif _background_tex != null: move_child(_background_tex, idx); idx += 1
+	# Main content
 	if _icon != null: move_child(_icon, idx); idx += 1
+	elif _default_thumb != null: move_child(_default_thumb, idx); idx += 1
 	if _label != null: move_child(_label, idx); idx += 1
-	if _rich_label != null: move_child(_rich_label, idx); idx += 1
+	elif _rich_label != null: move_child(_rich_label, idx); idx += 1
+	# Overlays
 	if _overlay != null: move_child(_overlay, idx); idx += 1
 	if _cooldown != null: move_child(_cooldown, idx); idx += 1
 	if _hold_fill != null: move_child(_hold_fill, idx); idx += 1
@@ -697,6 +849,11 @@ func _reorder_children() -> void:
 func _configure_label(lbl: Label) -> void:
 	# Fill parent and zero offsets so it truly stretches
 	lbl.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	var ep := _get_effective_label_padding()
+	lbl.offset_left = ep.x
+	lbl.offset_top = ep.y
+	lbl.offset_right = - ep.z
+	lbl.offset_bottom = - ep.w
 	lbl.size_flags_horizontal = SIZE_EXPAND_FILL
 	lbl.size_flags_vertical = SIZE_EXPAND_FILL
 	# Respect configured alignment and wrap
@@ -706,15 +863,22 @@ func _configure_label(lbl: Label) -> void:
 	# Apply optional font override
 	if LabelFont != null:
 		lbl.add_theme_font_override("font", LabelFont)
+	lbl.mouse_filter = MOUSE_FILTER_PASS
 
 func _configure_rich_label(rtl: RichTextLabel) -> void:
 	rtl.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	var ep := _get_effective_label_padding()
+	rtl.offset_left = ep.x
+	rtl.offset_top = ep.y
+	rtl.offset_right = - ep.z
+	rtl.offset_bottom = - ep.w
 	rtl.size_flags_horizontal = SIZE_EXPAND_FILL
 	rtl.size_flags_vertical = SIZE_EXPAND_FILL
 	rtl.bbcode_enabled = RichLabelUseBBCode
 	rtl.fit_content = true
 	if LabelFont != null:
 		rtl.add_theme_font_override("normal_font", LabelFont)
+	rtl.mouse_filter = MOUSE_FILTER_PASS
 
 func _set_label_text() -> void:
 	if _label_text != "" and _rich_label_text == "":
@@ -730,42 +894,83 @@ func _set_label_text() -> void:
 	else:
 		if _label != null and is_instance_valid(_label): remove_child(_label); _label.queue_free(); _label = null
 		if _rich_label != null and is_instance_valid(_rich_label): remove_child(_rich_label); _rich_label.queue_free(); _rich_label = null
+	# reapply padding offsets to whichever label exists
+	if _label != null and is_instance_valid(_label): _configure_label(_label)
+	if _rich_label != null and is_instance_valid(_rich_label): _configure_rich_label(_rich_label)
 
 func _fit_label_text() -> void:
 	if _fitting_label:
 		return
 	_fitting_label = true
-	var avail := size - Vector2(8, 8)
+	# Fixed font size bypasses autosize
+	if FixedFontSize > 0:
+		if _label != null and is_instance_valid(_label):
+			_label.add_theme_font_size_override("font_size", FixedFontSize)
+			_label.update_minimum_size()
+		if _rich_label != null and is_instance_valid(_rich_label):
+			for sp in ["normal_font_size", "bold_font_size", "italics_font_size", "bold_italics_font_size", "mono_font_size"]:
+				_rich_label.add_theme_font_size_override(sp, FixedFontSize)
+			_rich_label.update_minimum_size()
+		_fitting_label = false
+		return
+	var ep := _get_effective_label_padding()
+	var tp := TextFitPadding
+	var avail := Vector2(
+		max(1.0, size.x - max(0.0, tp.x) - max(0.0, ep.x) - max(0.0, ep.z)),
+		max(1.0, size.y - max(0.0, tp.y) - max(0.0, ep.y) - max(0.0, ep.w))
+	)
 	if avail.x <= 1.0 or avail.y <= 1.0:
 		_fitting_label = false
 		return
 	# Fit for plain Label
-	if _label != null and is_instance_valid(_label) and _label.text != "":
+	if EnableTextAutoSize and _label != null and is_instance_valid(_label) and _label.text != "":
 		var fnt: Font = _label.get_theme_font("font") if _label.get_theme_font("font") != null else ThemeDB.fallback_font
 		if fnt != null:
-			var best := MinFontSize
-			for s in range(MinFontSize, MaxFontSize + 1):
-				var ts := fnt.get_string_size(_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, s)
+			# binary search for best size
+			var lo := MinFontSize
+			var hi := MaxFontSize
+			var best := lo
+			while lo <= hi:
+				var mid := int((lo + hi) / 2)
+				var wrap_w := avail.x if LabelAutowrap != TextServer.AUTOWRAP_OFF else -1
+				var ts := fnt.get_string_size(_label.text, HORIZONTAL_ALIGNMENT_LEFT, wrap_w, mid)
 				if ts.x <= avail.x and ts.y <= avail.y:
-					best = s
+					best = mid
+					lo = mid + 1
 				else:
-					break
+					hi = mid - 1
 			_label.add_theme_font_override("font", fnt)
 			_label.add_theme_font_size_override("font_size", best)
 	# Fit for RichTextLabel: approximate by stripping BBCode
-	elif _rich_label != null and is_instance_valid(_rich_label) and _rich_label.text != "":
+	elif EnableTextAutoSize and _rich_label != null and is_instance_valid(_rich_label) and _rich_label.text != "":
 		var base_font: Font = _rich_label.get_theme_font("normal_font") if _rich_label.get_theme_font("normal_font") != null else ThemeDB.fallback_font
 		if base_font != null:
 			var plain := _strip_bbcode(_rich_label.text)
-			var best2 := MinFontSize
-			for s2 in range(MinFontSize, MaxFontSize + 1):
-				var ts2 := base_font.get_string_size(plain, HORIZONTAL_ALIGNMENT_LEFT, -1, s2)
+			# binary search for best size
+			var lo2 := MinFontSize
+			var hi2 := MaxFontSize
+			var best2 := lo2
+			while lo2 <= hi2:
+				var mid2 := int((lo2 + hi2) / 2)
+				var wrap_w2 := avail.x if LabelAutowrap != TextServer.AUTOWRAP_OFF else -1
+				var ts2 := base_font.get_string_size(plain, HORIZONTAL_ALIGNMENT_LEFT, wrap_w2, mid2)
 				if ts2.x <= avail.x and ts2.y <= avail.y:
-					best2 = s2
+					best2 = mid2
+					lo2 = mid2 + 1
 				else:
-					break
+					hi2 = mid2 - 1
 			_apply_rich_label_font_overrides(base_font, best2)
 	_fitting_label = false
+
+# Returns Vector4(left, top, right, bottom)
+func _get_effective_label_padding() -> Vector4:
+	var lr := max(0.0, LabelPadding.x)
+	var tb := max(0.0, LabelPadding.y)
+	var left: float = lr + max(0.0, LabelAdditionalPaddingLeft)
+	var right: float = lr + max(0.0, LabelAdditionalPaddingRight)
+	var top: float = tb + max(0.0, LabelAdditionalPaddingTop)
+	var bottom: float = tb + max(0.0, LabelAdditionalPaddingBottom)
+	return Vector4(left, top, right, bottom)
 
 func _apply_rich_label_font_overrides(fnt: Font, size_px: int) -> void:
 	if _rich_label == null or not is_instance_valid(_rich_label):
@@ -797,8 +1002,11 @@ func _ensure_full_rect(node: Control) -> void:
 
 func _update_hover_pivots() -> void:
 	pivot_offset = size / 2.0
+	if _panel != null and is_instance_valid(_panel): _panel.pivot_offset = _panel.size / 2.0
+	if _background_tex != null and is_instance_valid(_background_tex): _background_tex.pivot_offset = _background_tex.size / 2.0
 	if _icon != null and is_instance_valid(_icon): _icon.pivot_offset = _icon.size / 2.0
 	if _label != null and is_instance_valid(_label): _label.pivot_offset = _label.size / 2.0
+	if _rich_label != null and is_instance_valid(_rich_label): _rich_label.pivot_offset = _rich_label.size / 2.0
 	if _overlay != null and is_instance_valid(_overlay): _overlay.pivot_offset = _overlay.size / 2.0
 
 func _hover_target_for_viewport() -> float:
@@ -874,16 +1082,106 @@ func _input_inside(event: InputEvent) -> bool:
 	if event is InputEventMouseMotion:
 		return rect.has_point((event as InputEventMouseMotion).global_position)
 	if event is InputEventScreenTouch:
-		return rect.has_point(global_position + (event as InputEventScreenTouch).position)
+		return rect.has_point((event as InputEventScreenTouch).position)
 	if event is InputEventScreenDrag:
 		return rect.has_point((event as InputEventScreenDrag).position)
 	return false
 
 # Virtual joystick helpers
+func _ensure_default_thumb() -> void:
+	if _default_thumb == null or not is_instance_valid(_default_thumb):
+		_default_thumb = Panel.new()
+		_default_thumb.name = "DefaultThumb"
+		_default_thumb.mouse_filter = MOUSE_FILTER_PASS
+		add_child(_default_thumb)
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = DefaultThumbColor
+		_default_thumb.add_theme_stylebox_override("panel", sb)
+
+func _update_default_thumb_visual() -> void:
+	if _default_thumb == null or not is_instance_valid(_default_thumb):
+		return
+	var side := max(1.0, min(size.x, size.y) * DefaultThumbSizeRatio)
+	_default_thumb.set_anchors_preset(PRESET_TOP_LEFT)
+	_default_thumb.size = Vector2(side, side)
+	_default_thumb.position = (size - _default_thumb.size) / 2.0
+	var flat := _default_thumb.get_theme_stylebox("panel")
+	if flat is StyleBoxFlat:
+		var r := int(round(side / 2.0))
+		flat.bg_color = DefaultThumbColor
+		flat.corner_radius_top_left = r
+		flat.corner_radius_top_right = r
+		flat.corner_radius_bottom_left = r
+		flat.corner_radius_bottom_right = r
+
+func _get_external_joystick_area() -> Control:
+	if JoystickAreaExternalPath == null or String(JoystickAreaExternalPath) == "":
+		return null
+	return get_node_or_null(JoystickAreaExternalPath) as Control
+
+func _ensure_and_refresh_joystick_area(home_center_global: Vector2) -> void:
+	if not EnableJoystickArea:
+		return
+	var target := _get_external_joystick_area()
+	if target == null:
+		if _vj_area_panel == null or not is_instance_valid(_vj_area_panel):
+			_vj_area_panel = Panel.new()
+			_vj_area_panel.name = "JoystickArea"
+			_vj_area_panel.top_level = true
+			_vj_area_panel.mouse_filter = MOUSE_FILTER_IGNORE
+			_vj_area_panel.z_index = -1000
+			add_child(_vj_area_panel)
+		target = _vj_area_panel
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0, 0, 0, 0)
+		sb.border_color = JoystickAreaColor
+		sb.border_width_top = JoystickAreaThickness
+		sb.border_width_bottom = JoystickAreaThickness
+		sb.border_width_left = JoystickAreaThickness
+		sb.border_width_right = JoystickAreaThickness
+		_vj_area_panel.add_theme_stylebox_override("panel", sb)
+	var use_circle := (ClampShape == JoystickClampShape.Circle) and (not JoystickAreaUseRectForClamp)
+	if use_circle:
+		var radius := float(JoystickRadiusPx) if JoystickRadiusPx > 0 else _compute_auto_joystick_radius(home_center_global, _get_follow_clamp_rect())
+		var sizev := Vector2(radius * 2.0, radius * 2.0)
+		if target is Panel and (target as Panel).get_theme_stylebox("panel") is StyleBoxFlat:
+			var flat2 := (target as Panel).get_theme_stylebox("panel") as StyleBoxFlat
+			var rr := int(round(radius))
+			flat2.corner_radius_top_left = rr
+			flat2.corner_radius_top_right = rr
+			flat2.corner_radius_bottom_left = rr
+			flat2.corner_radius_bottom_right = rr
+		target.size = sizev
+		target.global_position = home_center_global - sizev / 2.0
+	else:
+		var half_ext := (JoystickRectSizePx / 2.0) if JoystickRectSizePx != Vector2.ZERO else _compute_auto_joystick_half_extents(home_center_global, _get_follow_clamp_rect())
+		var sizev2 := half_ext * 2.0
+		if target is Panel and (target as Panel).get_theme_stylebox("panel") is StyleBoxFlat:
+			var flat3 := (target as Panel).get_theme_stylebox("panel") as StyleBoxFlat
+			flat3.corner_radius_top_left = 0
+			flat3.corner_radius_top_right = 0
+			flat3.corner_radius_bottom_left = 0
+			flat3.corner_radius_bottom_right = 0
+		target.size = sizev2
+		target.global_position = home_center_global - sizev2 / 2.0
+
+func _set_joystick_area_visible(vis: bool) -> void:
+	var external := _get_external_joystick_area()
+	if external != null:
+		external.visible = vis
+	elif _vj_area_panel != null and is_instance_valid(_vj_area_panel):
+		_vj_area_panel.visible = vis
+
+func _get_follow_clamp_rect() -> Rect2:
+	if is_instance_valid(BoundsSource) and BoundsSource != null:
+		return BoundsSource.get_global_rect()
+	if get_parent() is Control:
+		return (get_parent() as Control).get_global_rect()
+	return get_viewport_rect()
 func _move_to_global(global_point: Vector2) -> void:
 	var half := size * 0.5
 	if _vj_active and ClampShape == JoystickClampShape.Circle:
-		var clamp := (BoundsSource if (is_instance_valid(BoundsSource) and BoundsSource != null) else self).get_global_rect()
+		var clamp := _get_follow_clamp_rect()
 		var pointer := global_point
 		var radius: float = float(JoystickRadiusPx) if JoystickRadiusPx > 0 else _compute_auto_joystick_radius(_vj_home_global, clamp)
 		var delta := pointer - _vj_home_global
@@ -896,7 +1194,7 @@ func _move_to_global(global_point: Vector2) -> void:
 		return
 
 	if _vj_active and ClampShape == JoystickClampShape.Rectangle:
-		var clamp2 := (BoundsSource if (is_instance_valid(BoundsSource) and BoundsSource != null) else self).get_global_rect()
+		var clamp2 := _get_follow_clamp_rect()
 		var pointer2 := global_point
 		var half_ext := (JoystickRectSizePx / 2.0) if JoystickRectSizePx != Vector2.ZERO else _compute_auto_joystick_half_extents(_vj_home_global, clamp2)
 		pointer2.x = clampf(pointer2.x, _vj_home_global.x - half_ext.x, _vj_home_global.x + half_ext.x)
@@ -908,15 +1206,13 @@ func _move_to_global(global_point: Vector2) -> void:
 
 	var desired := global_point - half
 	if ClampToBounds:
-		var bounds := (BoundsSource if (is_instance_valid(BoundsSource) and BoundsSource != null) else self).get_global_rect()
+		var bounds := _get_follow_clamp_rect()
 		desired.x = clampf(desired.x, bounds.position.x, bounds.position.x + bounds.size.x - size.x)
 		desired.y = clampf(desired.y, bounds.position.y, bounds.position.y + bounds.size.y - size.y)
 	global_position = desired
 
 func _emit_joystick_axis_for(pointer_global: Vector2) -> void:
-	var clamp_rect := (BoundsSource if (is_instance_valid(BoundsSource) and BoundsSource != null) else self).get_global_rect()
-	if HitSlop != Vector2.ZERO:
-		clamp_rect = clamp_rect.grow_individual(HitSlop.x, HitSlop.y, HitSlop.x, HitSlop.y)
+	var clamp_rect := _get_follow_clamp_rect()
 	var clamped := Vector2(
 		clampf(pointer_global.x, clamp_rect.position.x, clamp_rect.position.x + clamp_rect.size.x),
 		clampf(pointer_global.y, clamp_rect.position.y, clamp_rect.position.y + clamp_rect.size.y)
@@ -961,11 +1257,17 @@ func start_virtual_joystick_at(global_point: Vector2) -> void:
 	if not EnableVirtualJoystick: return
 	_vj_active = true
 	_vj_home_global = global_position + size * 0.5
+	# Keep visuals consistent with a press
 	_enable_top_level(true)
+	_vj_saved_mouse_filter = mouse_filter
+	mouse_filter = MOUSE_FILTER_IGNORE
 	if JoystickSnapToInput: _move_to_global(global_point)
 	if JoystickHideWhenInactive: visible = true
 	emit_signal("joystick_started")
 	_emit_joystick_axis_for(global_point)
+	if EnableJoystickArea:
+		_ensure_and_refresh_joystick_area(_vj_home_global)
+		_set_joystick_area_visible(true)
 
 func update_virtual_joystick(global_point: Vector2) -> void:
 	if not _vj_active: return
@@ -981,7 +1283,10 @@ func stop_virtual_joystick() -> void:
 	_vj_active = false
 	_is_pressed = false
 	_apply_visual_state()
+	mouse_filter = _vj_saved_mouse_filter
 	_enable_top_level(false)
+	if EnableJoystickArea and not JoystickAreaPersistent:
+		_set_joystick_area_visible(false)
 	if JoystickHideWhenInactive: visible = false
 
 func StartVirtualJoystickAt(global_point: Vector2) -> void: start_virtual_joystick_at(global_point)
@@ -1091,25 +1396,42 @@ func _invalidate_visual_state() -> void:
 func _apply_preset(p: Preset) -> void:
 	match p:
 		Preset.Basic:
-			ActionMaskBits = ACT_PRESSED | ACT_RELEASED | ACT_HOVER
 			InteractionMode = InteractionModeEnum.Momentary
 			FollowMode = FollowModeEnum.None
-			EnableVirtualJoystick = false
+			EnableHoverScale = false
+			EnableCooldown = false
+			InvertModes = 0
 		Preset.Toggle:
-			ActionMaskBits = ACT_PRESSED | ACT_RELEASED | ACT_TOGGLE | ACT_HOVER
 			InteractionMode = InteractionModeEnum.ToggleOnPress
+			EnableSelectedOverlay = true
 		Preset.Hold:
-			ActionMaskBits = ACT_PRESSED | ACT_HOLD | ACT_RELEASED
 			EnableHoldBuildUp = true
+			if HoldDuration < 0.1:
+				HoldDuration = 0.1
 		Preset.Swipe:
-			ActionMaskBits = ACT_SWIPE | ACT_HOVER
+			FollowMode = FollowModeEnum.None
+			if SwipeThreshold < 1.0:
+				SwipeThreshold = 1.0
+			MouseSwipeInit = SwipeInitMode.OnHoverIn
+			MouseSwipeExit = SwipeExitMode.OnHoverOut
+			TouchSwipeInit = SwipeInitMode.OnPressed
+			TouchSwipeExit = SwipeExitMode.OnReleased
 		Preset.Draggable:
-			ActionMaskBits = ACT_PRESSED | ACT_RELEASED
 			FollowMode = FollowModeEnum.FollowBoth
+			ClampToBounds = true
 		Preset.VirtualJoystick:
-			ActionMaskBits = ACT_PRESSED | ACT_RELEASED
-			EnableVirtualJoystick = true
 			FollowMode = FollowModeEnum.VirtualJoystick
+			ClampShape = JoystickClampShape.Circle
+			JoystickDeadzone = 0.15
+			JoystickSnapToInput = true
+			JoystickHideWhenInactive = false
+			JoystickResetOnRelease = true
+			EnableJoystickArea = true
+			JoystickAreaPersistent = false
+			JoystickAreaColor = Color(1, 1, 1, 0.25)
+			JoystickAreaThickness = 2
+			JoystickAreaUseRectForClamp = false
+			JoystickAreaExternalPath = NodePath("")
 		_:
 			pass
 
@@ -1126,8 +1448,19 @@ func _start_cooldown() -> void:
 	set_process(true)
 	call_deferred("_reset_pressed_visuals_after_cooldown_start")
 
+func start_cooldown() -> void:
+	_start_cooldown()
+
+func StartCooldown() -> void:
+	start_cooldown()
+
 func _reset_pressed_visuals_after_cooldown_start() -> void:
+	# Clear pressed and transient states, but keep hover.
 	_is_pressed = false
+	_is_holding = false
+	if _is_swiping:
+		_is_swiping = false
+		emit_signal("swipe_ended")
 	_enable_top_level(false)
 	_apply_visual_state()
 
@@ -1292,3 +1625,22 @@ func _run_built_in_warning(message: String) -> void: push_warning(message)
 func _run_built_in_error(message: String) -> void: push_error(message)
 func _run_built_in_hold() -> void: pass
 func _run_built_in_swipe(direction: Vector2) -> void: pass
+
+# Logging helpers (parity with C# convenience methods)
+func print_log(message: String) -> void:
+	if has_signal("log"):
+		emit_signal("log", message)
+	else:
+		print("[OmniButton] ", message)
+
+func print_warn(message: String) -> void:
+	if has_signal("warning"):
+		emit_signal("warning", message)
+	else:
+		push_warning("[OmniButton] " + message)
+
+func print_err(message: String) -> void:
+	if has_signal("error"):
+		emit_signal("error", message)
+	else:
+		push_error("[OmniButton] " + message)

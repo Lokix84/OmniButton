@@ -7,11 +7,11 @@ var _active_look_touch_index: int = -1
 
 var _gamepad: Control
 var _center: Omni_Button
-var _move_area: Omni_Button
+var _move_area: Control
 
 var _lookjoystick: Control
 var _lookcenter: Omni_Button
-var _look_area: Omni_Button
+var _look_area: Control
 
 var _up: Omni_Button
 var _down: Omni_Button
@@ -213,6 +213,7 @@ func _connect_button_for_log(b: Omni_Button, output: Omni_Button) -> void:
 			output.LabelText = msg
 
 	# Ensure signals will be emitted by enabling action flags
+
 	b.EnablePressedActions = true
 	b.EnableReleasedActions = true
 	b.EnableHoverActions = true

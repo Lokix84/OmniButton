@@ -1,16 +1,13 @@
-[gd_scene load_steps=15 format=3 uid="uid://b7nlnllxbfp5y"]
+[gd_scene load_steps=12 format=3 uid="uid://b7nlnllxbfp5y"]
 
 [ext_resource type="Script" uid="uid://dsy7se21478dt" path="res://addons/omni_button/test/GodotTest.gd" id="1_1o0i0"]
 [ext_resource type="Script" uid="uid://dw4mvkaj30lb5" path="res://addons/omni_button/GD/omni_button.gd" id="2_ov6p0"]
-[ext_resource type="Texture2D" uid="uid://c8gpacmdt8yrf" path="res://addons/omni_button/test/icons/Icon-UpArrow1.png" id="3_2uhn0"]
 [ext_resource type="Theme" uid="uid://ckanb5o8kc3u" path="res://addons/omni_button/test/style/UI.tres" id="3_ly7v3"]
-[ext_resource type="Texture2D" uid="uid://b5lx4c8vwy73h" path="res://addons/omni_button/test/icons/Icon-DownArrow1.png" id="4_2uhn0"]
-[ext_resource type="Texture2D" uid="uid://rwqys46yqk5i" path="res://addons/omni_button/test/icons/Icon-Potion6.png" id="4_x30r3"]
-[ext_resource type="Texture2D" uid="uid://l8n04aejxhyq" path="res://addons/omni_button/test/icons/Icon-Potion7.png" id="5_nfjrx"]
-[ext_resource type="Texture2D" uid="uid://c1ecj2g07rj4n" path="res://addons/omni_button/test/icons/Icon-LeftArrow1.png" id="5_x30r3"]
-[ext_resource type="Texture2D" uid="uid://b01hwuht0khkc" path="res://addons/omni_button/test/icons/Icon-Potion10.png" id="6_dw80u"]
-[ext_resource type="Texture2D" uid="uid://c0aaku6680sid" path="res://addons/omni_button/test/icons/Icon-RightArrow1.png" id="6_nfjrx"]
-[ext_resource type="Texture2D" uid="uid://d3na4mhfwnpqk" path="res://addons/omni_button/test/icons/Icon-Circle1.png" id="7_dw80u"]
+[ext_resource type="Texture2D" uid="uid://c8gpacmdt8yrf" path="res://addons/omni_button/test/icons/Icon-UpArrow1.png" id="4_mb060"]
+[ext_resource type="Texture2D" uid="uid://b5lx4c8vwy73h" path="res://addons/omni_button/test/icons/Icon-DownArrow1.png" id="5_4im83"]
+[ext_resource type="Texture2D" uid="uid://c1ecj2g07rj4n" path="res://addons/omni_button/test/icons/Icon-LeftArrow1.png" id="6_a7viy"]
+[ext_resource type="Texture2D" uid="uid://c0aaku6680sid" path="res://addons/omni_button/test/icons/Icon-RightArrow1.png" id="7_c3pcx"]
+[ext_resource type="Texture2D" uid="uid://d3na4mhfwnpqk" path="res://addons/omni_button/test/icons/Icon-Circle1.png" id="8_tc1tc"]
 [ext_resource type="StyleBox" uid="uid://pm2mjmy1hg7a" path="res://addons/omni_button/test/style/Unselected.tres" id="10_c3pcx"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xgukv"]
@@ -47,36 +44,10 @@ theme = ExtResource("3_ly7v3")
 [node name="Move" type="Control" parent="TouchArea"]
 layout_mode = 2
 size_flags_horizontal = 3
-focus_mode = 2
-theme_type_variation = &"normal"
-script = ExtResource("2_ov6p0")
-PressedAction = Callable()
-ReleasedAction = Callable()
-HoverInAction = Callable()
-HoverOutAction = Callable()
-ToggledAction = Callable()
-HoldAction = Callable()
-SwipeAction = Callable()
-LogAction = Callable()
-WarningAction = Callable()
-ErrorAction = Callable()
 
 [node name="Look" type="Control" parent="TouchArea"]
 layout_mode = 2
 size_flags_horizontal = 3
-focus_mode = 2
-theme_type_variation = &"normal"
-script = ExtResource("2_ov6p0")
-PressedAction = Callable()
-ReleasedAction = Callable()
-HoverInAction = Callable()
-HoverOutAction = Callable()
-ToggledAction = Callable()
-HoldAction = Callable()
-SwipeAction = Callable()
-LogAction = Callable()
-WarningAction = Callable()
-ErrorAction = Callable()
 
 [node name="Gamepad" type="Control" parent="."]
 visible = false
@@ -114,7 +85,9 @@ pivot_offset = Vector2(50, 50)
 focus_mode = 2
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
-IconTexture = ExtResource("3_2uhn0")
+IconTexture = ExtResource("4_mb060")
+MinFontSize = 12
+LabelAutowrap = 2
 PressedAction = Callable()
 ReleasedAction = Callable()
 HoverInAction = Callable()
@@ -143,7 +116,9 @@ pivot_offset = Vector2(50, 50)
 focus_mode = 2
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
-IconTexture = ExtResource("4_2uhn0")
+IconTexture = ExtResource("5_4im83")
+MinFontSize = 12
+LabelAutowrap = 2
 PressedAction = Callable()
 ReleasedAction = Callable()
 HoverInAction = Callable()
@@ -169,7 +144,9 @@ pivot_offset = Vector2(50, 50)
 focus_mode = 2
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
-IconTexture = ExtResource("5_x30r3")
+IconTexture = ExtResource("6_a7viy")
+MinFontSize = 12
+LabelAutowrap = 2
 PressedAction = Callable()
 ReleasedAction = Callable()
 HoverInAction = Callable()
@@ -198,7 +175,9 @@ pivot_offset = Vector2(50, 50)
 focus_mode = 2
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
-IconTexture = ExtResource("6_nfjrx")
+IconTexture = ExtResource("7_c3pcx")
+MinFontSize = 12
+LabelAutowrap = 2
 PressedAction = Callable()
 ReleasedAction = Callable()
 HoverInAction = Callable()
@@ -228,7 +207,9 @@ pivot_offset = Vector2(50, 50)
 focus_mode = 2
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
-IconTexture = ExtResource("7_dw80u")
+IconTexture = ExtResource("8_tc1tc")
+MinFontSize = 12
+LabelAutowrap = 2
 PressedAction = Callable()
 ReleasedAction = Callable()
 HoverInAction = Callable()
@@ -285,7 +266,8 @@ pivot_offset = Vector2(50, 50)
 focus_mode = 2
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
-IconTexture = ExtResource("7_dw80u")
+MinFontSize = 12
+LabelAutowrap = 2
 PressedAction = Callable()
 ReleasedAction = Callable()
 HoverInAction = Callable()
@@ -385,12 +367,12 @@ focus_mode = 2
 theme = ExtResource("3_ly7v3")
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
-IconTexture = ExtResource("4_x30r3")
-EnableSelectedOverlay = true
 SelectedColor = Color(0.89492244, 0.89492244, 0.8949224, 0.3019608)
 PanelThemeType = ""
 PanelStyleBox = ExtResource("10_c3pcx")
 IconExpandMode = 1
+MinFontSize = 12
+LabelAutowrap = 2
 EnableHoverScale = true
 PressedAction = Callable()
 ReleasedAction = Callable()
@@ -412,11 +394,11 @@ focus_mode = 2
 theme = ExtResource("3_ly7v3")
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
-IconTexture = ExtResource("5_nfjrx")
-EnableSelectedOverlay = true
 SelectedColor = Color(0.89492244, 0.89492244, 0.8949224, 0.3019608)
 PanelStyleBox = ExtResource("10_c3pcx")
 IconExpandMode = 1
+MinFontSize = 12
+LabelAutowrap = 2
 EnableHoverScale = true
 PressedAction = Callable()
 ReleasedAction = Callable()
@@ -438,11 +420,11 @@ focus_mode = 2
 theme = ExtResource("3_ly7v3")
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
-IconTexture = ExtResource("6_dw80u")
-EnableSelectedOverlay = true
 SelectedColor = Color(0.89492244, 0.89492244, 0.8949224, 0.3019608)
 PanelStyleBox = ExtResource("10_c3pcx")
 IconExpandMode = 1
+MinFontSize = 12
+LabelAutowrap = 2
 EnableHoverScale = true
 PressedAction = Callable()
 ReleasedAction = Callable()
@@ -481,6 +463,8 @@ pivot_offset = Vector2(50, 50)
 focus_mode = 2
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
+MinFontSize = 12
+LabelAutowrap = 2
 PressedAction = Callable()
 ReleasedAction = Callable()
 HoverInAction = Callable()
@@ -506,6 +490,8 @@ pivot_offset = Vector2(50, 50)
 focus_mode = 2
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
+MinFontSize = 12
+LabelAutowrap = 2
 PressedAction = Callable()
 ReleasedAction = Callable()
 HoverInAction = Callable()
@@ -530,6 +516,8 @@ pivot_offset = Vector2(50, 50)
 focus_mode = 2
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
+MinFontSize = 12
+LabelAutowrap = 2
 PressedAction = Callable()
 ReleasedAction = Callable()
 HoverInAction = Callable()
@@ -557,7 +545,8 @@ grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("3_ly7v3")
 script = ExtResource("2_ov6p0")
-LabelText = "test"
+RichLabelText = "[p]Initial [b]State[/b] - this is a test of the [u]rich text label[/u] functionality that exists within the omni button. the purpose of this is to show that a large amount of text can be displayed and still utilize the [i]functionality[/i] such as bold, underline, italisis and etc. that is present within the bbcode enabled rich text label. Check it out [color=green]the color green[/color] thats wild another color in the middle of a text block. wow i'm so shocked that this does that soooo seemlessly. very impressive. [/p] please refer to [url]https://docs.godotengine.org/en/latest/tutorials/ui/bbcode_in_richtextlabel.html[/url] for a complete list of bbcode usage in godots documentation.[wave amp=50.0 freq=5.0 connected=1]it can get wavy too thats crazy.[/wave][pulse freq=1.0 color=#ffffff40 ease=-2.0]or if you are feeling it it can do a pulse thats prett cool.[/pulse][tornado radius=10.0 freq=1.0 connected=1]theres also like a tornado looking thing.[/tornado]theres also a [shake rate=20.0 level=5 connected=1]shake[/shake].honestly i'm just trying to fill up the space oooo[fade start=4 length=14] how about a fade[/fade]. that could be fun. always the classic [rainbow freq=1.0 sat=0.8 val=0.8 speed=1.0]rainbow [/rainbow]. really the take away here is that there are a lot of functions in bbcode that can really enhance your text output. so if you need it. its here to use as you see fit :).[br][br] p.s. you will have to restart this scene to see this text again"
+LabelAutowrap = 1
 EnableHoverScale = true
 PressedAction = Callable()
 ReleasedAction = Callable()
