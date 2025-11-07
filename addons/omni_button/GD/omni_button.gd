@@ -104,7 +104,7 @@ var _preset := Preset.None
 # Content Display
 @export_group("Content Display")
 var _background_mode := BackgroundMode.None
-@export var Background: BackgroundMode:
+@export var BackgroundType: BackgroundMode:
 	get: return _background_mode
 	set(value):
 		_background_mode = value
@@ -120,23 +120,39 @@ var _icon_texture: Texture2D
 		_ensure_icon()
 		_apply_visual_state(); _fit_label_text()
 
-var _label_text: String = ""
-@export var LabelText: String:
-	get: return _label_text
+enum LabelKind {Label = 0, RichTextLabel = 1}
+var _label_type: LabelKind = LabelKind.Label
+@export var LabelType: LabelKind:
+	get: return _label_type
 	set(value):
-		_label_text = value if value != null else ""
+		_label_type = value
 		_set_label_text()
 		_apply_visual_state()
 		_fit_label_text()
 
-var _rich_label_text: String = ""
-@export var RichLabelText: String:
-	get: return _rich_label_text
+var _text: String = ""
+@export_multiline var Text: String:
+	get: return _text
 	set(value):
-		_rich_label_text = value if value != null else ""
+		_text = value if value != null else ""
 		_set_label_text()
 		_apply_visual_state()
 		_fit_label_text()
+
+# Back-compat exports (deprecated). Routed to Text + LabelType
+@export var LabelText: String:
+	get: return _text if _label_type == LabelKind.Label else ""
+	set(value):
+		_text = value if value != null else ""
+		_label_type = LabelKind.Label
+		_set_label_text(); _apply_visual_state(); _fit_label_text()
+
+@export var RichLabelText: String:
+	get: return _text if _label_type == LabelKind.RichTextLabel else ""
+	set(value):
+		_text = value if value != null else ""
+		_label_type = LabelKind.RichTextLabel
+		_set_label_text(); _apply_visual_state(); _fit_label_text()
 
 @export var RichLabelUseBBCode: bool = true
 
@@ -159,6 +175,8 @@ var _enable_selected_overlay := false
 @export var BackgroundStretchMode: int = TextureRect.STRETCH_SCALE
 @export var BackgroundFlipH: bool = false
 @export var BackgroundFlipV: bool = false
+@export var PanelModulate: Color = Color.WHITE
+@export var BackgroundModulate: Color = Color.WHITE
 
 # Icon Settings
 @export_subgroup("Icon Settings")
@@ -166,11 +184,13 @@ var _enable_selected_overlay := false
 @export var IconStretchMode: int = TextureRect.STRETCH_SCALE
 @export var IconFlipH: bool = false
 @export var IconFlipV: bool = false
+@export var IconModulate: Color = Color.WHITE
 
 # Label Settings
 @export_subgroup("Label Settings")
 @export var LabelFont: Font
 @export var LabelTextColor: Color = Color.WHITE
+@export var TextModulate: Color = Color.WHITE
 @export var EnableTextAutoSize: bool = true
 @export var TextFitPadding: Vector2 = Vector2(12, 4)
 @export_range(6, 300, 1) var MinFontSize: int = 6
@@ -312,6 +332,30 @@ var _vj_area_panel: Panel
 var _fitting_label := false
 var _last_visual_state: String
 var _theme_applying := false
+var _auto_action_once_bits := 0
+var __editor_last_sig: String = ""
+func _editor_build_signature() -> String:
+	# Build a signature of key exported properties to detect editor changes
+	return "%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s" % [
+		str(Disabled),
+		str(Selected),
+		str(IsToggled),
+		str(PresetSelection),
+		str(BackgroundType),
+		str(IconTexture),
+		str(LabelType),
+		Text,
+		str(EnableSelectedOverlay),
+		str(PanelThemeType),
+		str(PanelThemeVariation),
+		str(BackgroundTexture),
+		str(InvertModes),
+		str(EnableHoverScale),
+		str(ActionMaskBits),
+		str(EnableHoldBuildUp),
+		str(EnableCooldown),
+		str(EnableVirtualJoystick)
+	]
 # Lifecycle
 func _enter_tree() -> void:
 	_initialize_callables()
@@ -321,23 +365,49 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_STOP
-	if EnableSelectedOverlay and Selected and Background == BackgroundMode.None:
-		Background = BackgroundMode.UsePanel
+	if EnableSelectedOverlay and Selected and BackgroundType == BackgroundMode.None:
+		BackgroundType = BackgroundMode.UsePanel
 	var shader_path = "res://addons/omni_button/Shader/InvertColor.tres"
-	if ResourceLoader.exists(shader_path):
-		_invert_material = load(shader_path)
-	_setup_children()
+	if Engine.is_editor_hint():
+		var sig: String = _editor_build_signature()
+		if sig != __editor_last_sig:
+			__editor_last_sig = sig
+			_setup_children()
+			_apply_panel_styling()
+			_apply_visual_state()
+			_fit_label_text()
 	_apply_panel_styling()
 	_apply_visual_state()
 	_fit_label_text()
+	_auto_enable_actions_once_from_connections()
 	if not Engine.is_editor_hint() and EnableVirtualJoystick and JoystickHideWhenInactive:
 		visible = false
+
+@onready var label = OmniLabelAccessor.new(self)
+@onready var icon = OmniIconAccessor.new(self)
+@onready var background = OmniBackgroundAccessor.new(self)
+@onready var panel = OmniPanelAccessor.new(self)
+@onready var overlay = OmniOverlayAccessor.new(self)
+@onready var cooldown = OmniCooldownAccessor.new(self)
+@onready var charge_up = OmniChargeUpAccessor.new(self)
 
 func _exit_tree() -> void:
 	_disconnect_all_signal_handlers()
 	_panel = null; _background_tex = null; _icon = null; _label = null; _rich_label = null; _overlay = null; _cooldown = null; _hold_fill = null
 
 func _process(delta: float) -> void:
+	# Editor changes: also check for new external signal connections once
+	if Engine.is_editor_hint():
+		_auto_enable_actions_once_from_connections()
+	# In editor: poll for any export property changes and refresh visuals
+	if Engine.is_editor_hint():
+		var sig := _editor_build_signature()
+		if sig != __editor_last_sig:
+			__editor_last_sig = sig
+			_setup_children()
+			_apply_panel_styling()
+			_apply_visual_state()
+			_fit_label_text()
 	# Hold progression
 	if _is_pressed and (not EnableCooldown or not _cooldown_active or AllowHoldDuringCooldown or EnableHoldBuildUp):
 		_hold_timer += delta
@@ -416,7 +486,7 @@ func _notification(what: int) -> void:
 	match what:
 		NOTIFICATION_RESIZED:
 			_fit_label_text()
-			if Background == BackgroundMode.UsePanel: queue_redraw()
+			if BackgroundType == BackgroundMode.UsePanel: queue_redraw()
 			if _default_thumb != null and is_instance_valid(_default_thumb): _update_default_thumb_visual()
 			if _is_hovering and EnableHoverScale:
 				_update_hover_pivots(); _hover_target_scale = _hover_target_for_viewport(); set_process(true)
@@ -743,14 +813,14 @@ func _setup_children() -> void:
 	_default_thumb = null
 	_vj_area_panel = null
 
-	if Background == BackgroundMode.UsePanel:
+	if BackgroundType == BackgroundMode.UsePanel:
 		_panel = Panel.new()
 		_panel.name = "Panel"
 		add_child(_panel)
 		_ensure_full_rect(_panel)
 		_panel.mouse_filter = MOUSE_FILTER_PASS
 
-	if Background == BackgroundMode.UseTexture and BackgroundTexture != null:
+	if BackgroundType == BackgroundMode.UseTexture and BackgroundTexture != null:
 		_background_tex = TextureRect.new()
 		_background_tex.name = "Background"
 		_background_tex.texture = BackgroundTexture
@@ -880,20 +950,205 @@ func _configure_rich_label(rtl: RichTextLabel) -> void:
 		rtl.add_theme_font_override("normal_font", LabelFont)
 	rtl.mouse_filter = MOUSE_FILTER_PASS
 
+# Accessor helper classes for ergonomic code usage ($OmniButton.Label.Text, etc.)
+class OmniLabelAccessor:
+	var _o: Omni_Button
+	func _init(o): _o = o
+	var text:
+		get: return _o.Text
+		set(value): _o.Text = value
+	var type:
+		get: return _o.LabelType
+		set(value): _o.LabelType = value
+	var modulate:
+		get: return _o.TextModulate
+		set(value): _o.TextModulate = value; _o._apply_visual_state()
+	var font:
+		get: return _o.LabelFont
+		set(value): _o.LabelFont = value; _o._apply_visual_state(); _o._fit_label_text()
+	var color:
+		get: return _o.LabelTextColor
+		set(value): _o.LabelTextColor = value; _o._apply_visual_state()
+	var fit_padding:
+		get: return _o.TextFitPadding
+		set(value): _o.TextFitPadding = value; _o._apply_visual_state(); _o._fit_label_text()
+	var min_font_size:
+		get: return _o.MinFontSize
+		set(value): _o.MinFontSize = value; _o._fit_label_text()
+	var max_font_size:
+		get: return _o.MaxFontSize
+		set(value): _o.MaxFontSize = value; _o._fit_label_text()
+	var fixed_font_size:
+		get: return _o.FixedFontSize
+		set(value): _o.FixedFontSize = value; _o._apply_visual_state(); _o._fit_label_text()
+	var auto_size:
+		get: return _o.EnableTextAutoSize
+		set(value): _o.EnableTextAutoSize = value; _o._fit_label_text()
+	var h_align:
+		get: return _o.LabelHorizontalAlignment
+		set(value): _o.LabelHorizontalAlignment = value; _o._apply_visual_state()
+	var v_align:
+		get: return _o.LabelVerticalAlignment
+		set(value): _o.LabelVerticalAlignment = value; _o._apply_visual_state()
+	var padding:
+		get: return _o.LabelPadding
+		set(value): _o.LabelPadding = value; _o._apply_visual_state(); _o._fit_label_text()
+	var pad_left:
+		get: return _o.LabelAdditionalPaddingLeft
+		set(value): _o.LabelAdditionalPaddingLeft = value; _o._apply_visual_state(); _o._fit_label_text()
+	var pad_top:
+		get: return _o.LabelAdditionalPaddingTop
+		set(value): _o.LabelAdditionalPaddingTop = value; _o._apply_visual_state(); _o._fit_label_text()
+	var pad_right:
+		get: return _o.LabelAdditionalPaddingRight
+		set(value): _o.LabelAdditionalPaddingRight = value; _o._apply_visual_state(); _o._fit_label_text()
+	var pad_bottom:
+		get: return _o.LabelAdditionalPaddingBottom
+		set(value): _o.LabelAdditionalPaddingBottom = value; _o._apply_visual_state(); _o._fit_label_text()
+	var autowrap:
+		get: return _o.LabelAutowrap
+		set(value): _o.LabelAutowrap = value; _o._apply_visual_state(); _o._fit_label_text()
+	var bbcode:
+		get: return _o.RichLabelUseBBCode
+		set(value): _o.RichLabelUseBBCode = value; _o._apply_visual_state()
+
+class OmniIconAccessor:
+	var _o: Omni_Button
+	func _init(o): _o = o
+	var tex:
+		get: return _o.IconTexture
+		set(value): _o.IconTexture = value; _o._apply_visual_state()
+	var expand_mode:
+		get: return _o.IconExpandMode
+		set(value): _o.IconExpandMode = value; _o._apply_visual_state()
+	var stretch_mode:
+		get: return _o.IconStretchMode
+		set(value): _o.IconStretchMode = value; _o._apply_visual_state()
+	var flip_h:
+		get: return _o.IconFlipH
+		set(value): _o.IconFlipH = value; _o._apply_visual_state()
+	var flip_v:
+		get: return _o.IconFlipV
+		set(value): _o.IconFlipV = value; _o._apply_visual_state()
+	var modulate:
+		get: return _o.IconModulate
+		set(value): _o.IconModulate = value; _o._apply_visual_state()
+
+class OmniBackgroundAccessor:
+	var _o: Omni_Button
+	func _init(o): _o = o
+	var mode:
+		get: return _o.Background
+		set(value): _o.Background = value; _o._apply_visual_state()
+	var tex:
+		get: return _o.BackgroundTexture
+		set(value): _o.BackgroundTexture = value; _o._apply_visual_state()
+	var expand_mode:
+		get: return _o.BackgroundExpandMode
+		set(value): _o.BackgroundExpandMode = value; _o._apply_visual_state()
+	var stretch_mode:
+		get: return _o.BackgroundStretchMode
+		set(value): _o.BackgroundStretchMode = value; _o._apply_visual_state()
+	var flip_h:
+		get: return _o.BackgroundFlipH
+		set(value): _o.BackgroundFlipH = value; _o._apply_visual_state()
+	var flip_v:
+		get: return _o.BackgroundFlipV
+		set(value): _o.BackgroundFlipV = value; _o._apply_visual_state()
+	var modulate:
+		get: return _o.BackgroundModulate
+		set(value): _o.BackgroundModulate = value; _o._apply_visual_state()
+
+class OmniPanelAccessor:
+	var _o: Omni_Button
+	func _init(o): _o = o
+	var modulate:
+		get: return _o.PanelModulate
+		set(value): _o.PanelModulate = value; _o._apply_visual_state()
+	var theme_type:
+		get: return _o.PanelThemeType
+		set(value): _o.PanelThemeType = value; _o._apply_panel_styling(); _o._apply_visual_state()
+	var theme_variation:
+		get: return _o.PanelThemeVariation
+		set(value): _o.PanelThemeVariation = value; _o._apply_panel_styling(); _o._apply_visual_state()
+	var style_box:
+		get: return _o.PanelStyleBox
+		set(value): _o.PanelStyleBox = value; _o._apply_panel_styling(); _o._apply_visual_state()
+
+class OmniCooldownAccessor:
+	var _o: Omni_Button
+	func _init(o): _o = o
+	var enabled:
+		get: return _o.EnableCooldown
+		set(value): _o.EnableCooldown = value; _o._apply_visual_state()
+	var duration:
+		get: return _o.CooldownDuration
+		set(value): _o.CooldownDuration = value
+	var trigger:
+		get: return _o.CooldownTrigger
+		set(value): _o.CooldownTrigger = value
+	var start_filled:
+		get: return _o.CooldownStartFilled
+		set(value): _o.CooldownStartFilled = value
+	var color:
+		get: return _o.CooldownColor
+		set(value): _o.CooldownColor = value; _o._apply_visual_state()
+	var direction:
+		get: return _o.CooldownFillDirection
+		set(value): _o.CooldownFillDirection = value
+	var suspend_hover_scale:
+		get: return _o.SuspendHoverScaleDuringCooldown
+		set(value): _o.SuspendHoverScaleDuringCooldown = value
+	var allow_hold_during:
+		get: return _o.AllowHoldDuringCooldown
+		set(value): _o.AllowHoldDuringCooldown = value
+	var hide_during_charge_up:
+		get: return _o.HideCooldownDuringHoldBuildUp
+		set(value): _o.HideCooldownDuringHoldBuildUp = value
+
+class OmniChargeUpAccessor:
+	var _o: Omni_Button
+	func _init(o): _o = o
+	var enabled:
+		get: return _o.EnableHoldBuildUp
+		set(value): _o.EnableHoldBuildUp = value; _o._apply_visual_state()
+	var duration:
+		get: return _o.HoldDuration
+		set(value): _o.HoldDuration = value
+	var color:
+		get: return _o.HoldFillColor
+		set(value): _o.HoldFillColor = value; _o._apply_visual_state()
+	var direction:
+		get: return _o.HoldFillDirection
+		set(value): _o.HoldFillDirection = value
+
+class OmniOverlayAccessor:
+	var _o: Omni_Button
+	func _init(o): _o = o
+	var enabled:
+		get: return _o.EnableSelectedOverlay
+		set(value): _o.EnableSelectedOverlay = value; _o._apply_visual_state()
+	var color:
+		get: return _o.SelectedColor
+		set(value): _o.SelectedColor = value; _o._apply_visual_state()
+
 func _set_label_text() -> void:
-	if _label_text != "" and _rich_label_text == "":
+	# Remove both if empty
+	if _text == "":
+		if _label != null and is_instance_valid(_label): remove_child(_label); _label.queue_free(); _label = null
+		if _rich_label != null and is_instance_valid(_rich_label): remove_child(_rich_label); _rich_label.queue_free(); _rich_label = null
+		return
+	# Create one based on LabelType
+	if _label_type == LabelKind.Label:
 		if _rich_label != null and is_instance_valid(_rich_label): remove_child(_rich_label); _rich_label.queue_free(); _rich_label = null
 		if _label == null or not is_instance_valid(_label):
 			_label = Label.new(); _label.name = "Label"; add_child(_label); _configure_label(_label)
-		_label.text = _label_text
-	elif _rich_label_text != "":
+		_label.text = _text
+	elif _label_type == LabelKind.RichTextLabel:
 		if _label != null and is_instance_valid(_label): remove_child(_label); _label.queue_free(); _label = null
 		if _rich_label == null or not is_instance_valid(_rich_label):
 			_rich_label = RichTextLabel.new(); _rich_label.name = "RichLabel"; add_child(_rich_label); _configure_rich_label(_rich_label)
-		_rich_label.text = _rich_label_text
-	else:
-		if _label != null and is_instance_valid(_label): remove_child(_label); _label.queue_free(); _label = null
-		if _rich_label != null and is_instance_valid(_rich_label): remove_child(_rich_label); _rich_label.queue_free(); _rich_label = null
+		_rich_label.text = _text
 	# reapply padding offsets to whichever label exists
 	if _label != null and is_instance_valid(_label): _configure_label(_label)
 	if _rich_label != null and is_instance_valid(_rich_label): _configure_rich_label(_rich_label)
@@ -1294,7 +1549,7 @@ func UpdateVirtualJoystick(global_point: Vector2) -> void: update_virtual_joysti
 func StopVirtualJoystick() -> void: stop_virtual_joystick()
 
 func _apply_visual_state() -> void:
-	if Background == BackgroundMode.UsePanel and _panel == null:
+	if BackgroundType == BackgroundMode.UsePanel and _panel == null:
 		_panel = Panel.new()
 		_panel.name = "Panel"
 		add_child(_panel)
@@ -1305,17 +1560,18 @@ func _apply_visual_state() -> void:
 	if EnableSelectedOverlay and (_selected or _is_toggled) and not overlay_alive:
 		_overlay = ColorRect.new(); _overlay.name = "Overlay"; add_child(_overlay)
 
-	if Background == BackgroundMode.UsePanel and _panel != null:
+	if BackgroundType == BackgroundMode.UsePanel and _panel != null:
 		_panel.visible = true
-		_panel.modulate = Color.WHITE
+		_panel.modulate = PanelModulate
 		_apply_invert(_panel)
 
-	if Background == BackgroundMode.UseTexture and _background_tex != null:
+	if BackgroundType == BackgroundMode.UseTexture and _background_tex != null:
 		_background_tex.texture = BackgroundTexture
 		_background_tex.flip_h = BackgroundFlipH
 		_background_tex.flip_v = BackgroundFlipV
 		_background_tex.expand_mode = BackgroundExpandMode
 		_background_tex.stretch_mode = BackgroundStretchMode
+		_background_tex.modulate = BackgroundModulate
 		_apply_invert(_background_tex)
 
 	if _icon != null:
@@ -1325,16 +1581,19 @@ func _apply_visual_state() -> void:
 		_icon.expand_mode = IconExpandMode
 		_icon.stretch_mode = IconStretchMode
 		_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		_icon.modulate = IconModulate
 		_apply_invert(_icon)
 
 	if _label != null:
-		_label.text = _label_text
+		_label.text = _text
 		_configure_label(_label)
 		_label.add_theme_color_override("font_color", LabelTextColor)
+		_label.modulate = TextModulate
 		_apply_invert(_label)
 	if _rich_label != null:
-		_rich_label.text = _rich_label_text
+		_rich_label.text = _text
 		_configure_rich_label(_rich_label)
+		_rich_label.modulate = TextModulate
 		_apply_invert(_rich_label)
 
 	if _enable_selected_overlay and _overlay != null and is_instance_valid(_overlay):
@@ -1359,7 +1618,7 @@ func _apply_invert(node: CanvasItem, _on_press: bool = false, _on_toggle: bool =
 		node.material = null
 
 func _apply_panel_styling() -> void:
-	if Background != BackgroundMode.UsePanel:
+	if BackgroundType != BackgroundMode.UsePanel:
 		if _panel != null:
 			if _panel.has_theme_stylebox_override("panel"):
 				_panel.remove_theme_stylebox_override("panel")
@@ -1614,6 +1873,37 @@ func _adopt_connected_callable(sig_name: String, fallback: Callable) -> Callable
 	if conns.size() > 0:
 		return conns[0]["callable"]
 	return fallback
+
+func _auto_enable_actions_once_from_connections() -> void:
+	# Map signal names to action bits
+	var map := {
+		"pressed": ACT_PRESSED,
+		"released": ACT_RELEASED,
+		"hover_in": ACT_HOVER,
+		"hover_out": ACT_HOVER,
+		"toggled": ACT_TOGGLE,
+		"hold": ACT_HOLD,
+		"swipe": ACT_SWIPE,
+		"log": ACT_LOG,
+		"warning": ACT_WARNING,
+		"error": ACT_ERROR,
+	}
+	for sig in map.keys():
+		var bit: int = map[sig]
+		if (_auto_action_once_bits & bit) != 0:
+			continue
+		if not has_signal(sig):
+			continue
+		var conns := get_signal_connection_list(sig)
+		var has_external := false
+		for conn in conns:
+			var cb: Callable = conn["callable"]
+			if cb.get_object() != self:
+				has_external = true
+				break
+		if has_external:
+			ActionMaskBits |= bit
+			_auto_action_once_bits |= bit
 
 func _run_built_in_pressed() -> void: pass
 func _run_built_in_released() -> void: pass

@@ -78,7 +78,7 @@ public partial class CSharpTest : Control
             _output.LabelHorizontalAlignment = HorizontalAlignment.Left;
             _output.LabelAutowrap = TextServer.AutowrapMode.Word;
             _output.RichLabelUseBBCode = true;
-            _output.LabelText = "Logger ready";
+            _output.LabelType = OmniButton.LabelTypeEnum.RichTextLabel;
             ConnectAllButtonsToOutput(_output);
         }
     }
@@ -329,7 +329,10 @@ public partial class CSharpTest : Control
         void SetOut(string msg)
         {
             if (GodotObject.IsInstanceValid(output))
-                output.RichLabelText = msg;
+            {
+                output.LabelType = OmniButton.LabelTypeEnum.RichTextLabel;
+                output.Text = msg;
+            }
         }
 
         SafeConnect(btn, OmniButton.SignalName.Pressed, Callable.From(() => SetOut($"[b][{btn.Name}][/b] Pressed")));
@@ -383,7 +386,10 @@ public partial class CSharpTest : Control
 
         // Optional: reflect in the output logger
         if (GodotObject.IsInstanceValid(_output))
-            _output.LabelText = $"[SwipeButton] Swipe: {direction} -> {System.IO.Path.GetFileNameWithoutExtension(path)}";
+        {
+            _output.LabelType = OmniButton.LabelTypeEnum.RichTextLabel;
+            _output.Text = $"[SwipeButton] Swipe: {direction} -> {System.IO.Path.GetFileNameWithoutExtension(path)}";
+        }
     }
     public void _on_swipe_button_swipe_ended(OmniButton source)
     {
@@ -393,6 +399,9 @@ public partial class CSharpTest : Control
 
         // Optional: reflect in the output logger
         if (GodotObject.IsInstanceValid(_output))
-            _output.LabelText = $"[SwipeButton] Swipe Ended";
+        {
+            _output.LabelType = OmniButton.LabelTypeEnum.RichTextLabel;
+            _output.Text = $"[SwipeButton] Swipe Ended";
+        }
     }
 }

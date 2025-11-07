@@ -17,6 +17,15 @@ Signals
 - JoystickStarted, JoystickAxis(Vector2), JoystickEnded
 - Log(string), Warning(string), Error(string)
 
+Updates and version notes
+- Unified label API: use LabelType (Label or RichTextLabel) + multiline Text. Legacy LabelText/RichLabelText still work but map to Text + LabelType.
+- Modulate properties live in their relevant groups: PanelModulate/BackgroundModulate (Background Settings), IconModulate (Icon Settings), TextModulate (Label Settings).
+- Accessors for ergonomic code:
+  - C#: LabelNode, IconNode, BackgroundNode, PanelNode, OverlayNode, CooldownNode, ChargeUpNode.
+  - GDScript: lowercase accessors label, icon, background, panel, overlay, cooldown, charge_up.
+- Auto-enable actions once: when you connect a signal handler (editor or code) for the first time, the matching ActionMask bit turns on. If you turn it off later, it stays off.
+- Editor live refresh: inspector changes re-render immediately via editor-only polling of exported properties (both GDScript and C#).
+
 Quick start (C#)
 - Add OmniButton, wire signals, and toggle features:
 

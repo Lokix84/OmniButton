@@ -111,7 +111,7 @@ public partial class OmniButtonUnitTest : Control
                 _log = new OmniButton { Name = "Logger" };
                 _log.SizeFlagsHorizontal = SizeFlags.ExpandFill;
                 _log.SizeFlagsVertical = SizeFlags.Fill;
-                _log.Background = OmniButton.BackgroundMode.UsePanel;
+                _log.BackgroundType = OmniButton.BackgroundMode.UsePanel;
                 _log.PanelStyleBox = BackgroundPanelStyleBoxSample;
                 _log.RichLabelUseBBCode = true;
                 _log.RichLabelText = "[b]Log[/b]\n";
@@ -338,7 +338,7 @@ public partial class OmniButtonUnitTest : Control
         {
             ClearArena();
             var b = MakeBaseButton(new Vector2(100, 120), new Vector2(220, 110), "Panel Background");
-            b.Background = OmniButton.BackgroundMode.UsePanel;
+            b.BackgroundType = OmniButton.BackgroundMode.UsePanel;
             b.PanelStyleBox = BackgroundPanelStyleBoxSample;
             _statusLabel.Text = "Background Panel applied";
             await Delay(0.2);
@@ -354,7 +354,7 @@ public partial class OmniButtonUnitTest : Control
             var b = MakeBaseButton(new Vector2(100, 120), new Vector2(220, 110), "Texture Background");
             // Assign texture first, then enable UseTexture so SetupChildren creates the node
             b.BackgroundTexture = BackgroundTextureSample;
-            b.Background = OmniButton.BackgroundMode.UseTexture;
+            b.BackgroundType = OmniButton.BackgroundMode.UseTexture;
             _statusLabel.Text = "Background texture applied";
             await Delay(0.2);
             var tex = b.GetNodeOrNull<TextureRect>("Background");
@@ -712,7 +712,7 @@ public partial class OmniButtonUnitTest : Control
         _arena.AddChild(b);
         CenterInArena(b, size);
         // Default: no panel background so most demos show only what's needed
-        b.Background = OmniButton.BackgroundMode.None;
+        b.BackgroundType = OmniButton.BackgroundMode.None;
         if (!string.IsNullOrEmpty(title))
         {
             b.LabelText = title;
