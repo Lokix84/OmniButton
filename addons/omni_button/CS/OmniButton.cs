@@ -322,6 +322,17 @@ public partial class OmniButton : Control
     [Export] public TextServer.AutowrapMode LabelAutowrap { get => _labelAutowrap; set { _labelAutowrap = value; RefreshEditorVisual(); } }
     private TextServer.AutowrapMode _labelAutowrap = TextServer.AutowrapMode.Off;
 
+    // ===== BBCode-aware typing support =====
+    private struct BBToken { public bool IsTag; public string Content; public BBToken(bool t, string c) { IsTag = t; Content = c; } }
+    private bool _twBBCodeAware = false;
+    [Export] public bool SuspendHoverDuringTypewriter { get; set; } = true;
+    [Export] public bool DelayEffectTagsDuringTypewriter { get; set; } = true;
+    private bool _twDelayEffects => DelayEffectTagsDuringTypewriter;
+    [Export] public bool FinishTypewriterOnPress { get; set; } = true;
+    private System.Collections.Generic.List<BBToken>? _twBBTokens;
+    private int _twVisiblePlainChars = 0;
+    private int _twTotalPlainChars = 0;
+
     // Modulate properties relocated into relevant subgroups below
     #endregion
     #region Invert Display(Exported Properties)
@@ -1111,6 +1122,9 @@ public partial class OmniButton : Control
     /// </summary>
     public override void _GuiInput(InputEvent @event)
     {
+        if (FinishTypewriterOnPress && _twActive && IsPressInput(@event))
+            SkipTypewriter();
+
         if (Disabled) return;
         bool inside = IsInputInside(@event);
         if (EnableCooldown && _cooldownActive) return; // disable actions during cooldown
@@ -3258,16 +3272,6 @@ public partial class OmniButton : Control
         }
     }
 
-    // ===== BBCode-aware typing support =====
-    private struct BBToken { public bool IsTag; public string Content; public BBToken(bool t, string c) { IsTag = t; Content = c; } }
-    private bool _twBBCodeAware = false;
-    [Export] public bool SuspendHoverDuringTypewriter { get; set; } = true;
-    [Export] public bool DelayEffectTagsDuringTypewriter { get; set; } = true;
-    private bool _twDelayEffects => DelayEffectTagsDuringTypewriter;
-    private System.Collections.Generic.List<BBToken>? _twBBTokens;
-    private int _twVisiblePlainChars = 0;
-    private int _twTotalPlainChars = 0;
-
     private (System.Collections.Generic.List<BBToken>, int) TokenizeBBCode(string s)
     {
         var tokens = new System.Collections.Generic.List<BBToken>();
@@ -3365,6 +3369,15 @@ public partial class OmniButton : Control
         NotifyPropertyListChanged();
     }
     #endregion
+    private static bool IsPressInput(InputEvent ev)
+    {
+        if (ev is InputEventScreenTouch st)
+            return st.Pressed;
+        if (ev is InputEventMouseButton mb)
+            return mb.Pressed && mb.ButtonIndex == MouseButton.Left;
+        return false;
+    }
+
     #region Logging
     public void PrintLog(string message)
     {
@@ -3422,7 +3435,3 @@ public partial class OmniButton : Control
     }
     #endregion
 }
-
-
-
-
