@@ -113,8 +113,8 @@ public partial class OmniButtonUnitTest : Control
                 _log.SizeFlagsVertical = SizeFlags.Fill;
                 _log.BackgroundType = OmniButton.BackgroundMode.UsePanel;
                 _log.PanelStyleBox = BackgroundPanelStyleBoxSample;
-                _log.RichLabelUseBBCode = true;
-                _log.RichLabelText = "[b]Log[/b]\n";
+                _log.LabelType = OmniButton.LabelTypeEnum.RichTextLabel;
+                _log.Text = "[b]Log[/b]\n";
                 _log.EnableTextAutoSize = true;
                 _log.LabelAutowrap = TextServer.AutowrapMode.Word;
                 _log.LabelHorizontalAlignment = HorizontalAlignment.Left;
@@ -242,8 +242,8 @@ public partial class OmniButtonUnitTest : Control
                         {
                             int pr = 0, rl = 0;
                             b.ActionMaskBits |= (int)OmniButton.ActionMaskFlags.Pressed | (int)OmniButton.ActionMaskFlags.Released;
-                            b.Connect(OmniButton.SignalName.Pressed, Callable.From(() => { pr++; b.LabelText = "Pressed"; }));
-                            b.Connect(OmniButton.SignalName.Released, Callable.From(() => { rl++; b.LabelText = "Released"; }));
+                            b.Connect(OmniButton.SignalName.Pressed, Callable.From(() => { pr++; b.Text = "Pressed"; }));
+                            b.Connect(OmniButton.SignalName.Released, Callable.From(() => { rl++; b.Text = "Released"; }));
                             _statusLabel.Text = "Basic: press and release";
                             b._GuiInput(MousePressAt(center, true));
                             await Delay(0.2);
@@ -257,7 +257,7 @@ public partial class OmniButtonUnitTest : Control
                             int tg = 0;
                             b.InteractionMode = OmniButton.InteractionModeEnum.ToggleOnPress;
                             b.ActionMaskBits |= (int)OmniButton.ActionMaskFlags.Toggle;
-                            b.Connect(OmniButton.SignalName.Toggled, Callable.From<bool>(on => { tg++; b.LabelText = on ? "Toggled On" : "Toggled Off"; }));
+                            b.Connect(OmniButton.SignalName.Toggled, Callable.From<bool>(on => { tg++; b.Text = on ? "Toggled On" : "Toggled Off"; }));
                             _statusLabel.Text = "Toggle: press to toggle on";
                             b._GuiInput(MousePressAt(center, true));
                             b._GuiInput(MousePressAt(center, false));
@@ -272,10 +272,10 @@ public partial class OmniButtonUnitTest : Control
                             b.EnableHoldBuildUp = true;
                             b.HoldDuration = 0.25f;
                             b.HoldFillColor = HoldFillColorSample;
-                            b.Connect(OmniButton.SignalName.Hold, Callable.From(() => { hold++; b.LabelText = "Hold!"; }));
+                            b.Connect(OmniButton.SignalName.Hold, Callable.From(() => { hold++; b.Text = "Hold!"; }));
                             _statusLabel.Text = "Hold: press and wait";
                             _statusLabel.Text = "Hold: press and wait";
-                            b.LabelText = "Hold Active";
+                            b.Text = "Hold Active";
                             b._GuiInput(MousePressAt(center, true));
                             ok = hold == 1;
                         }
@@ -286,7 +286,7 @@ public partial class OmniButtonUnitTest : Control
                             b.ActionMaskBits |= (int)OmniButton.ActionMaskFlags.Swipe;
                             b.MouseSwipeInit = OmniButton.SwipeInitMode.OnHoverIn;
                             b.SwipeThreshold = 10f;
-                            b.Connect(OmniButton.SignalName.Swipe, Callable.From<Vector2>(d => { dir = d; count++; b.LabelText = $"Swipe {Mathf.Sign(d.X)},{Mathf.Sign(d.Y)}"; }));
+                            b.Connect(OmniButton.SignalName.Swipe, Callable.From<Vector2>(d => { dir = d; count++; b.Text = $"Swipe {Mathf.Sign(d.X)},{Mathf.Sign(d.Y)}"; }));
                             _statusLabel.Text = "Swipe: right";
                             var mm1 = new InputEventMouseMotion { GlobalPosition = center, Position = center };
                             b._GuiInput(mm1);
@@ -317,7 +317,7 @@ public partial class OmniButtonUnitTest : Control
                             b.EnableJoystickArea = true;
                             b.JoystickAreaPersistent = true;
                             b.BoundsSource = _arena;
-                            b.Connect(OmniButton.SignalName.JoystickAxis, Callable.From<Vector2>(a => { axes++; b.LabelText = $"Axis {Math.Round(a.X, 2)},{Math.Round(a.Y, 2)}"; }));
+                            b.Connect(OmniButton.SignalName.JoystickAxis, Callable.From<Vector2>(a => { axes++; b.Text = $"Axis {Math.Round(a.X, 2)},{Math.Round(a.Y, 2)}"; }));
                             _statusLabel.Text = "Virtual Joystick: start, move, stop";
                             b.StartVirtualJoystickAt(center);
                             b.UpdateVirtualJoystick(center + new Vector2(50, 0));
@@ -368,7 +368,6 @@ public partial class OmniButtonUnitTest : Control
         {
             ClearArena();
             var b = MakeBaseButton(new Vector2(100, 120), new Vector2(220, 110), "Selected Overlay");
-            b.EnableSelectedOverlay = true;
             b.SelectedColor = SelectedColorSample;
             b.Selected = true;
             _statusLabel.Text = "Selected overlay shown";
@@ -385,10 +384,10 @@ public partial class OmniButtonUnitTest : Control
             ClearArena();
             var b = MakeBaseButton(new Vector2(100, 180), new Vector2(220, 110), "Icon + Label");
             b.IconTexture = IconSample;
-            b.LabelText = "Hello";
+            b.Text = "Hello";
             _statusLabel.Text = "Icon + Label set";
             await Delay(0.2);
-            bool ok = b.GetNodeOrNull<TextureRect>("Icon") != null || !string.IsNullOrEmpty(b.LabelText);
+            bool ok = b.GetNodeOrNull<TextureRect>("Icon") != null || !string.IsNullOrEmpty(b.Text);
             b.QueueFree();
             return ok;
         });
@@ -398,7 +397,7 @@ public partial class OmniButtonUnitTest : Control
         {
             ClearArena();
             var b = MakeBaseButton(new Vector2(100, 240), new Vector2(220, 110), "Label Padding");
-            b.LabelText = "x10";
+            b.Text = "x10";
             b.LabelHorizontalAlignment = HorizontalAlignment.Right;
             b.LabelVerticalAlignment = VerticalAlignment.Bottom;
             b.LabelPadding = new Vector2(0, 0);
@@ -426,8 +425,8 @@ public partial class OmniButtonUnitTest : Control
             ClearArena();
             var b = MakeBaseButton(new Vector2(360, 140), new Vector2(220, 110), "Hover Scale");
             b.ActionMaskBits |= (int)OmniButton.ActionMaskFlags.Hover;
-            b.Connect(OmniButton.SignalName.HoverIn, Callable.From(() => b.LabelText = "HoverIn"));
-            b.Connect(OmniButton.SignalName.HoverOut, Callable.From(() => b.LabelText = "HoverOut"));
+            b.Connect(OmniButton.SignalName.HoverIn, Callable.From(() => b.Text = "HoverIn"));
+            b.Connect(OmniButton.SignalName.HoverOut, Callable.From(() => b.Text = "HoverOut"));
 
             b.EnableHoverScale = true;
             b.HoverScale = 1.5f;
@@ -460,7 +459,7 @@ public partial class OmniButtonUnitTest : Control
             b.CooldownTrigger = OmniButton.CooldownTriggerEnum.OnPress;
             b.CooldownDuration = 0.2f;
             int pressed = 0;
-            b.Connect(OmniButton.SignalName.Pressed, Callable.From(() => { pressed++; b.LabelText = $"Pressed x{pressed}"; }));
+            b.Connect(OmniButton.SignalName.Pressed, Callable.From(() => { pressed++; b.Text = $"Pressed x{pressed}"; }));
             // Start in cooldown: first attempt should be blocked
             b.StartCooldown();
             var p = Center(b);
@@ -487,7 +486,7 @@ public partial class OmniButtonUnitTest : Control
             b.HoldFillColor = HoldFillColorSample;
             b.HoldDuration = 0.15f;
             int hold = 0;
-            b.Connect(OmniButton.SignalName.Hold, Callable.From(() => { hold++; b.LabelText = "Hold!"; }));
+            b.Connect(OmniButton.SignalName.Hold, Callable.From(() => { hold++; b.Text = "Hold!"; }));
             var p = Center(b);
             b._GuiInput(MousePressAt(p, true));
             SimProcess(b, 0.2);
@@ -539,8 +538,8 @@ public partial class OmniButtonUnitTest : Control
         {
             ClearArena();
             var b = MakeBaseButton(new Vector2(360, 460), new Vector2(280, 120), "BBCode");
-            b.RichLabelUseBBCode = true;
-            b.RichLabelText = "[b]Bold[/b] [color=red]Red[/color] [i]Italics[/i]";
+            b.LabelType = OmniButton.LabelTypeEnum.RichTextLabel;
+            b.Text = "[b]Bold[/b] [color=red]Red[/color] [i]Italics[/i]";
             _statusLabel.Text = "RichTextLabel with BBCode (see Godot docs for tags)";
             await Delay(0.2);
             var rtl = b.GetNodeOrNull<RichTextLabel>("RichLabel");
@@ -564,12 +563,12 @@ public partial class OmniButtonUnitTest : Control
             b.Disabled = false;
             _statusLabel.Text = "Theme variation strings assigned";
             _statusLabel.Text = "Theme variation strings assigned";
-            await Delay(0.1); b.LabelText = "Normal";
-            b.IsPressed = true; b.LabelText = "Pressed"; await Delay(0.05);
-            b.IsPressed = false; await Delay(0.05); b.Selected = true; b.LabelText = "Selected";
+            await Delay(0.1); b.Text = "Normal";
+            b.IsPressed = true; b.Text = "Pressed"; await Delay(0.05);
+            b.IsPressed = false; await Delay(0.05); b.Selected = true; b.Text = "Selected";
             b.PanelThemeVariation = "primary";
-            b.PanelThemeVariation = "primary"; b.LabelText = "Variation: primary";
-            await Delay(0.05); b.IsToggled = true; b.LabelText = "Toggled";
+            b.PanelThemeVariation = "primary"; b.Text = "Variation: primary";
+            await Delay(0.05); b.IsToggled = true; b.Text = "Toggled";
             bool ok = b == null || b.ThemeTypeVariation == "primary";
             return ok;
         });
@@ -588,7 +587,7 @@ public partial class OmniButtonUnitTest : Control
             b._GuiInput(MousePressAt(p + new Vector2(30, 20), false));
             await Delay(0.05);
             bool ok = b.GlobalPosition != start;
-            _statusLabel.Text = ok ? "Dragged moved position" : "No movement detected"; if (ok) b.LabelText = "Moved";
+            _statusLabel.Text = ok ? "Dragged moved position" : "No movement detected"; if (ok) b.Text = "Moved";
             return ok;
         });
 
@@ -600,7 +599,7 @@ public partial class OmniButtonUnitTest : Control
             b.ActionMaskBits |= (int)OmniButton.ActionMaskFlags.Pressed;
             b.HitSlop = new Vector2(20, 20);
             int pressed = 0;
-            b.Connect(OmniButton.SignalName.Pressed, Callable.From(() => { pressed++; b.LabelText = "Pressed via slop"; }));
+            b.Connect(OmniButton.SignalName.Pressed, Callable.From(() => { pressed++; b.Text = "Pressed via slop"; }));
             var rect = b.GetGlobalRect();
             var outside = new Vector2(rect.Position.X - 5, rect.Position.Y + rect.Size.Y / 2f);
             b._GuiInput(MousePressAt(outside, true));
@@ -715,7 +714,7 @@ public partial class OmniButtonUnitTest : Control
         b.BackgroundType = OmniButton.BackgroundMode.None;
         if (!string.IsNullOrEmpty(title))
         {
-            b.LabelText = title;
+            b.Text = title;
             b.LabelHorizontalAlignment = HorizontalAlignment.Center;
             b.LabelVerticalAlignment = VerticalAlignment.Center;
             b.LabelPadding = new Vector2(6, 4);
@@ -784,7 +783,7 @@ public partial class OmniButtonUnitTest : Control
         if (_logLines.Count > MaxLines) _logLines.RemoveRange(0, _logLines.Count - MaxLines);
         var text = string.Join("\n", _logLines);
         if (IsInstanceValid(_log))
-            _log.RichLabelText = text;
+            _log.Text = text;
         else if (IsInstanceValid(_rtLog))
             _rtLog.Text = text;
     }

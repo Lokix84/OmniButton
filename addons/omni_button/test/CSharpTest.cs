@@ -18,6 +18,7 @@ public partial class CSharpTest : Control
     private Control _lookArea;
 
     private OmniButton _up, _down, _left, _right;
+    private OmniButton _upLeft, _upRight, _downLeft, _downRight;
     private OmniButton _lastHover;
 
     // Selected item list support
@@ -25,7 +26,8 @@ public partial class CSharpTest : Control
     private readonly List<OmniButton> _selectedButtons = new();
     private OmniButton _usedButton;
     // Logger
-    private OmniButton _output;
+    private OmniButton _output; // ButtonOutput (dynamic event log)
+    private OmniButton _output2; // TextBlock (static informational block)
 
     public override void _Ready()
     {
@@ -53,6 +55,10 @@ public partial class CSharpTest : Control
         _down = GetNodeOrNull<OmniButton>("Gamepad/Down");
         _left = GetNodeOrNull<OmniButton>("Gamepad/Left");
         _right = GetNodeOrNull<OmniButton>("Gamepad/Right");
+        _upLeft = GetNodeOrNull<OmniButton>("Gamepad/UpLeft");
+        _upRight = GetNodeOrNull<OmniButton>("Gamepad/UpRight");
+        _downLeft = GetNodeOrNull<OmniButton>("Gamepad/DownLeft");
+        _downRight = GetNodeOrNull<OmniButton>("Gamepad/DownRight");
 
         // Start joystick only when Move area itself receives the press (selected items above it will consume input)
         _moveArea.Connect(Control.SignalName.GuiInput, new Callable(this, nameof(OnMoveGuiInput)));
@@ -70,16 +76,34 @@ public partial class CSharpTest : Control
                   ?? GetNodeOrNull<OmniButton>("ButtonOutput")
                   ?? (GetTree().GetFirstNodeInGroup("Output") as OmniButton);
 
+        // Wire button events to ButtonOutput, not TextBlock
         if (_output != null)
-        {
-            // Keep autosize on for logger to avoid overflow; prefer RichText + wrap
-            _output.EnableTextAutoSize = true;
-            _output.FixedFontSize = 0;
-            _output.LabelHorizontalAlignment = HorizontalAlignment.Left;
-            _output.LabelAutowrap = TextServer.AutowrapMode.Word;
-            _output.RichLabelUseBBCode = true;
-            _output.LabelType = OmniButton.LabelTypeEnum.RichTextLabel;
             ConnectAllButtonsToOutput(_output);
+
+        // Discover optional static TextBlock (now with typewriter demo)
+        _output2 = GetNodeOrNull<OmniButton>("%TextBlock")
+                  ?? GetNodeOrNull<OmniButton>("TextBlock")
+                  ?? (GetTree().GetFirstNodeInGroup("Block") as OmniButton);
+        // Kick off BBCode-aware typewriter on TextBlock using TextToType
+        if (_output2 != null)
+        {
+            // Use TextToType if provided; else fall back to existing Text
+            var content = !string.IsNullOrEmpty(_output2.TextToType) ? _output2.TextToType : _output2.Text;
+            if (!string.IsNullOrEmpty(content))
+            {
+                _output2.TextToType = content;
+                // Show BBCode effects during typing
+                _output2.DelayEffectTagsDuringTypewriter = false;
+                _output2.Connect(OmniButton.SignalName.TypewriterCompleted, Callable.From(() =>
+                {
+                    if (_output != null)
+                    {
+                        _output.LabelType = OmniButton.LabelTypeEnum.RichTextLabel;
+                        _output.Text = "Typing complete";
+                    }
+                }));
+                _output2.StartTypewriter(40f, byWord: false, preserveBBCodeTags: true);
+            }
         }
     }
 
@@ -247,6 +271,10 @@ public partial class CSharpTest : Control
         else if (_down != null && IsPointInNode(_down, globalPoint)) hit = _down;
         else if (_left != null && IsPointInNode(_left, globalPoint)) hit = _left;
         else if (_right != null && IsPointInNode(_right, globalPoint)) hit = _right;
+        else if (_upLeft != null && IsPointInNode(_upLeft, globalPoint)) hit = _upLeft;
+        else if (_upRight != null && IsPointInNode(_upRight, globalPoint)) hit = _upRight;
+        else if (_downLeft != null && IsPointInNode(_downLeft, globalPoint)) hit = _downLeft;
+        else if (_downRight != null && IsPointInNode(_downRight, globalPoint)) hit = _downRight;
 
         if (hit == _lastHover) return;
 
@@ -384,7 +412,7 @@ public partial class CSharpTest : Control
         if (GodotObject.IsInstanceValid(source))
             source.IconTexture = GD.Load<Texture2D>(path);
 
-        // Optional: reflect in the output logger
+        // Reflect in the ButtonOutput logger
         if (GodotObject.IsInstanceValid(_output))
         {
             _output.LabelType = OmniButton.LabelTypeEnum.RichTextLabel;
@@ -397,7 +425,7 @@ public partial class CSharpTest : Control
         if (GodotObject.IsInstanceValid(source))
             source.IconTexture = GD.Load<Texture2D>("res://addons/omni_button/test/icons/Icon-Circle5.png");
 
-        // Optional: reflect in the output logger
+        // Reflect in the ButtonOutput logger
         if (GodotObject.IsInstanceValid(_output))
         {
             _output.LabelType = OmniButton.LabelTypeEnum.RichTextLabel;

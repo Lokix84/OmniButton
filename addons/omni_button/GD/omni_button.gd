@@ -155,14 +155,6 @@ var _text: String = ""
 		_set_label_text(); _apply_visual_state(); _fit_label_text()
 
 @export var RichLabelUseBBCode: bool = true
-
-var _enable_selected_overlay := false
-@export var EnableSelectedOverlay: bool:
-	get: return _enable_selected_overlay
-	set(value):
-		if _enable_selected_overlay == value: return
-		_enable_selected_overlay = value
-		_update_overlay(); _apply_visual_state()
 @export var SelectedColor: Color = Color(1, 1, 1, 0.3)
 
 # Background Settings
@@ -241,6 +233,71 @@ var _enable_selected_overlay := false
 @export var LogAction: Callable
 @export var WarningAction: Callable
 @export var ErrorAction: Callable
+
+# Debug: log autosize timings to help profile text-fitting
+@export var DebugAutosizeTimings: bool = false
+
+# Cache the last chosen autosize to accelerate append cases
+var _last_fit_font_size: int = -1
+
+# Typewriter support
+var _tw_active := false
+var _tw_by_word := false
+var _tw_cps: float = 30.0
+var _tw_accum: float = 0.0
+var _tw_final_text: String = ""
+var _tw_index: int = 0
+var _tw_tokens: Array[String] = []
+var _tw_buffer: String = ""
+
+# Convenience per-action toggles to mirror inspector usage seen in tests
+@export var EnablePressedActions: bool:
+	get: return _action_enabled(ACT_PRESSED)
+	set(value):
+		if value:
+			ActionMaskBits |= ACT_PRESSED
+		else:
+			ActionMaskBits &= ~ACT_PRESSED
+
+@export var EnableReleasedActions: bool:
+	get: return _action_enabled(ACT_RELEASED)
+	set(value):
+		if value:
+			ActionMaskBits |= ACT_RELEASED
+		else:
+			ActionMaskBits &= ~ACT_RELEASED
+
+@export var EnableHoverActions: bool:
+	get: return _action_enabled(ACT_HOVER)
+	set(value):
+		if value:
+			ActionMaskBits |= ACT_HOVER
+		else:
+			ActionMaskBits &= ~ACT_HOVER
+
+@export var EnableToggleActions: bool:
+	get: return _action_enabled(ACT_TOGGLE)
+	set(value):
+		if value:
+			ActionMaskBits |= ACT_TOGGLE
+		else:
+			ActionMaskBits &= ~ACT_TOGGLE
+
+@export var EnableHoldActions: bool:
+	get: return _action_enabled(ACT_HOLD)
+	set(value):
+		if value:
+			ActionMaskBits |= ACT_HOLD
+		else:
+			ActionMaskBits &= ~ACT_HOLD
+
+@export var EnableSwipeActions: bool:
+	get: return _action_enabled(ACT_SWIPE)
+	set(value):
+		if value:
+			ActionMaskBits |= ACT_SWIPE
+		else:
+			ActionMaskBits &= ~ACT_SWIPE
 
 # Toggle Behavior
 enum InteractionModeEnum {Momentary = 0, ToggleOnPress = 1, ToggleOnRelease = 2}
@@ -334,6 +391,51 @@ var _last_visual_state: String
 var _theme_applying := false
 var _auto_action_once_bits := 0
 var __editor_last_sig: String = ""
+var __editor_poll_accum := 0.0
+const __EDITOR_POLL_INTERVAL := 0.2
+var _fit_cache_sig: String = ""
+var _managed_root: Control
+var _managed_draw_on_top := true
+
+@export var ManagedDrawOnTop: bool:
+	get: return _managed_draw_on_top
+	set(value):
+		_managed_draw_on_top = value
+		_position_managed_root()
+
+func _ensure_managed_root() -> void:
+	if _managed_root != null and is_instance_valid(_managed_root):
+		return
+	_managed_root = Control.new()
+	_managed_root.name = "_Managed"
+	add_child(_managed_root)
+	_ensure_full_rect(_managed_root)
+	_managed_root.mouse_filter = MOUSE_FILTER_PASS
+	_position_managed_root()
+
+func _position_managed_root() -> void:
+	if _managed_root == null or not is_instance_valid(_managed_root):
+		return
+	var parent := self
+	if _managed_draw_on_top:
+		parent.move_child(_managed_root, parent.get_child_count() - 1)
+	else:
+		parent.move_child(_managed_root, 0)
+
+func _managed_add_child(n: Node) -> void:
+	_ensure_managed_root()
+	_managed_root.add_child(n)
+var _pending_children_refresh := false
+var _pending_panel_styling := false
+var _pending_visual_refresh := false
+var _pending_fit_label := false
+
+func queue_refresh(children:=false, panel_styling:=false, fit_label:=true) -> void:
+	_pending_children_refresh = _pending_children_refresh or children
+	_pending_panel_styling = _pending_panel_styling or panel_styling
+	_pending_visual_refresh = true
+	_pending_fit_label = _pending_fit_label or fit_label
+	set_process(true)
 func _editor_build_signature() -> String:
 	# Build a signature of key exported properties to detect editor changes
 	return "%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s" % [
@@ -345,7 +447,6 @@ func _editor_build_signature() -> String:
 		str(IconTexture),
 		str(LabelType),
 		Text,
-		str(EnableSelectedOverlay),
 		str(PanelThemeType),
 		str(PanelThemeVariation),
 		str(BackgroundTexture),
@@ -365,17 +466,9 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_STOP
-	if EnableSelectedOverlay and Selected and BackgroundType == BackgroundMode.None:
+	if Selected and BackgroundType == BackgroundMode.None:
 		BackgroundType = BackgroundMode.UsePanel
 	var shader_path = "res://addons/omni_button/Shader/InvertColor.tres"
-	if Engine.is_editor_hint():
-		var sig: String = _editor_build_signature()
-		if sig != __editor_last_sig:
-			__editor_last_sig = sig
-			_setup_children()
-			_apply_panel_styling()
-			_apply_visual_state()
-			_fit_label_text()
 	_apply_panel_styling()
 	_apply_visual_state()
 	_fit_label_text()
@@ -395,19 +488,122 @@ func _exit_tree() -> void:
 	_disconnect_all_signal_handlers()
 	_panel = null; _background_tex = null; _icon = null; _label = null; _rich_label = null; _overlay = null; _cooldown = null; _hold_fill = null
 
+# ===== Typewriter API =====
+func start_typewriter(final_text: String, cps: float = 30.0, by_word: bool = false) -> void:
+	if final_text == "":
+		skip_typewriter(); return
+	_tw_final_text = final_text
+	_tw_by_word = by_word
+	_tw_cps = max(1.0, cps)
+	_tw_accum = 0.0
+	_tw_index = 0
+	_tw_buffer = ""
+	_setup_children()
+	_prefit_for_text(final_text)
+	if _tw_by_word:
+		_tw_tokens = _tokenize_words(final_text)
+	else:
+		_tw_tokens = []
+	_set_typewriter_visible_text("")
+	_tw_active = true
+	set_process(true)
+
+func skip_typewriter() -> void:
+	if _tw_final_text != "": _set_typewriter_visible_text(_tw_final_text)
+	_stop_typewriter()
+
+func stop_typewriter() -> void:
+	_stop_typewriter()
+
+func _stop_typewriter() -> void:
+	_tw_active = false
+	_tw_tokens = []
+
+func _set_typewriter_visible_text(s: String) -> void:
+	if _label != null and is_instance_valid(_label): _label.text = s
+	if _rich_label != null and is_instance_valid(_rich_label): _rich_label.text = s
+	if not _tw_active: _text = s
+
+# Helper: simple whitespace test (space, tab, newline, carriage return)
+func _is_whitespace(ch: String) -> bool:
+	return ch == " " or ch == "\t" or ch == "\n" or ch == "\r"
+
+func _tokenize_words(s: String) -> Array[String]:
+	var out: Array[String] = []
+	var i := 0
+	while i < s.length():
+		var start := i
+		while i < s.length() and not _is_whitespace(s[i]): i += 1
+		var word_end := i
+		while i < s.length() and _is_whitespace(s[i]): i += 1
+		var end := i
+		if end > start:
+			out.append(s.substr(start, end - start))
+	return out
+
+func _prefit_for_text(content: String) -> void:
+	var ep := _get_effective_label_padding()
+	var avail := Vector2(
+		max(1.0, size.x - max(0.0, TextFitPadding.x) - max(0.0, ep.x) - max(0.0, ep.z)),
+		max(1.0, size.y - max(0.0, TextFitPadding.y) - max(0.0, ep.y) - max(0.0, ep.w))
+	)
+	if avail.x <= 1.0 or avail.y <= 1.0: return
+	if _label_type == LabelKind.RichTextLabel and _rich_label != null and is_instance_valid(_rich_label):
+		var base_font: Font = _rich_label.get_theme_font("normal_font") if _rich_label.get_theme_font("normal_font") != null else ThemeDB.fallback_font
+		if base_font == null: return
+		var plain := _strip_bbcode(content)
+		var wrap_w := avail.x if LabelAutowrap != TextServer.AUTOWRAP_OFF else -1
+		var lo := MinFontSize
+		var hi := MaxFontSize
+		var best := lo
+		while lo <= hi:
+			var mid := int((lo + hi) / 2)
+			var ts := base_font.get_string_size(plain, HORIZONTAL_ALIGNMENT_LEFT, wrap_w, mid)
+			if ts.x <= avail.x and ts.y <= avail.y:
+				best = mid; lo = mid + 1
+			else:
+				hi = mid - 1
+		_apply_rich_label_font_overrides(base_font, best)
+		_last_fit_font_size = best
+	elif _label_type == LabelKind.Label and _label != null and is_instance_valid(_label):
+		var fnt: Font = _label.get_theme_font("font") if _label.get_theme_font("font") != null else ThemeDB.fallback_font
+		if fnt == null: return
+		var wrap_w2 := avail.x if LabelAutowrap != TextServer.AUTOWRAP_OFF else -1
+		var lo2 := MinFontSize
+		var hi2 := MaxFontSize
+		var best2 := lo2
+		while lo2 <= hi2:
+			var mid2 := int((lo2 + hi2) / 2)
+			var ts2 := fnt.get_string_size(content, HORIZONTAL_ALIGNMENT_LEFT, wrap_w2, mid2)
+			if ts2.x <= avail.x and ts2.y <= avail.y:
+				best2 = mid2; lo2 = mid2 + 1
+			else:
+				hi2 = mid2 - 1
+		_label.add_theme_font_override("font", fnt)
+		_label.add_theme_font_size_override("font_size", best2)
+		_last_fit_font_size = best2
+
 func _process(delta: float) -> void:
-	# Editor changes: also check for new external signal connections once
+	# Editor: throttle polling to reduce overhead
 	if Engine.is_editor_hint():
-		_auto_enable_actions_once_from_connections()
-	# In editor: poll for any export property changes and refresh visuals
-	if Engine.is_editor_hint():
-		var sig := _editor_build_signature()
-		if sig != __editor_last_sig:
-			__editor_last_sig = sig
-			_setup_children()
-			_apply_panel_styling()
-			_apply_visual_state()
-			_fit_label_text()
+		__editor_poll_accum += delta
+		if __editor_poll_accum >= __EDITOR_POLL_INTERVAL:
+			__editor_poll_accum = 0.0
+			_auto_enable_actions_once_from_connections()
+			var sig := _editor_build_signature()
+			if sig != __editor_last_sig:
+				__editor_last_sig = sig
+				queue_refresh(true, true, true)
+	# Apply any pending refresh in a single coalesced pass
+	if _pending_children_refresh or _pending_panel_styling or _pending_visual_refresh or _pending_fit_label:
+		if _pending_children_refresh:
+			_setup_children(); _pending_children_refresh = false
+		if _pending_panel_styling:
+			_apply_panel_styling(); _pending_panel_styling = false
+		if _pending_visual_refresh:
+			_apply_visual_state(); _pending_visual_refresh = false
+		if _pending_fit_label:
+			_fit_label_text(); _pending_fit_label = false
 	# Hold progression
 	if _is_pressed and (not EnableCooldown or not _cooldown_active or AllowHoldDuringCooldown or EnableHoldBuildUp):
 		_hold_timer += delta
@@ -475,12 +671,30 @@ func _process(delta: float) -> void:
 			if is_instance_valid(_cooldown): _cooldown.visible = false
 			if is_instance_valid(_cooldown): _cooldown.size = Vector2.ZERO; _cooldown.position = Vector2.ZERO
 
-	# Keep exported state properties in sync (editor friendliness)
-	Selected = _selected
-	IsToggled = _is_toggled
-	IsPressed = _is_pressed
-	IsHovering = _is_hovering
-	IsHolding = _is_holding
+	# Typewriter progression
+	if _tw_active:
+		var step: float = 1.0 / max(1.0, _tw_cps)
+		_tw_accum += delta
+		var changed := false
+		if _tw_by_word and _tw_tokens.size() > 0:
+			while _tw_accum >= step and _tw_index < _tw_tokens.size():
+				_tw_accum -= step
+				_tw_buffer += _tw_tokens[_tw_index]
+				_tw_index += 1
+				changed = true
+			if changed: _set_typewriter_visible_text(_tw_buffer)
+			if _tw_index >= _tw_tokens.size(): _stop_typewriter()
+		else:
+			while _tw_accum >= step and _tw_index < _tw_final_text.length():
+				_tw_accum -= step
+				_tw_buffer += _tw_final_text[_tw_index]
+				_tw_index += 1
+				changed = true
+			if changed: _set_typewriter_visible_text(_tw_buffer)
+			if _tw_index >= _tw_final_text.length(): _stop_typewriter()
+
+	# Do not reassign exported state properties every frame; avoids extra setter work
+	# Properties are updated at the time state changes (press/hover/toggle/hold)
 
 func _notification(what: int) -> void:
 	match what:
@@ -799,9 +1013,13 @@ func _on_mouse_exited() -> void:
 
 # Children management and visuals
 func _setup_children() -> void:
-	for child in get_children():
-		remove_child(child)
-		child.queue_free()
+	# Free only managed nodes; leave user-added children intact
+	for n in [_panel, _background_tex, _icon, _label, _rich_label, _overlay, _cooldown, _hold_fill, _default_thumb, _vj_area_panel]:
+		if n != null and is_instance_valid(n):
+			var p = n.get_parent()
+			if p == self or (p != null and is_instance_valid(p) and p == _managed_root):
+				p.remove_child(n)
+			n.queue_free()
 	_panel = null
 	_background_tex = null
 	_icon = null
@@ -816,7 +1034,7 @@ func _setup_children() -> void:
 	if BackgroundType == BackgroundMode.UsePanel:
 		_panel = Panel.new()
 		_panel.name = "Panel"
-		add_child(_panel)
+		_managed_add_child(_panel)
 		_ensure_full_rect(_panel)
 		_panel.mouse_filter = MOUSE_FILTER_PASS
 
@@ -829,7 +1047,7 @@ func _setup_children() -> void:
 		_background_tex.flip_h = BackgroundFlipH
 		_background_tex.flip_v = BackgroundFlipV
 		_background_tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		add_child(_background_tex)
+		_managed_add_child(_background_tex)
 		_ensure_full_rect(_background_tex)
 		_background_tex.mouse_filter = MOUSE_FILTER_PASS
 
@@ -842,7 +1060,7 @@ func _setup_children() -> void:
 		_icon.flip_h = IconFlipH
 		_icon.flip_v = IconFlipV
 		_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		add_child(_icon)
+		_managed_add_child(_icon)
 		_ensure_full_rect(_icon)
 		_icon.mouse_filter = MOUSE_FILTER_PASS
 
@@ -864,17 +1082,18 @@ func _setup_children() -> void:
 	_reorder_children()
 
 func _update_overlay() -> void:
-	var need := _enable_selected_overlay and (_selected or _is_toggled)
+	var need := _selected
 	var alive := _overlay != null and is_instance_valid(_overlay) and _overlay.get_parent() == self
 	if need and not alive:
 		_overlay = ColorRect.new()
 		_overlay.name = "Overlay"
 		_overlay.color = SelectedColor
 		_overlay.mouse_filter = MOUSE_FILTER_PASS
-		add_child(_overlay)
+		_managed_add_child(_overlay)
 		_ensure_full_rect(_overlay)
 	elif (not need) and alive:
-		remove_child(_overlay)
+		var p := _overlay.get_parent()
+		if p != null and is_instance_valid(p): p.remove_child(_overlay)
 		_overlay.queue_free()
 		_overlay = null
 
@@ -962,118 +1181,118 @@ class OmniLabelAccessor:
 		set(value): _o.LabelType = value
 	var modulate:
 		get: return _o.TextModulate
-		set(value): _o.TextModulate = value; _o._apply_visual_state()
+		set(value): _o.TextModulate = value; _o.queue_refresh(false, false, false)
 	var font:
 		get: return _o.LabelFont
-		set(value): _o.LabelFont = value; _o._apply_visual_state(); _o._fit_label_text()
+		set(value): _o.LabelFont = value; _o.queue_refresh(false, false, true)
 	var color:
 		get: return _o.LabelTextColor
-		set(value): _o.LabelTextColor = value; _o._apply_visual_state()
+		set(value): _o.LabelTextColor = value; _o.queue_refresh(false, false, false)
 	var fit_padding:
 		get: return _o.TextFitPadding
-		set(value): _o.TextFitPadding = value; _o._apply_visual_state(); _o._fit_label_text()
+		set(value): _o.TextFitPadding = value; _o.queue_refresh(false, false, true)
 	var min_font_size:
 		get: return _o.MinFontSize
-		set(value): _o.MinFontSize = value; _o._fit_label_text()
+		set(value): _o.MinFontSize = value; _o.queue_refresh(false, false, true)
 	var max_font_size:
 		get: return _o.MaxFontSize
-		set(value): _o.MaxFontSize = value; _o._fit_label_text()
+		set(value): _o.MaxFontSize = value; _o.queue_refresh(false, false, true)
 	var fixed_font_size:
 		get: return _o.FixedFontSize
-		set(value): _o.FixedFontSize = value; _o._apply_visual_state(); _o._fit_label_text()
+		set(value): _o.FixedFontSize = value; _o.queue_refresh(false, false, true)
 	var auto_size:
 		get: return _o.EnableTextAutoSize
-		set(value): _o.EnableTextAutoSize = value; _o._fit_label_text()
+		set(value): _o.EnableTextAutoSize = value; _o.queue_refresh(false, false, true)
 	var h_align:
 		get: return _o.LabelHorizontalAlignment
-		set(value): _o.LabelHorizontalAlignment = value; _o._apply_visual_state()
+		set(value): _o.LabelHorizontalAlignment = value; _o.queue_refresh(false, false, false)
 	var v_align:
 		get: return _o.LabelVerticalAlignment
-		set(value): _o.LabelVerticalAlignment = value; _o._apply_visual_state()
+		set(value): _o.LabelVerticalAlignment = value; _o.queue_refresh(false, false, false)
 	var padding:
 		get: return _o.LabelPadding
-		set(value): _o.LabelPadding = value; _o._apply_visual_state(); _o._fit_label_text()
+		set(value): _o.LabelPadding = value; _o.queue_refresh(false, false, true)
 	var pad_left:
 		get: return _o.LabelAdditionalPaddingLeft
-		set(value): _o.LabelAdditionalPaddingLeft = value; _o._apply_visual_state(); _o._fit_label_text()
+		set(value): _o.LabelAdditionalPaddingLeft = value; _o.queue_refresh(false, false, true)
 	var pad_top:
 		get: return _o.LabelAdditionalPaddingTop
-		set(value): _o.LabelAdditionalPaddingTop = value; _o._apply_visual_state(); _o._fit_label_text()
+		set(value): _o.LabelAdditionalPaddingTop = value; _o.queue_refresh(false, false, true)
 	var pad_right:
 		get: return _o.LabelAdditionalPaddingRight
-		set(value): _o.LabelAdditionalPaddingRight = value; _o._apply_visual_state(); _o._fit_label_text()
+		set(value): _o.LabelAdditionalPaddingRight = value; _o.queue_refresh(false, false, true)
 	var pad_bottom:
 		get: return _o.LabelAdditionalPaddingBottom
-		set(value): _o.LabelAdditionalPaddingBottom = value; _o._apply_visual_state(); _o._fit_label_text()
+		set(value): _o.LabelAdditionalPaddingBottom = value; _o.queue_refresh(false, false, true)
 	var autowrap:
 		get: return _o.LabelAutowrap
-		set(value): _o.LabelAutowrap = value; _o._apply_visual_state(); _o._fit_label_text()
+		set(value): _o.LabelAutowrap = value; _o.queue_refresh(false, false, true)
 	var bbcode:
 		get: return _o.RichLabelUseBBCode
-		set(value): _o.RichLabelUseBBCode = value; _o._apply_visual_state()
+		set(value): _o.RichLabelUseBBCode = value; _o.queue_refresh(false, false, false)
 
 class OmniIconAccessor:
 	var _o: Omni_Button
 	func _init(o): _o = o
 	var tex:
 		get: return _o.IconTexture
-		set(value): _o.IconTexture = value; _o._apply_visual_state()
+		set(value): _o.IconTexture = value; _o.queue_refresh(false, false, false)
 	var expand_mode:
 		get: return _o.IconExpandMode
-		set(value): _o.IconExpandMode = value; _o._apply_visual_state()
+		set(value): _o.IconExpandMode = value; _o.queue_refresh(false, false, false)
 	var stretch_mode:
 		get: return _o.IconStretchMode
-		set(value): _o.IconStretchMode = value; _o._apply_visual_state()
+		set(value): _o.IconStretchMode = value; _o.queue_refresh(false, false, false)
 	var flip_h:
 		get: return _o.IconFlipH
-		set(value): _o.IconFlipH = value; _o._apply_visual_state()
+		set(value): _o.IconFlipH = value; _o.queue_refresh(false, false, false)
 	var flip_v:
 		get: return _o.IconFlipV
-		set(value): _o.IconFlipV = value; _o._apply_visual_state()
+		set(value): _o.IconFlipV = value; _o.queue_refresh(false, false, false)
 	var modulate:
 		get: return _o.IconModulate
-		set(value): _o.IconModulate = value; _o._apply_visual_state()
+		set(value): _o.IconModulate = value; _o.queue_refresh(false, false, false)
 
 class OmniBackgroundAccessor:
 	var _o: Omni_Button
 	func _init(o): _o = o
 	var mode:
 		get: return _o.Background
-		set(value): _o.Background = value; _o._apply_visual_state()
+		set(value): _o.Background = value; _o.queue_refresh(true, true, true)
 	var tex:
 		get: return _o.BackgroundTexture
-		set(value): _o.BackgroundTexture = value; _o._apply_visual_state()
+		set(value): _o.BackgroundTexture = value; _o.queue_refresh(false, false, false)
 	var expand_mode:
 		get: return _o.BackgroundExpandMode
-		set(value): _o.BackgroundExpandMode = value; _o._apply_visual_state()
+		set(value): _o.BackgroundExpandMode = value; _o.queue_refresh(false, false, false)
 	var stretch_mode:
 		get: return _o.BackgroundStretchMode
-		set(value): _o.BackgroundStretchMode = value; _o._apply_visual_state()
+		set(value): _o.BackgroundStretchMode = value; _o.queue_refresh(false, false, false)
 	var flip_h:
 		get: return _o.BackgroundFlipH
-		set(value): _o.BackgroundFlipH = value; _o._apply_visual_state()
+		set(value): _o.BackgroundFlipH = value; _o.queue_refresh(false, false, false)
 	var flip_v:
 		get: return _o.BackgroundFlipV
-		set(value): _o.BackgroundFlipV = value; _o._apply_visual_state()
+		set(value): _o.BackgroundFlipV = value; _o.queue_refresh(false, false, false)
 	var modulate:
 		get: return _o.BackgroundModulate
-		set(value): _o.BackgroundModulate = value; _o._apply_visual_state()
+		set(value): _o.BackgroundModulate = value; _o.queue_refresh(false, false, false)
 
 class OmniPanelAccessor:
 	var _o: Omni_Button
 	func _init(o): _o = o
 	var modulate:
 		get: return _o.PanelModulate
-		set(value): _o.PanelModulate = value; _o._apply_visual_state()
+		set(value): _o.PanelModulate = value; _o.queue_refresh(false, false, false)
 	var theme_type:
 		get: return _o.PanelThemeType
-		set(value): _o.PanelThemeType = value; _o._apply_panel_styling(); _o._apply_visual_state()
+		set(value): _o.PanelThemeType = value; _o.queue_refresh(false, true, false)
 	var theme_variation:
 		get: return _o.PanelThemeVariation
-		set(value): _o.PanelThemeVariation = value; _o._apply_panel_styling(); _o._apply_visual_state()
+		set(value): _o.PanelThemeVariation = value; _o.queue_refresh(false, true, false)
 	var style_box:
 		get: return _o.PanelStyleBox
-		set(value): _o.PanelStyleBox = value; _o._apply_panel_styling(); _o._apply_visual_state()
+		set(value): _o.PanelStyleBox = value; _o.queue_refresh(false, true, false)
 
 class OmniCooldownAccessor:
 	var _o: Omni_Button
@@ -1126,37 +1345,53 @@ class OmniOverlayAccessor:
 	var _o: Omni_Button
 	func _init(o): _o = o
 	var enabled:
-		get: return _o.EnableSelectedOverlay
-		set(value): _o.EnableSelectedOverlay = value; _o._apply_visual_state()
+		get: return _o.Selected
+		set(value): _o.Selected = value; _o.queue_refresh(false, false, false)
 	var color:
 		get: return _o.SelectedColor
-		set(value): _o.SelectedColor = value; _o._apply_visual_state()
+		set(value): _o.SelectedColor = value; _o.queue_refresh(false, false, false)
 
 func _set_label_text() -> void:
 	# Remove both if empty
 	if _text == "":
-		if _label != null and is_instance_valid(_label): remove_child(_label); _label.queue_free(); _label = null
-		if _rich_label != null and is_instance_valid(_rich_label): remove_child(_rich_label); _rich_label.queue_free(); _rich_label = null
+		if _label != null and is_instance_valid(_label):
+			var p1 := _label.get_parent(); if p1 != null and is_instance_valid(p1): p1.remove_child(_label)
+			_label.queue_free(); _label = null
+		if _rich_label != null and is_instance_valid(_rich_label):
+			var p2 := _rich_label.get_parent(); if p2 != null and is_instance_valid(p2): p2.remove_child(_rich_label)
+			_rich_label.queue_free(); _rich_label = null
 		return
 	# Create one based on LabelType
 	if _label_type == LabelKind.Label:
-		if _rich_label != null and is_instance_valid(_rich_label): remove_child(_rich_label); _rich_label.queue_free(); _rich_label = null
+		if _rich_label != null and is_instance_valid(_rich_label):
+			var pr := _rich_label.get_parent(); if pr != null and is_instance_valid(pr): pr.remove_child(_rich_label)
+			_rich_label.queue_free(); _rich_label = null
 		if _label == null or not is_instance_valid(_label):
-			_label = Label.new(); _label.name = "Label"; add_child(_label); _configure_label(_label)
+			_label = Label.new(); _label.name = "Label"; _managed_add_child(_label); _configure_label(_label)
 		_label.text = _text
 	elif _label_type == LabelKind.RichTextLabel:
-		if _label != null and is_instance_valid(_label): remove_child(_label); _label.queue_free(); _label = null
+		if _label != null and is_instance_valid(_label):
+			var pl := _label.get_parent(); if pl != null and is_instance_valid(pl): pl.remove_child(_label)
+			_label.queue_free(); _label = null
 		if _rich_label == null or not is_instance_valid(_rich_label):
-			_rich_label = RichTextLabel.new(); _rich_label.name = "RichLabel"; add_child(_rich_label); _configure_rich_label(_rich_label)
+			_rich_label = RichTextLabel.new(); _rich_label.name = "RichLabel"; _managed_add_child(_rich_label); _configure_rich_label(_rich_label)
 		_rich_label.text = _text
 	# reapply padding offsets to whichever label exists
 	if _label != null and is_instance_valid(_label): _configure_label(_label)
 	if _rich_label != null and is_instance_valid(_rich_label): _configure_rich_label(_rich_label)
 
 func _fit_label_text() -> void:
+	var __t0 := 0
+	if DebugAutosizeTimings:
+		__t0 = Time.get_ticks_usec()
 	if _fitting_label:
 		return
 	_fitting_label = true
+	# Debounce: skip if inputs unchanged
+	var sig := str(_text) + "|" + str(size) + "|" + str(LabelPadding) + "|" + str(LabelAdditionalPaddingLeft) + "," + str(LabelAdditionalPaddingTop) + "," + str(LabelAdditionalPaddingRight) + "," + str(LabelAdditionalPaddingBottom) + "|" + str(LabelAutowrap) + "|" + str(FixedFontSize) + "|" + str(LabelType)
+	if sig == _fit_cache_sig:
+		_fitting_label = false
+		return
 	# Fixed font size bypasses autosize
 	if FixedFontSize > 0:
 		if _label != null and is_instance_valid(_label):
@@ -1166,7 +1401,12 @@ func _fit_label_text() -> void:
 			for sp in ["normal_font_size", "bold_font_size", "italics_font_size", "bold_italics_font_size", "mono_font_size"]:
 				_rich_label.add_theme_font_size_override(sp, FixedFontSize)
 			_rich_label.update_minimum_size()
+		_last_fit_font_size = FixedFontSize
 		_fitting_label = false
+		_fit_cache_sig = sig
+		if DebugAutosizeTimings:
+			var us := Time.get_ticks_usec() - __t0
+			print("[Omni_Button] autosize ", us, " us for ", name)
 		return
 	var ep := _get_effective_label_padding()
 	var tp := TextFitPadding
@@ -1176,18 +1416,47 @@ func _fit_label_text() -> void:
 	)
 	if avail.x <= 1.0 or avail.y <= 1.0:
 		_fitting_label = false
+		_fit_cache_sig = sig
 		return
 	# Fit for plain Label
 	if EnableTextAutoSize and _label != null and is_instance_valid(_label) and _label.text != "":
 		var fnt: Font = _label.get_theme_font("font") if _label.get_theme_font("font") != null else ThemeDB.fallback_font
 		if fnt != null:
-			# binary search for best size
+			var wrap_w := avail.x if LabelAutowrap != TextServer.AUTOWRAP_OFF else -1
+			# Fast path: try last size first, then decrement a few steps
+			if _last_fit_font_size > 0:
+				var ts0 := fnt.get_string_size(_label.text, HORIZONTAL_ALIGNMENT_LEFT, wrap_w, _last_fit_font_size)
+				if ts0.x <= avail.x and ts0.y <= avail.y:
+					_label.add_theme_font_override("font", fnt)
+					_label.add_theme_font_size_override("font_size", _last_fit_font_size)
+					_fitting_label = false
+					_fit_cache_sig = sig
+					if DebugAutosizeTimings:
+						var us0 := Time.get_ticks_usec() - __t0
+						print("[Omni_Button] autosize ", us0, " us for ", name)
+					return
+				var s := _last_fit_font_size
+				var guard := 0
+				while s > MinFontSize and guard < 16:
+					s -= 1
+					var ts1 := fnt.get_string_size(_label.text, HORIZONTAL_ALIGNMENT_LEFT, wrap_w, s)
+					if ts1.x <= avail.x and ts1.y <= avail.y:
+						_label.add_theme_font_override("font", fnt)
+						_label.add_theme_font_size_override("font_size", s)
+						_last_fit_font_size = s
+						_fitting_label = false
+						_fit_cache_sig = sig
+						if DebugAutosizeTimings:
+							var us1 := Time.get_ticks_usec() - __t0
+							print("[Omni_Button] autosize ", us1, " us for ", name)
+						return
+					guard += 1
+			# Fall back to full binary search
 			var lo := MinFontSize
 			var hi := MaxFontSize
 			var best := lo
 			while lo <= hi:
 				var mid := int((lo + hi) / 2)
-				var wrap_w := avail.x if LabelAutowrap != TextServer.AUTOWRAP_OFF else -1
 				var ts := fnt.get_string_size(_label.text, HORIZONTAL_ALIGNMENT_LEFT, wrap_w, mid)
 				if ts.x <= avail.x and ts.y <= avail.y:
 					best = mid
@@ -1196,18 +1465,45 @@ func _fit_label_text() -> void:
 					hi = mid - 1
 			_label.add_theme_font_override("font", fnt)
 			_label.add_theme_font_size_override("font_size", best)
+			_last_fit_font_size = best
 	# Fit for RichTextLabel: approximate by stripping BBCode
 	elif EnableTextAutoSize and _rich_label != null and is_instance_valid(_rich_label) and _rich_label.text != "":
 		var base_font: Font = _rich_label.get_theme_font("normal_font") if _rich_label.get_theme_font("normal_font") != null else ThemeDB.fallback_font
 		if base_font != null:
 			var plain := _strip_bbcode(_rich_label.text)
-			# binary search for best size
+			var wrap_w2 := avail.x if LabelAutowrap != TextServer.AUTOWRAP_OFF else -1
+			# Fast path: try last size first, then decrement a few steps
+			if _last_fit_font_size > 0:
+				var ts20 := base_font.get_string_size(plain, HORIZONTAL_ALIGNMENT_LEFT, wrap_w2, _last_fit_font_size)
+				if ts20.x <= avail.x and ts20.y <= avail.y:
+					_apply_rich_label_font_overrides(base_font, _last_fit_font_size)
+					_fitting_label = false
+					_fit_cache_sig = sig
+					if DebugAutosizeTimings:
+						var us20 := Time.get_ticks_usec() - __t0
+						print("[Omni_Button] autosize ", us20, " us for ", name)
+					return
+				var s2 := _last_fit_font_size
+				var guard2 := 0
+				while s2 > MinFontSize and guard2 < 16:
+					s2 -= 1
+					var ts21 := base_font.get_string_size(plain, HORIZONTAL_ALIGNMENT_LEFT, wrap_w2, s2)
+					if ts21.x <= avail.x and ts21.y <= avail.y:
+						_apply_rich_label_font_overrides(base_font, s2)
+						_last_fit_font_size = s2
+						_fitting_label = false
+						_fit_cache_sig = sig
+						if DebugAutosizeTimings:
+							var us21 := Time.get_ticks_usec() - __t0
+							print("[Omni_Button] autosize ", us21, " us for ", name)
+						return
+					guard2 += 1
+			# Fall back to full binary search
 			var lo2 := MinFontSize
 			var hi2 := MaxFontSize
 			var best2 := lo2
 			while lo2 <= hi2:
 				var mid2 := int((lo2 + hi2) / 2)
-				var wrap_w2 := avail.x if LabelAutowrap != TextServer.AUTOWRAP_OFF else -1
 				var ts2 := base_font.get_string_size(plain, HORIZONTAL_ALIGNMENT_LEFT, wrap_w2, mid2)
 				if ts2.x <= avail.x and ts2.y <= avail.y:
 					best2 = mid2
@@ -1215,7 +1511,9 @@ func _fit_label_text() -> void:
 				else:
 					hi2 = mid2 - 1
 			_apply_rich_label_font_overrides(base_font, best2)
+			_last_fit_font_size = best2
 	_fitting_label = false
+	_fit_cache_sig = sig
 
 # Returns Vector4(left, top, right, bottom)
 func _get_effective_label_padding() -> Vector4:
@@ -1316,14 +1614,14 @@ func _ensure_icon() -> void:
 		_icon.flip_h = IconFlipH
 		_icon.flip_v = IconFlipV
 		_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		add_child(_icon)
+		_managed_add_child(_icon)
 		_ensure_full_rect(_icon)
 
 func _get_or_create_label() -> Label:
 	if _label == null or not is_instance_valid(_label):
 		_label = Label.new()
 		_label.name = "Label"
-		add_child(_label)
+		_managed_add_child(_label)
 		_configure_label(_label)
 	return _label
 
@@ -1348,7 +1646,7 @@ func _ensure_default_thumb() -> void:
 		_default_thumb = Panel.new()
 		_default_thumb.name = "DefaultThumb"
 		_default_thumb.mouse_filter = MOUSE_FILTER_PASS
-		add_child(_default_thumb)
+		_managed_add_child(_default_thumb)
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = DefaultThumbColor
 		_default_thumb.add_theme_stylebox_override("panel", sb)
@@ -1385,7 +1683,7 @@ func _ensure_and_refresh_joystick_area(home_center_global: Vector2) -> void:
 			_vj_area_panel.top_level = true
 			_vj_area_panel.mouse_filter = MOUSE_FILTER_IGNORE
 			_vj_area_panel.z_index = -1000
-			add_child(_vj_area_panel)
+			_managed_add_child(_vj_area_panel)
 		target = _vj_area_panel
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(0, 0, 0, 0)
@@ -1552,13 +1850,13 @@ func _apply_visual_state() -> void:
 	if BackgroundType == BackgroundMode.UsePanel and _panel == null:
 		_panel = Panel.new()
 		_panel.name = "Panel"
-		add_child(_panel)
+		_managed_add_child(_panel)
 		_ensure_full_rect(_panel)
 		_apply_panel_styling()
 
 	var overlay_alive := _overlay != null and is_instance_valid(_overlay) and _overlay.get_parent() == self
-	if EnableSelectedOverlay and (_selected or _is_toggled) and not overlay_alive:
-		_overlay = ColorRect.new(); _overlay.name = "Overlay"; add_child(_overlay)
+	if _selected and not overlay_alive:
+		_overlay = ColorRect.new(); _overlay.name = "Overlay"; _managed_add_child(_overlay)
 
 	if BackgroundType == BackgroundMode.UsePanel and _panel != null:
 		_panel.visible = true
@@ -1596,7 +1894,7 @@ func _apply_visual_state() -> void:
 		_rich_label.modulate = TextModulate
 		_apply_invert(_rich_label)
 
-	if _enable_selected_overlay and _overlay != null and is_instance_valid(_overlay):
+	if _overlay != null and is_instance_valid(_overlay):
 		_overlay.visible = true
 		_overlay.color = SelectedColor
 		_apply_invert(_overlay)
@@ -1662,7 +1960,7 @@ func _apply_preset(p: Preset) -> void:
 			InvertModes = 0
 		Preset.Toggle:
 			InteractionMode = InteractionModeEnum.ToggleOnPress
-			EnableSelectedOverlay = true
+			# Overlay visibility now follows Selected only
 		Preset.Hold:
 			EnableHoldBuildUp = true
 			if HoldDuration < 0.1:

@@ -1,6 +1,7 @@
 using Godot;
 using Godot.Collections;
 using System;
+#nullable enable
 [Tool]
 [GlobalClass, GodotClassName("OmniButton")]
 /// <summary>
@@ -17,6 +18,7 @@ public partial class OmniButton : Control
     [Signal] public delegate void HoverInEventHandler();
     [Signal] public delegate void HoverOutEventHandler();
     [Signal] public delegate void ToggledEventHandler(bool pressed);
+    [Signal] public delegate void TypewriterCompletedEventHandler();
     [Signal] public delegate void HoldEventHandler();
     [Signal] public delegate void SwipeEventHandler(Vector2 direction);
     [Signal] public delegate void SwipeEndedEventHandler();
@@ -186,43 +188,15 @@ public partial class OmniButton : Control
             FitLabelText();
         }
     }
-    // Back-compat exports
-    /// <summary>Deprecated: use Text + LabelType</summary>
-    [Export]
-    public string LabelText
-    {
-        get => _labelType == LabelTypeEnum.Label ? _text : string.Empty;
-        set { _labelText = value ?? string.Empty; _text = _labelText; _labelType = LabelTypeEnum.Label; SetupChildren(); ApplyVisualState(); FitLabelText(); }
-    }
+    // Text to progressively type (when using StartTypewriter overload)
+    [Export(PropertyHint.MultilineText)]
+    public string TextToType { get; set; } = string.Empty;
+
     private string _labelText = string.Empty;
-    /// <summary>Deprecated: use Text + LabelType</summary>
-    [Export]
-    public string RichLabelText
-    {
-        get => _labelType == LabelTypeEnum.RichTextLabel ? _text : string.Empty;
-        set { _richLabelText = value ?? string.Empty; _text = _richLabelText; _labelType = LabelTypeEnum.RichTextLabel; SetupChildren(); ApplyVisualState(); FitLabelText(); }
-    }
     private string _richLabelText = string.Empty;
-    // Interpret RichLabelText/Text as BBCode when using RichTextLabel
-    [Export] public bool RichLabelUseBBCode { get; set; } = true;
+    // Selection overlay appears when Selected is true; color via SelectedColor.
     /// <summary>
-    /// When true, shows a full-rect ColorRect overlay whenever either Selected or IsToggled is true.
-    /// The overlay color is always <see cref="SelectedColor"/>.
-    /// </summary>
-    [Export]
-    public bool EnableSelectedOverlay
-    {
-        get => _enableSelectedOverlay;
-        set
-        {
-            _enableSelectedOverlay = value;
-            UpdateOverlay();
-            RefreshEditorVisual();
-        }
-    }
-    private bool _enableSelectedOverlay = false;
-    /// <summary>
-    /// Overlay color used whenever the overlay is visible (Selected or IsToggled true).
+    /// Overlay color used when the selection overlay is visible (Selected == true).
     /// </summary>
     [Export]
     public Color SelectedColor
@@ -745,17 +719,18 @@ public partial class OmniButton : Control
     [Export] public string VariantDisabled { get; set; } = "disabled";
     #endregion
     #region Private State
-    private Panel _panel;
-    private TextureRect _background;
-    private TextureRect _icon;
-    private Label _label;
-    private RichTextLabel _richLabel;
-    private ColorRect _overlay;
-    private ColorRect _cooldown;
-    private ColorRect _holdFill;
+    private Panel? _panel;
+    private TextureRect? _background;
+    private TextureRect? _icon;
+    private Label? _label;
+    private RichTextLabel? _richLabel;
+    private ColorRect? _overlay;
+    private ColorRect? _cooldown;
+    private ColorRect? _holdFill;
+    private Control? _managedRoot;
     // Default visual for joystick thumb when no IconTexture is provided
-    private Panel _defaultThumb;
-    private ShaderMaterial _invertMaterial;
+    private Panel? _defaultThumb;
+    private ShaderMaterial? _invertMaterial;
     private string? _lastVisualState;
     private float _hoverTargetScale = 1.0f;
     private Vector2 _originalScale = Vector2.One;
@@ -771,7 +746,7 @@ public partial class OmniButton : Control
     private Vector2 _swipeStart = Vector2.Zero;
     private Vector2 _swipeOrigin = Vector2.Zero;
     private bool _touchSwipeEligible = false;
-    private Panel _vjAreaPanel;
+    private Panel? _vjAreaPanel;
 
     private void MarkPresetCustom()
     {
@@ -793,7 +768,7 @@ public partial class OmniButton : Control
                 break;
             case Preset.Toggle:
                 InteractionMode = InteractionModeEnum.ToggleOnPress;
-                EnableSelectedOverlay = true;
+                // Overlay visibility now follows Selected only
                 FollowMode = FollowModeEnum.None;
                 break;
             case Preset.Hold:
@@ -852,13 +827,13 @@ public partial class OmniButton : Control
     private MouseFilterEnum _vjSavedMouseFilter = MouseFilterEnum.Stop;
     #endregion
     #region Accessor helpers for ergonomic usage
-    public LabelAccessor LabelNode { get; private set; }
-    public IconAccessor IconNode { get; private set; }
-    public BackgroundAccessor BackgroundNode { get; private set; }
-    public PanelAccessor PanelNode { get; private set; }
-    public OverlayAccessor OverlayNode { get; private set; }
-    public CooldownAccessor CooldownNode { get; private set; }
-    public ChargeUpAccessor ChargeUpNode { get; private set; }
+    public LabelAccessor? Label { get; private set; }
+    public IconAccessor? Icon { get; private set; }
+    public BackgroundAccessor? Background { get; private set; }
+    public PanelAccessor? Panel { get; private set; }
+    public OverlayAccessor? Overlay { get; private set; }
+    public CooldownAccessor? Cooldown { get; private set; }
+    public ChargeUpAccessor? ChargeUp { get; private set; }
 
     public sealed class LabelAccessor
     {
@@ -866,72 +841,76 @@ public partial class OmniButton : Control
         internal LabelAccessor(OmniButton o) { _o = o; }
         public string Text { get => _o.Text; set => _o.Text = value; }
         public LabelTypeEnum Type { get => _o.LabelType; set => _o.LabelType = value; }
-        public Color Modulate { get => _o.TextModulate; set { _o.TextModulate = value; _o.ApplyVisualState(); } }
-        public Font Font { get => _o.LabelFont; set { _o.LabelFont = value; _o.ApplyVisualState(); _o.FitLabelText(); } }
-        public Color Color { get => _o.LabelTextColor; set { _o.LabelTextColor = value; _o.ApplyVisualState(); } }
-        public Vector2 FitPadding { get => _o.TextFitPadding; set { _o.TextFitPadding = value; _o.ApplyVisualState(); _o.FitLabelText(); } }
+        public Color Modulate { get => _o.TextModulate; set { _o.TextModulate = value; _o.RequestRefresh(false, false, false); } }
+        public Font? Font { get => _o.LabelFont; set { _o.LabelFont = value; _o.RequestRefresh(false, false, true); } }
+        public Color Color { get => _o.LabelTextColor; set { _o.LabelTextColor = value; _o.RequestRefresh(false, false, false); } }
+        public Vector2 FitPadding { get => _o.TextFitPadding; set { _o.TextFitPadding = value; _o.RequestRefresh(false, false, true); } }
         public int MinFontSize { get => _o.MinFontSize; set { _o.MinFontSize = value; _o.FitLabelText(); } }
         public int MaxFontSize { get => _o.MaxFontSize; set { _o.MaxFontSize = value; _o.FitLabelText(); } }
-        public int FixedFontSize { get => _o.FixedFontSize; set { _o.FixedFontSize = value; _o.ApplyVisualState(); _o.FitLabelText(); } }
+        public int FixedFontSize { get => _o.FixedFontSize; set { _o.FixedFontSize = value; _o.RequestRefresh(false, false, true); } }
         public bool AutoSize { get => _o.EnableTextAutoSize; set { _o.EnableTextAutoSize = value; _o.FitLabelText(); } }
-        public HorizontalAlignment HAlign { get => _o.LabelHorizontalAlignment; set { _o.LabelHorizontalAlignment = value; _o.ApplyVisualState(); } }
-        public VerticalAlignment VAlign { get => _o.LabelVerticalAlignment; set { _o.LabelVerticalAlignment = value; _o.ApplyVisualState(); } }
-        public Vector2 Padding { get => _o.LabelPadding; set { _o.LabelPadding = value; _o.ApplyVisualState(); _o.FitLabelText(); } }
-        public float PadLeft { get => _o.LabelAdditionalPaddingLeft; set { _o.LabelAdditionalPaddingLeft = value; _o.ApplyVisualState(); _o.FitLabelText(); } }
-        public float PadTop { get => _o.LabelAdditionalPaddingTop; set { _o.LabelAdditionalPaddingTop = value; _o.ApplyVisualState(); _o.FitLabelText(); } }
-        public float PadRight { get => _o.LabelAdditionalPaddingRight; set { _o.LabelAdditionalPaddingRight = value; _o.ApplyVisualState(); _o.FitLabelText(); } }
-        public float PadBottom { get => _o.LabelAdditionalPaddingBottom; set { _o.LabelAdditionalPaddingBottom = value; _o.ApplyVisualState(); _o.FitLabelText(); } }
-        public TextServer.AutowrapMode Autowrap { get => _o.LabelAutowrap; set { _o.LabelAutowrap = value; _o.ApplyVisualState(); _o.FitLabelText(); } }
-        public bool BBCode { get => _o.RichLabelUseBBCode; set { _o.RichLabelUseBBCode = value; _o.ApplyVisualState(); } }
+        public HorizontalAlignment HAlign { get => _o.LabelHorizontalAlignment; set { _o.LabelHorizontalAlignment = value; _o.RequestRefresh(false, false, false); } }
+        public VerticalAlignment VAlign { get => _o.LabelVerticalAlignment; set { _o.LabelVerticalAlignment = value; _o.RequestRefresh(false, false, false); } }
+        public Vector2 Padding { get => _o.LabelPadding; set { _o.LabelPadding = value; _o.RequestRefresh(false, false, true); } }
+        public float PadLeft { get => _o.LabelAdditionalPaddingLeft; set { _o.LabelAdditionalPaddingLeft = value; _o.RequestRefresh(false, false, true); } }
+        public float PadTop { get => _o.LabelAdditionalPaddingTop; set { _o.LabelAdditionalPaddingTop = value; _o.RequestRefresh(false, false, true); } }
+        public float PadRight { get => _o.LabelAdditionalPaddingRight; set { _o.LabelAdditionalPaddingRight = value; _o.RequestRefresh(false, false, true); } }
+        public float PadBottom { get => _o.LabelAdditionalPaddingBottom; set { _o.LabelAdditionalPaddingBottom = value; _o.RequestRefresh(false, false, true); } }
+        public TextServer.AutowrapMode Autowrap { get => _o.LabelAutowrap; set { _o.LabelAutowrap = value; _o.RequestRefresh(false, false, true); } }
+        public bool BBCode
+        {
+            get => _o.LabelType == LabelTypeEnum.RichTextLabel;
+            set { _o.LabelType = value ? LabelTypeEnum.RichTextLabel : LabelTypeEnum.Label; _o.RequestRefresh(false, false, false); }
+        }
     }
     public sealed class IconAccessor
     {
         private readonly OmniButton _o;
         internal IconAccessor(OmniButton o) { _o = o; }
-        public Texture2D Texture { get => _o.IconTexture; set { _o.IconTexture = value; _o.ApplyVisualState(); } }
-        public TextureRect.ExpandModeEnum ExpandMode { get => _o.IconExpandMode; set { _o.IconExpandMode = value; _o.ApplyVisualState(); } }
-        public TextureRect.StretchModeEnum StretchMode { get => _o.IconStretchMode; set { _o.IconStretchMode = value; _o.ApplyVisualState(); } }
-        public bool FlipH { get => _o.IconFlipH; set { _o.IconFlipH = value; _o.ApplyVisualState(); } }
-        public bool FlipV { get => _o.IconFlipV; set { _o.IconFlipV = value; _o.ApplyVisualState(); } }
-        public Color Modulate { get => _o.IconModulate; set { _o.IconModulate = value; _o.ApplyVisualState(); } }
+        public Texture2D? Texture { get => _o.IconTexture; set { _o.IconTexture = value; _o.RequestRefresh(false, false, false); } }
+        public TextureRect.ExpandModeEnum ExpandMode { get => _o.IconExpandMode; set { _o.IconExpandMode = value; _o.RequestRefresh(false, false, false); } }
+        public TextureRect.StretchModeEnum StretchMode { get => _o.IconStretchMode; set { _o.IconStretchMode = value; _o.RequestRefresh(false, false, false); } }
+        public bool FlipH { get => _o.IconFlipH; set { _o.IconFlipH = value; _o.RequestRefresh(false, false, false); } }
+        public bool FlipV { get => _o.IconFlipV; set { _o.IconFlipV = value; _o.RequestRefresh(false, false, false); } }
+        public Color Modulate { get => _o.IconModulate; set { _o.IconModulate = value; _o.RequestRefresh(false, false, false); } }
     }
     public sealed class BackgroundAccessor
     {
         private readonly OmniButton _o;
         internal BackgroundAccessor(OmniButton o) { _o = o; }
-        public BackgroundMode Mode { get => _o.BackgroundType; set { _o.BackgroundType = value; _o.ApplyVisualState(); } }
-        public Texture2D Texture { get => _o.BackgroundTexture; set { _o.BackgroundTexture = value; _o.ApplyVisualState(); } }
-        public TextureRect.ExpandModeEnum ExpandMode { get => _o.BackgroundExpandMode; set { _o.BackgroundExpandMode = value; _o.ApplyVisualState(); } }
-        public TextureRect.StretchModeEnum StretchMode { get => _o.BackgroundStretchMode; set { _o.BackgroundStretchMode = value; _o.ApplyVisualState(); } }
-        public bool FlipH { get => _o.BackgroundFlipH; set { _o.BackgroundFlipH = value; _o.ApplyVisualState(); } }
-        public bool FlipV { get => _o.BackgroundFlipV; set { _o.BackgroundFlipV = value; _o.ApplyVisualState(); } }
-        public Color Modulate { get => _o.BackgroundModulate; set { _o.BackgroundModulate = value; _o.ApplyVisualState(); } }
+        public BackgroundMode Mode { get => _o.BackgroundType; set { _o.BackgroundType = value; _o.RequestRefresh(false, false, false); } }
+        public Texture2D? Texture { get => _o.BackgroundTexture; set { _o.BackgroundTexture = value; _o.RequestRefresh(false, false, false); } }
+        public TextureRect.ExpandModeEnum ExpandMode { get => _o.BackgroundExpandMode; set { _o.BackgroundExpandMode = value; _o.RequestRefresh(false, false, false); } }
+        public TextureRect.StretchModeEnum StretchMode { get => _o.BackgroundStretchMode; set { _o.BackgroundStretchMode = value; _o.RequestRefresh(false, false, false); } }
+        public bool FlipH { get => _o.BackgroundFlipH; set { _o.BackgroundFlipH = value; _o.RequestRefresh(false, false, false); } }
+        public bool FlipV { get => _o.BackgroundFlipV; set { _o.BackgroundFlipV = value; _o.RequestRefresh(false, false, false); } }
+        public Color Modulate { get => _o.BackgroundModulate; set { _o.BackgroundModulate = value; _o.RequestRefresh(false, false, false); } }
     }
     public sealed class OverlayAccessor
     {
         private readonly OmniButton _o;
         internal OverlayAccessor(OmniButton o) { _o = o; }
-        public bool Enabled { get => _o.EnableSelectedOverlay; set { _o.EnableSelectedOverlay = value; _o.ApplyVisualState(); } }
-        public Color Color { get => _o.SelectedColor; set { _o.SelectedColor = value; _o.ApplyVisualState(); } }
+        public bool Enabled { get => _o.Selected; set { _o.Selected = value; _o.RequestRefresh(false, false, false); } }
+        public Color Color { get => _o.SelectedColor; set { _o.SelectedColor = value; _o.RequestRefresh(false, false, false); } }
     }
     public sealed class PanelAccessor
     {
         private readonly OmniButton _o;
         internal PanelAccessor(OmniButton o) { _o = o; }
-        public Color Modulate { get => _o.PanelModulate; set { _o.PanelModulate = value; _o.ApplyVisualState(); } }
-        public string ThemeType { get => _o.PanelThemeType; set { _o.PanelThemeType = value; _o.ApplyPanelStyling(); _o.ApplyVisualState(); } }
-        public string ThemeVariation { get => _o.PanelThemeVariation; set { _o.PanelThemeVariation = value; _o.ApplyPanelStyling(); _o.ApplyVisualState(); } }
-        public StyleBox PanelStyle { get => _o.PanelStyleBox; set { _o.PanelStyleBox = value; _o.ApplyPanelStyling(); _o.ApplyVisualState(); } }
+        public Color Modulate { get => _o.PanelModulate; set { _o.PanelModulate = value; _o.RequestRefresh(false, false, false); } }
+        public string ThemeType { get => _o.PanelThemeType; set { _o.PanelThemeType = value; _o.ApplyPanelStyling(); _o.RequestRefresh(false, false, false); } }
+        public string ThemeVariation { get => _o.PanelThemeVariation; set { _o.PanelThemeVariation = value; _o.ApplyPanelStyling(); _o.RequestRefresh(false, false, false); } }
+        public StyleBox? PanelStyle { get => _o.PanelStyleBox; set { _o.PanelStyleBox = value; _o.ApplyPanelStyling(); _o.RequestRefresh(false, false, false); } }
     }
     public sealed class CooldownAccessor
     {
         private readonly OmniButton _o;
         internal CooldownAccessor(OmniButton o) { _o = o; }
-        public bool Enabled { get => _o.EnableCooldown; set { _o.EnableCooldown = value; _o.ApplyVisualState(); } }
+        public bool Enabled { get => _o.EnableCooldown; set { _o.EnableCooldown = value; _o.RequestRefresh(false, false, false); } }
         public float Duration { get => _o.CooldownDuration; set { _o.CooldownDuration = value; } }
         public CooldownTriggerEnum Trigger { get => _o.CooldownTrigger; set { _o.CooldownTrigger = value; } }
         public bool StartFilled { get => _o.CooldownStartFilled; set { _o.CooldownStartFilled = value; } }
-        public Color Color { get => _o.CooldownColor; set { _o.CooldownColor = value; _o.ApplyVisualState(); } }
+        public Color Color { get => _o.CooldownColor; set { _o.CooldownColor = value; _o.RequestRefresh(false, false, false); } }
         public CooldownDirection Direction { get => _o.CooldownFillDirection; set { _o.CooldownFillDirection = value; } }
         public bool SuspendHoverScale { get => _o.SuspendHoverScaleDuringCooldown; set { _o.SuspendHoverScaleDuringCooldown = value; } }
         public bool AllowHoldDuring { get => _o.AllowHoldDuringCooldown; set { _o.AllowHoldDuringCooldown = value; } }
@@ -941,9 +920,9 @@ public partial class OmniButton : Control
     {
         private readonly OmniButton _o;
         internal ChargeUpAccessor(OmniButton o) { _o = o; }
-        public bool Enabled { get => _o.EnableHoldBuildUp; set { _o.EnableHoldBuildUp = value; _o.ApplyVisualState(); } }
+        public bool Enabled { get => _o.EnableHoldBuildUp; set { _o.EnableHoldBuildUp = value; _o.RequestRefresh(false, false, false); } }
         public float Duration { get => _o.HoldDuration; set { _o.HoldDuration = value; } }
-        public Color Color { get => _o.HoldFillColor; set { _o.HoldFillColor = value; _o.ApplyVisualState(); } }
+        public Color Color { get => _o.HoldFillColor; set { _o.HoldFillColor = value; _o.RequestRefresh(false, false, false); } }
         public CooldownDirection Direction { get => _o.HoldFillDirection; set { _o.HoldFillDirection = value; } }
     }
     #endregion
@@ -987,6 +966,62 @@ public partial class OmniButton : Control
         }
     }
     private string _editorLastSig = string.Empty;
+    private double _editorPollAccum = 0.0;
+    private const double EditorPollInterval = 0.2;
+    private bool _pendingChildrenRefresh = false;
+    private bool _pendingPanelStyling = false;
+    private bool _pendingVisualRefresh = false;
+    private bool _pendingFitLabel = false;
+    private void RequestRefresh(bool children, bool panelStyling, bool fitLabel)
+    {
+        if (children) _pendingChildrenRefresh = true;
+        if (panelStyling) _pendingPanelStyling = true;
+        _pendingVisualRefresh = true; // always re-apply visuals
+        if (fitLabel) _pendingFitLabel = true;
+
+        if (Engine.IsEditorHint())
+        {
+            // Apply immediately for editor responsiveness
+            if (children) SetupChildren();
+            if (panelStyling) ApplyPanelStyling();
+            ApplyVisualState();
+            if (fitLabel) FitLabelText();
+            QueueRedraw();
+        }
+        else
+        {
+            // Runtime: ensure _Process runs to coalesce deferred updates
+            SetProcess(true);
+        }
+    }
+    [Export]
+    public bool ManagedDrawOnTop
+    {
+        get => _managedDrawOnTop;
+        set { _managedDrawOnTop = value; PositionManagedRoot(); }
+    }
+    private bool _managedDrawOnTop = true;
+    private void EnsureManagedRoot()
+    {
+        if (_managedRoot != null && IsInstanceValid(_managedRoot)) return;
+        _managedRoot = new Control { Name = "_Managed" };
+        AddChild(_managedRoot);
+        EnsureFullRect(_managedRoot);
+        _managedRoot.MouseFilter = MouseFilterEnum.Pass;
+        PositionManagedRoot();
+    }
+    private void PositionManagedRoot()
+    {
+        if (_managedRoot == null || !IsInstanceValid(_managedRoot)) return;
+        var count = GetChildCount();
+        int idx = _managedDrawOnTop ? Math.Max(0, count - 1) : 0;
+        MoveChild(_managedRoot, idx);
+    }
+    private void ManagedAddChild(Control node)
+    {
+        EnsureManagedRoot();
+        _managedRoot!.AddChild(node);
+    }
     private string BuildEditorSignature()
     {
         var sb = new System.Text.StringBuilder(1024);
@@ -1010,20 +1045,31 @@ public partial class OmniButton : Control
     public override void _Ready() => Setup();
     public override void _Process(double delta)
     {
-        // Editor: poll for export changes and refresh visuals immediately
+        // Editor: throttle polling for inspector changes
         if (Engine.IsEditorHint())
         {
-            var sig = BuildEditorSignature();
-            if (sig != _editorLastSig)
+            _editorPollAccum += delta;
+            if (_editorPollAccum >= EditorPollInterval)
             {
-                _editorLastSig = sig;
-                SetupChildren();
-                ApplyPanelStyling();
-                ApplyVisualState();
-                FitLabelText();
+                _editorPollAccum = 0;
+                var sig = BuildEditorSignature();
+                if (sig != _editorLastSig)
+                {
+                    _editorLastSig = sig;
+                    AutoEnableActionsFromConnectionsOnce();
+                    SetupChildren();
+                    ApplyPanelStyling();
+                    ApplyVisualState();
+                    FitLabelText();
+                }
             }
         }
+        // Coalesce pending refresh work
+        if (_pendingChildrenRefresh || _pendingPanelStyling || _pendingVisualRefresh || _pendingFitLabel) { if (_pendingChildrenRefresh) { SetupChildren(); _pendingChildrenRefresh = false; } if (_pendingPanelStyling) { ApplyPanelStyling(); _pendingPanelStyling = false; } if (_pendingVisualRefresh) { ApplyVisualState(); _pendingVisualRefresh = false; } if (_pendingFitLabel) { FitLabelText(); _pendingFitLabel = false; } }
         ProcessHoverScaling(delta);
+        // Typewriter progression
+        if (_twActive)
+            ProcessTypewriter(delta);
     }
     public override Array<Dictionary> _GetPropertyList() => BuildPropertyList();
 
@@ -1120,12 +1166,12 @@ public partial class OmniButton : Control
                     EnableHoverTopLevel(true);
                     MoveToGlobal(mb.GlobalPosition);
                 }
-                if (ActionMask.HasFlag(ActionMaskFlags.Swipe))
+                if ((ActionMask & ActionMaskFlags.Swipe) != 0)
                     _swipeStart = mb.Position;
-                if (ActionMask.HasFlag(ActionMaskFlags.Pressed))
+                if ((ActionMask & ActionMaskFlags.Pressed) != 0)
                     EmitSignal(SignalName.Pressed);
                 bool toggleOnPress = (InteractionMode == InteractionModeEnum.ToggleOnPress) ||
-                                      (InteractionMode == InteractionModeEnum.Momentary && (ActionMask.HasFlag(ActionMaskFlags.Toggle)));
+                                      (InteractionMode == InteractionModeEnum.Momentary && ((ActionMask & ActionMaskFlags.Toggle) != 0));
                 if (toggleOnPress)
                 {
                     _isToggled = !_isToggled;
@@ -1147,7 +1193,7 @@ public partial class OmniButton : Control
                 _isHolding = false;
                 EndSwiping();
                 _swipeStart = Vector2.Zero;
-                if ((ActionMask.HasFlag(ActionMaskFlags.Released)) && inside)
+                if (((ActionMask & ActionMaskFlags.Released) != 0) && inside)
                     EmitSignal(SignalName.Released);
                 bool cooldownOnRelease = (CooldownTrigger == CooldownTriggerEnum.OnRelease || CooldownTrigger == CooldownTriggerEnum.OnPressAndRelease);
                 if (EnableCooldown && cooldownOnRelease)
@@ -1189,7 +1235,7 @@ public partial class OmniButton : Control
                 MoveToGlobal(mm.GlobalPosition);
             }
             // Swipe detection while pressed (mouse motion)
-            if (ActionMask.HasFlag(ActionMaskFlags.Swipe))
+            if ((ActionMask & ActionMaskFlags.Swipe) != 0)
             {
                 if (_swipeStart == Vector2.Zero)
                     _swipeStart = mm.Position;
@@ -1219,7 +1265,7 @@ public partial class OmniButton : Control
                 MoveToGlobal(sd.Position);
             }
             // Swipe detection while pressed (touch drag)
-            if (ActionMask.HasFlag(ActionMaskFlags.Swipe))
+            if ((ActionMask & ActionMaskFlags.Swipe) != 0)
             {
                 bool insideDrag = IsInputInside(sd);
                 bool allowSwipe = (TouchSwipeInit == SwipeInitMode.OnPressed) ? _touchSwipeEligible : insideDrag;
@@ -1248,7 +1294,7 @@ public partial class OmniButton : Control
             // Update swiping state relative to origin regardless of action mask
             SetSwiping(IsInputInside(sd) && (sd.Position - _swipeOrigin).Length() > SwipeThreshold);
         }
-        else if ((ActionMask.HasFlag(ActionMaskFlags.Swipe)) && @event is InputEventScreenDrag drag)
+        else if (((ActionMask & ActionMaskFlags.Swipe) != 0) && @event is InputEventScreenDrag drag)
         {
             // Only allow swipe while touch remains within button bounds (or started from press inside if required)
             bool insideDrag = IsInputInside(drag);
@@ -1274,7 +1320,7 @@ public partial class OmniButton : Control
                 }
             }
         }
-        else if ((ActionMask.HasFlag(ActionMaskFlags.Swipe)) && _isPressed && @event is InputEventMouseMotion motion)
+        else if (((ActionMask & ActionMaskFlags.Swipe) != 0) && _isPressed && @event is InputEventMouseMotion motion)
         {
             if (_swipeStart == Vector2.Zero)
                 _swipeStart = motion.Position;
@@ -1288,7 +1334,7 @@ public partial class OmniButton : Control
                 }
             }
         }
-        else if ((ActionMask.HasFlag(ActionMaskFlags.Swipe)) && MouseSwipeInit == SwipeInitMode.OnHoverIn && @event is InputEventMouseMotion hoverMotion)
+        else if (((ActionMask & ActionMaskFlags.Swipe) != 0) && MouseSwipeInit == SwipeInitMode.OnHoverIn && @event is InputEventMouseMotion hoverMotion)
         {
             bool insideMove = IsInputInside(hoverMotion);
             if (!insideMove)
@@ -1404,7 +1450,9 @@ public partial class OmniButton : Control
         _isPressed = IsPressed;
         _isHovering = IsHovering;
         _isHolding = IsHolding;
-        if (EnableSelectedOverlay && Selected && BackgroundType == BackgroundMode.None)
+        // Seed action mask once at runtime to reflect any early external connections
+        AutoEnableActionsFromConnectionsOnce();
+        if (Selected && BackgroundType == BackgroundMode.None)
             BackgroundType = BackgroundMode.UsePanel;
         var shaderPath = "res://addons/omni_button/Shader/InvertColor.tres";
         if (ResourceLoader.Exists(shaderPath))
@@ -1418,13 +1466,13 @@ public partial class OmniButton : Control
             Visible = false;
 
         // Initialize ergonomic accessors
-        LabelNode = new LabelAccessor(this);
-        IconNode = new IconAccessor(this);
-        BackgroundNode = new BackgroundAccessor(this);
-        PanelNode = new PanelAccessor(this);
-        OverlayNode = new OverlayAccessor(this);
-        CooldownNode = new CooldownAccessor(this);
-        ChargeUpNode = new ChargeUpAccessor(this);
+        Label = new LabelAccessor(this);
+        Icon = new IconAccessor(this);
+        Background = new BackgroundAccessor(this);
+        Panel = new PanelAccessor(this);
+        Overlay = new OverlayAccessor(this);
+        Cooldown = new CooldownAccessor(this);
+        ChargeUp = new ChargeUpAccessor(this);
     }
     private void Cleanup()
     {
@@ -1450,12 +1498,18 @@ public partial class OmniButton : Control
     /// </summary>
     private void ProcessHoverScaling(double delta)
     {
-        Selected = _isSelected;
-        IsToggled = _isToggled;
-        IsPressed = _isPressed;
-        IsHovering = _isHovering;
-        IsHolding = _isHolding;
-        Disabled = Disabled;
+        // Optionally suspend hover animations while typewriter is active
+        if (_twActive && SuspendHoverDuringTypewriter)
+        {
+            var tReset = (float)Math.Min(1.0, delta * HoverLerpSpeed);
+            if (_panel != null && IsInstanceValid(_panel)) LerpScaleTo(_panel, Vector2.One, tReset);
+            if (_icon != null && IsInstanceValid(_icon)) LerpScaleTo(_icon, Vector2.One, tReset);
+            if (_label != null && IsInstanceValid(_label)) LerpScaleTo(_label, Vector2.One, tReset);
+            if (_overlay != null && IsInstanceValid(_overlay)) LerpScaleTo(_overlay, Vector2.One, tReset);
+            EnableHoverTopLevel(false);
+            return;
+        }
+        // Avoid reassigning properties every frame; state fields already reflect truth
         // Hold timer progresses when pressed and either not in cooldown or allowed during cooldown
         if (_isPressed && (!EnableCooldown || !_cooldownActive || AllowHoldDuringCooldown || EnableHoldBuildUp))
         {
@@ -1463,7 +1517,7 @@ public partial class OmniButton : Control
             if (!_isHolding && _holdTimer >= HoldDuration)
             {
                 _isHolding = true;
-                if (ActionMask.HasFlag(ActionMaskFlags.Hold))
+                if ((ActionMask & ActionMaskFlags.Hold) != 0)
                     EmitSignal(SignalName.Hold);
                 RemoveHoldFill();
             }
@@ -1500,7 +1554,7 @@ public partial class OmniButton : Control
                 if (_overlay != null && IsInstanceValid(_overlay)) anyAnimating |= LerpScaleTo(_overlay, target, t);
                 // Keep processing if a hold build-up is in progress
                 bool holdBuildActive = EnableHoldBuildUp && _isPressed && !_isHolding;
-                if (!anyAnimating && !_isHovering && !(_cooldownActive && EnableCooldown) && !holdBuildActive)
+                if (!anyAnimating && !_isHovering && !(_cooldownActive && EnableCooldown) && !holdBuildActive && !_twActive)
                 {
                     SetProcess(false);
                     EnableHoverTopLevel(false);
@@ -1518,7 +1572,7 @@ public partial class OmniButton : Control
             if (_overlay != null && IsInstanceValid(_overlay)) anyAnimating |= LerpScaleTo(_overlay, Vector2.One, t);
             // Keep processing if a hold build-up is in progress
             bool holdBuildActive = EnableHoldBuildUp && _isPressed && !_isHolding;
-            if (!anyAnimating && !(_cooldownActive && EnableCooldown) && !holdBuildActive)
+            if (!anyAnimating && !(_cooldownActive && EnableCooldown) && !holdBuildActive && !_twActive)
             {
                 SetProcess(false);
                 EnableHoverTopLevel(false);
@@ -1542,9 +1596,11 @@ public partial class OmniButton : Control
             {
                 _cooldownActive = false;
                 if (_cooldown != null && IsInstanceValid(_cooldown))
+                {
                     _cooldown.Visible = false;
-                _cooldown.Size = Vector2.Zero;
-                _cooldown.Position = Vector2.Zero;
+                    _cooldown.Size = Vector2.Zero;
+                    _cooldown.Position = Vector2.Zero;
+                }
             }
         }
     }
@@ -1659,12 +1715,12 @@ public partial class OmniButton : Control
         _isPressed = true;
         InvalidateVisualState();
         GrabFocus();
-        if (ActionMask.HasFlag(ActionMaskFlags.Pressed)) EmitSignal(SignalName.Pressed);
+        if ((ActionMask & ActionMaskFlags.Pressed) != 0) EmitSignal(SignalName.Pressed);
     }
     private void OnReleased()
     {
         if (Disabled) return;
-        if (ActionMask.HasFlag(ActionMaskFlags.Released)) EmitSignal(SignalName.Released);
+        if ((ActionMask & ActionMaskFlags.Released) != 0) EmitSignal(SignalName.Released);
     }
     private void OnLog(string type, string message) => EmitSignal(SignalName.Log, type, message);
     private void OnMouseEntered()
@@ -1680,7 +1736,7 @@ public partial class OmniButton : Control
             if (_swipeStart == Vector2.Zero)
                 _swipeStart = gp;
         }
-        if (ActionMask.HasFlag(ActionMaskFlags.Hover))
+        if ((ActionMask & ActionMaskFlags.Hover) != 0)
             EmitSignal(SignalName.HoverIn);
         if (EnableHoverScale)
         {
@@ -1698,7 +1754,7 @@ public partial class OmniButton : Control
     {
         if (Disabled) return;
         _isHovering = false;
-        if (ActionMask.HasFlag(ActionMaskFlags.Hover))
+        if ((ActionMask & ActionMaskFlags.Hover) != 0)
             EmitSignal(SignalName.HoverOut);
         if (MouseSwipeExit == SwipeExitMode.OnHoverOut)
         {
@@ -1719,12 +1775,66 @@ public partial class OmniButton : Control
     #region Child Node Management
     private void SetupChildren()
     {
-        // Free existing managed children instead of only detaching them
-        foreach (Node child in GetChildren())
+        // In editor, duplicated nodes may carry serialized managed children (Icon/Label/etc.)
+        // which causes stacked visuals when properties change. Proactively clean any
+        // pre-existing managed children by name so we rebuild a single correct set.
+        if (Engine.IsEditorHint())
         {
-            RemoveChild(child);
-            child.QueueFree();
+            try
+            {
+                EnsureManagedRoot();
+                var managedNames = new System.Collections.Generic.HashSet<string>(new[]
+                {
+                    "Panel", "Background", "Icon", "Label", "RichLabel",
+                    "Overlay", "HoldFill", "Cooldown", "DefaultThumb", "JoystickArea"
+                });
+                void PurgeChildren(Node parent)
+                {
+                    if (parent == null || !IsInstanceValid(parent)) return;
+                    // Copy to array first; we will mutate hierarchy
+                    var toRemove = new System.Collections.Generic.List<Node>();
+                    foreach (var child in parent.GetChildren())
+                    {
+                        if (child is Node n && n.Name != null && managedNames.Contains(n.Name))
+                            toRemove.Add(n);
+                    }
+                    foreach (var n in toRemove)
+                    {
+                        var p = n.GetParent();
+                        p?.RemoveChild(n);
+                        n.QueueFree();
+                    }
+                }
+                // Purge on both root and managed container to cover legacy placements
+                PurgeChildren(this);
+                if (_managedRoot != null && IsInstanceValid(_managedRoot))
+                    PurgeChildren(_managedRoot);
+            }
+            catch { /* best-effort cleanup only */ }
         }
+        // Free only managed children; leave user-added nodes intact
+        void FreeNode(Node? n)
+        {
+            if (n == null || !IsInstanceValid(n)) return;
+            var parent = n.GetParent();
+            if (parent == null) { n.QueueFree(); return; }
+            // Only remove if parent is this control or the managed root container
+            if (ReferenceEquals(parent, this) || (ReferenceEquals(parent, _managedRoot)))
+            {
+                parent.RemoveChild(n);
+                n.QueueFree();
+            }
+        }
+        FreeNode(_panel);
+        FreeNode(_background);
+        FreeNode(_icon);
+        FreeNode(_label);
+        FreeNode(_richLabel);
+        FreeNode(_overlay);
+        FreeNode(_cooldown);
+        FreeNode(_holdFill);
+        FreeNode(_defaultThumb);
+        FreeNode(_vjAreaPanel);
         // Clear cached references so they are recreated correctly
         _panel = null;
         _icon = null;
@@ -1740,7 +1850,7 @@ public partial class OmniButton : Control
         if (BackgroundType == BackgroundMode.UsePanel)
         {
             _panel = new Panel { Name = "Panel" };
-            AddChild(_panel);
+            ManagedAddChild(_panel);
             ConfigurePanel(_panel);
             EnsureFullRect(_panel);
         }
@@ -1758,7 +1868,7 @@ public partial class OmniButton : Control
                 FlipV = BackgroundFlipV
             };
             _background.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
-            AddChild(_background);
+            ManagedAddChild(_background);
             EnsureFullRect(_background);
         }
         // 1 - Icon
@@ -1774,24 +1884,26 @@ public partial class OmniButton : Control
                 FlipV = IconFlipV
             };
             _icon.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
-            AddChild(_icon);
+            ManagedAddChild(_icon);
             EnsureFullRect(_icon);
         }
-        // 2 - Label (prefer RichTextLabel if provided)
-        if (!string.IsNullOrEmpty(_richLabelText))
+        // 2 - Label (prefer RichTextLabel based on LabelType or active typewriter)
+        bool wantRichChild = (_labelType == LabelTypeEnum.RichTextLabel) || _twBBCodeAware || !string.IsNullOrEmpty(_richLabelText);
+        bool wantPlainChild = (_labelType == LabelTypeEnum.Label) || !string.IsNullOrEmpty(_labelText);
+        if (wantRichChild)
         {
             _richLabel = new RichTextLabel { Name = "RichLabel" };
             _richLabel.ScrollActive = false;
-            _richLabel.BbcodeEnabled = RichLabelUseBBCode;
+            _richLabel.BbcodeEnabled = true;
             _richLabel.MouseFilter = MouseFilterEnum.Pass;
-            AddChild(_richLabel);
+            ManagedAddChild(_richLabel);
             _richLabel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
             ApplyLabelPaddingOffsets(_richLabel);
         }
-        else if (!string.IsNullOrEmpty(_labelText))
+        else if (wantPlainChild)
         {
             _label = new Label { Name = "Label", Text = _labelText };
-            AddChild(_label);
+            ManagedAddChild(_label);
             ConfigureLabel();
         }
         // 3 - Default thumb for virtual joystick if no icon is provided
@@ -1802,7 +1914,7 @@ public partial class OmniButton : Control
             EnsureDefaultThumb();
             UpdateDefaultThumbVisual();
         }
-        // 4 - Selected/Toggled Overlay (depends on EnableSelectedOverlay)
+        // 4 - Selected Overlay
         UpdateOverlay();
         // 5 - Cooldown (create if enabled in editor or active at runtime)
         if (EnableCooldown && (_cooldownActive || Engine.IsEditorHint()))
@@ -1823,19 +1935,22 @@ public partial class OmniButton : Control
     }
     private void UpdateOverlay()
     {
-        bool needOverlay = EnableSelectedOverlay && (_isSelected || _isToggled);
+        bool needOverlay = _isSelected;
         // Recreate if missing, invalid, or not parented to this control
-        bool overlayAlive = _overlay != null && IsInstanceValid(_overlay) && _overlay.GetParent() == this;
+        bool overlayAlive = _overlay != null && IsInstanceValid(_overlay) && (_overlay.GetParent() == this || _overlay.GetParent() == _managedRoot);
         if (needOverlay && !overlayAlive)
         {
             _overlay = new ColorRect { Name = "Overlay", Color = SelectedColor };
-            AddChild(_overlay);
+            ManagedAddChild(_overlay);
             EnsureFullRect(_overlay);
         }
         else if (!needOverlay && overlayAlive)
         {
-            RemoveChild(_overlay);
-            _overlay.QueueFree();
+            var overlay = _overlay;
+            if (overlay != null && IsInstanceValid(overlay))
+            {
+                var parent = overlay.GetParent(); parent?.RemoveChild(overlay); overlay.QueueFree();
+            }
             _overlay = null;
         }
     }
@@ -1845,7 +1960,7 @@ public partial class OmniButton : Control
         {
             _holdFill = new ColorRect { Name = "HoldFill", Color = HoldFillColor };
             _holdFill.MouseFilter = MouseFilterEnum.Pass;
-            AddChild(_holdFill);
+            ManagedAddChild(_holdFill);
             // Use manual sizing/positioning; do NOT anchor full-rect
             _holdFill.SetAnchorsAndOffsetsPreset(LayoutPreset.TopLeft);
         }
@@ -1869,20 +1984,22 @@ public partial class OmniButton : Control
     }
     private void ReorderChildren()
     {
+        var parent = (_managedRoot != null && IsInstanceValid(_managedRoot)) ? _managedRoot! : this;
         int idx = 0;
-        bool Alive(Control n) => n != null && IsInstanceValid(n) && n.GetParent() == this;
-        if (Alive(_panel)) MoveChild(_panel, idx++);
-        else if (Alive(_background)) MoveChild(_background, idx++);
-        if (Alive(_icon)) MoveChild(_icon, idx++);
-        else if (Alive(_defaultThumb)) MoveChild(_defaultThumb, idx++);
-        if (Alive(_label)) MoveChild(_label, idx++);
-        else if (Alive(_richLabel)) MoveChild(_richLabel, idx++);
-        if (Alive(_overlay)) MoveChild(_overlay, idx++);
-        if (Alive(_cooldown)) MoveChild(_cooldown, idx++);
-        if (Alive(_holdFill)) MoveChild(_holdFill, idx++);
+        bool Alive(Control? n) => n != null && IsInstanceValid(n) && n.GetParent() == parent;
+        if (Alive(_panel)) parent.MoveChild(_panel!, idx++);
+        else if (Alive(_background)) parent.MoveChild(_background!, idx++);
+        if (Alive(_icon)) parent.MoveChild(_icon!, idx++);
+        else if (Alive(_defaultThumb)) parent.MoveChild(_defaultThumb!, idx++);
+        if (Alive(_label)) parent.MoveChild(_label!, idx++);
+        else if (Alive(_richLabel)) parent.MoveChild(_richLabel!, idx++);
+        if (Alive(_overlay)) parent.MoveChild(_overlay!, idx++);
+        if (Alive(_cooldown)) parent.MoveChild(_cooldown!, idx++);
+        if (Alive(_holdFill)) parent.MoveChild(_holdFill!, idx++);
     }
     #endregion
     #region Label Font Sizing
+    private string _fitCacheSig = string.Empty;
     private void ConfigureLabel()
     {
         if (_label == null) return;
@@ -1896,6 +2013,8 @@ public partial class OmniButton : Control
     }
     private void FitLabelText()
     {
+        var __sig = $"{_text}|{Size}|{_labelPadding}|{_labelPadLeft},{_labelPadTop},{_labelPadRight},{_labelPadBottom}|{_labelAutowrap}|{FixedFontSize}|{_labelType}";
+        if (_fitCacheSig == __sig) return;
         // Fixed font size takes precedence regardless of auto-size
         if (FixedFontSize > 0)
         {
@@ -1908,6 +2027,7 @@ public partial class OmniButton : Control
             {
                 ApplyRichLabelFontSizeOnly(FixedFontSize);
             }
+            _fitCacheSig = __sig;
             return;
         }
         if (!EnableTextAutoSize) return;
@@ -1915,11 +2035,13 @@ public partial class OmniButton : Control
         if (_richLabel != null && IsInstanceValid(_richLabel) && !string.IsNullOrEmpty(_richLabelText))
         {
             FitRichTextLabel();
+            _fitCacheSig = __sig;
             return;
         }
         if (_label != null && IsInstanceValid(_label) && !string.IsNullOrEmpty(_label.Text))
         {
             FitPlainLabel();
+            _fitCacheSig = __sig;
         }
     }
 
@@ -1935,31 +2057,75 @@ public partial class OmniButton : Control
                 CallDeferred(nameof(FitPlainLabel));
                 return;
             }
-            var fnt = GetRobustFont(_label);
+            if (_label is not Label label || !IsInstanceValid(label))
+            {
+                return;
+            }
+            var fnt = GetRobustFont(label);
             if (fnt == null) return;
             float wrap = (LabelAutowrap != TextServer.AutowrapMode.Off) ? avail.X : -1f;
-            string text = _label.Text ?? string.Empty;
+            string text = label.Text ?? string.Empty;
+            // Fast-path: try last font size first; if overflow, decrement a few steps, else full search
+            if (_lastFitFontSize > 0)
+            {
+                var sz0 = MeasureParagraph(fnt, text, wrap, _lastFitFontSize);
+                if (sz0.X <= avail.X && sz0.Y <= avail.Y)
+                {
+                    ApplyFontSettings(label, fnt, _lastFitFontSize);
+                    label.UpdateMinimumSize();
+                    label.QueueRedraw();
+                    return;
+                }
+                int s = _lastFitFontSize;
+                int guard0 = 0;
+                while (s > MinFontSize && guard0 < 16)
+                {
+                    s--;
+                    var sz1 = MeasureParagraph(fnt, text, wrap, s);
+                    if (sz1.X <= avail.X && sz1.Y <= avail.Y)
+                    {
+                        ApplyFontSettings(label, fnt, s);
+                        label.UpdateMinimumSize();
+                        label.QueueRedraw();
+                        _lastFitFontSize = s;
+                        return;
+                    }
+                    guard0++;
+                }
+            }
             int bestSize = FindBestFontSize(fnt, text, avail, wrap);
-            ApplyFontSettings(_label, fnt, bestSize);
-            _label.UpdateMinimumSize();
-            _label.QueueRedraw();
+            ApplyFontSettings(label, fnt, bestSize);
+            label.UpdateMinimumSize();
+            label.QueueRedraw();
             int guard2 = 0;
             while (bestSize > MinFontSize && guard2 < 64)
             {
                 var sz = MeasureParagraph(fnt, text, wrap, bestSize);
                 if (sz.X <= avail.X && sz.Y <= avail.Y) break;
                 bestSize--;
-                ApplyFontSettings(_label, fnt, bestSize);
-                _label.UpdateMinimumSize();
-                _label.QueueRedraw();
+                ApplyFontSettings(label, fnt, bestSize);
+                label.UpdateMinimumSize();
+                label.QueueRedraw();
                 guard2++;
             }
+            _lastFitFontSize = bestSize;
         }
         finally { _fittingLabel = false; }
     }
 
     private int _richCurrentFontSize = -1;
     private int _richVerifyPasses = 0;
+    // Cache of last chosen font size to accelerate incremental append cases
+    private int _lastFitFontSize = -1;
+    // Typewriter support
+    private bool _twActive = false;
+    private bool _twByWord = false;
+    private float _twCps = 30f;
+    private double _twAccum = 0.0;
+    private string _twFinalText = string.Empty;
+    private int _twIndex = 0;
+    private System.Collections.Generic.List<string>? _twTokens = null;
+    private System.Text.StringBuilder? _twBuilder = null;
     private void FitRichTextLabel()
     {
         _fittingLabel = true;
@@ -1973,26 +2139,61 @@ public partial class OmniButton : Control
             }
             var fnt = LabelFont ?? ThemeDB.FallbackFont;
             if (fnt == null) return;
+            var rtl = _richLabel;
+            if (rtl == null || !IsInstanceValid(rtl)) return;
             string plain = StripKnownBBCode(_richLabelText);
             float wrap = (LabelAutowrap != TextServer.AutowrapMode.Off) ? avail.X : -1f;
+            // Fast-path: try current cached size first; if overflow, decrement a few steps
+            int seed = _richCurrentFontSize > 0 ? _richCurrentFontSize : _lastFitFontSize;
+            if (seed > 0)
+            {
+                var sz0 = MeasureParagraph(fnt, plain, wrap, seed);
+                if (sz0.X <= avail.X && sz0.Y <= avail.Y)
+                {
+                    ApplyRichLabelFontOverrides(rtl, fnt, seed);
+                    rtl.UpdateMinimumSize();
+                    rtl.QueueRedraw();
+                    _richCurrentFontSize = seed;
+                    _lastFitFontSize = seed;
+                    return;
+                }
+                int s = seed;
+                int guard0 = 0;
+                while (s > MinFontSize && guard0 < 16)
+                {
+                    s--;
+                    var sz1 = MeasureParagraph(fnt, plain, wrap, s);
+                    if (sz1.X <= avail.X && sz1.Y <= avail.Y)
+                    {
+                        ApplyRichLabelFontOverrides(rtl, fnt, s);
+                        rtl.UpdateMinimumSize();
+                        rtl.QueueRedraw();
+                        _richCurrentFontSize = s;
+                        _lastFitFontSize = s;
+                        return;
+                    }
+                    guard0++;
+                }
+            }
             int best = FindBestFontSize(fnt, plain, avail, wrap);
-            ApplyRichLabelFontOverrides(_richLabel, fnt, best);
-            _richLabel.UpdateMinimumSize();
-            _richLabel.QueueRedraw();
+            ApplyRichLabelFontOverrides(rtl, fnt, best);
+            rtl.UpdateMinimumSize();
+            rtl.QueueRedraw();
             _richCurrentFontSize = best;
             // Quick clamp pass
             int guard = 0;
             while (best > MinFontSize && guard < 32)
             {
-                var overH = _richLabel.GetContentHeight() > avail.Y;
+                var overH = rtl.GetContentHeight() > avail.Y;
                 var sz = MeasureParagraph(fnt, plain, wrap, best);
                 var overW = sz.X > avail.X;
                 if (!overH && !overW) break;
                 best--;
-                ApplyRichLabelFontOverrides(_richLabel, fnt, best);
+                ApplyRichLabelFontOverrides(rtl, fnt, best);
                 _richCurrentFontSize = best;
                 guard++;
             }
+            _lastFitFontSize = _richCurrentFontSize;
             // Deferred verification to allow layout to settle
             _richVerifyPasses = 0;
             CallDeferred(nameof(VerifyRichTextFit));
@@ -2118,8 +2319,9 @@ public partial class OmniButton : Control
             ApplyPanelStyling();
         }
         // Ensure overlay co-exists with panel and others
-        bool overlayAlive = _overlay != null && IsInstanceValid(_overlay) && _overlay.GetParent() == this;
-        if (EnableSelectedOverlay && (_isSelected || _isToggled) && !overlayAlive)
+        bool overlayAlive = _overlay != null && IsInstanceValid(_overlay) && (_overlay.GetParent() == this || _overlay.GetParent() == _managedRoot);
+        bool needOverlay = _isSelected;
+        if (needOverlay && !overlayAlive)
         {
             _overlay = CreateChildNodeAtPosition<ColorRect>("Overlay", GetChildCount());
         }
@@ -2158,7 +2360,8 @@ public partial class OmniButton : Control
         // Label
         if (_label != null && IsInstanceValid(_label))
         {
-            _label.Text = LabelText;
+            if (!_twActive)
+                _label.Text = _text;
             _label.HorizontalAlignment = LabelHorizontalAlignment;
             _label.VerticalAlignment = LabelVerticalAlignment;
             _label.AutowrapMode = LabelAutowrap;
@@ -2172,8 +2375,9 @@ public partial class OmniButton : Control
         // Rich Label
         if (_richLabel != null && IsInstanceValid(_richLabel))
         {
-            _richLabel.BbcodeEnabled = RichLabelUseBBCode;
-            _richLabel.Text = _richLabelText;
+            _richLabel.BbcodeEnabled = true;
+            if (!_twActive)
+                _richLabel.Text = _text;
             _richLabel.HorizontalAlignment = LabelHorizontalAlignment;
             _richLabel.AutowrapMode = LabelAutowrap;
             if (LabelFont != null)
@@ -2187,9 +2391,9 @@ public partial class OmniButton : Control
             ApplyInvert(_richLabel);
         }
         // Overlay
-        if (EnableSelectedOverlay && _overlay != null && IsInstanceValid(_overlay))
+        if (_overlay != null && IsInstanceValid(_overlay))
         {
-            _overlay.Visible = true;
+            _overlay.Visible = needOverlay;
             _overlay.Color = SelectedColor;
             ApplyInvert(_overlay);
         }
@@ -2204,10 +2408,10 @@ public partial class OmniButton : Control
     }
     private void ApplyInvert(Control node)
     {
-        bool usePress = InvertModes.HasFlag(InvertDisplayModes.Press);
-        bool useToggle = InvertModes.HasFlag(InvertDisplayModes.Toggle);
-        bool useHover = InvertModes.HasFlag(InvertDisplayModes.Hover);
-        bool useHold = InvertModes.HasFlag(InvertDisplayModes.Hold);
+        bool usePress = (InvertModes & InvertDisplayModes.Press) != 0;
+        bool useToggle = (InvertModes & InvertDisplayModes.Toggle) != 0;
+        bool useHover = (InvertModes & InvertDisplayModes.Hover) != 0;
+        bool useHold = (InvertModes & InvertDisplayModes.Hold) != 0;
         bool shouldInvert = (_isPressed && usePress)
                             || (_isToggled && useToggle)
                             || (_isHovering && useHover)
@@ -2319,7 +2523,7 @@ public partial class OmniButton : Control
         {
             _defaultThumb = new Panel { Name = "DefaultThumb" };
             _defaultThumb.MouseFilter = MouseFilterEnum.Pass;
-            AddChild(_defaultThumb);
+            ManagedAddChild(_defaultThumb);
             var sb = new StyleBoxFlat();
             sb.BgColor = DefaultThumbColor;
             _defaultThumb.AddThemeStyleboxOverride("panel", sb);
@@ -2381,7 +2585,7 @@ public partial class OmniButton : Control
         {
             _cooldown = new ColorRect { Name = "Cooldown", Color = CooldownColor };
             _cooldown.MouseFilter = MouseFilterEnum.Pass;
-            AddChild(_cooldown);
+            ManagedAddChild(_cooldown);
         }
     }
     private void UpdateCooldownVisual()
@@ -2595,9 +2799,9 @@ public partial class OmniButton : Control
         if (_overlay != null && IsInstanceValid(_overlay)) _overlay.PivotOffset = _overlay.Size / 2.0f;
         if (_richLabel != null && IsInstanceValid(_richLabel)) _richLabel.PivotOffset = _richLabel.Size / 2.0f;
     }
-    private Control GetExternalJoystickArea()
+    private Control? GetExternalJoystickArea()
     {
-        if (JoystickAreaExternalPath == null || JoystickAreaExternalPath.IsEmpty) return null;
+        if (JoystickAreaExternalPath.IsEmpty) return null;
         return GetNodeOrNull<Control>(JoystickAreaExternalPath);
     }
     private void EnsureAndRefreshJoystickArea(Vector2 homeCenterGlobal)
@@ -2613,7 +2817,7 @@ public partial class OmniButton : Control
                 _vjAreaPanel.TopLevel = true;
                 _vjAreaPanel.MouseFilter = MouseFilterEnum.Ignore;
                 _vjAreaPanel.ZIndex = -1000;
-                AddChild(_vjAreaPanel);
+                ManagedAddChild(_vjAreaPanel);
             }
             target = _vjAreaPanel;
             var sb = new StyleBoxFlat();
@@ -2865,6 +3069,279 @@ public partial class OmniButton : Control
         if (JoystickHideWhenInactive)
             Visible = false;
     }
+    // ===== Typewriter API =====
+    // Primary entrypoint: explicit text
+    public void StartTypewriter(string finalText, float cps = 30f, bool byWord = false)
+        => StartTypewriterInternal(finalText, cps, byWord, preserveBBCodeTags: false);
+
+    // Overload: use TextToType and optionally preserve BBCode tags
+    public void StartTypewriter(float cps = 30f, bool byWord = false, bool preserveBBCodeTags = false)
+        => StartTypewriterInternal(TextToType, cps, byWord, preserveBBCodeTags);
+
+    private void StartTypewriterInternal(string finalText, float cps, bool byWord, bool preserveBBCodeTags)
+    {
+        if (string.IsNullOrEmpty(finalText))
+        {
+            SkipTypewriter();
+            return;
+        }
+        // Decide BBCode behavior based on current label type
+        bool wantBB = preserveBBCodeTags && (_labelType == LabelTypeEnum.RichTextLabel);
+        string content = wantBB ? finalText : StripKnownBBCode(finalText);
+        _twBBCodeAware = wantBB;
+        _twByWord = byWord;
+        _twCps = Math.Max(1f, cps);
+        _twAccum = 0.0;
+        _twIndex = 0;
+        _twVisiblePlainChars = 0;
+        _twFinalText = content;
+        _twBuilder = _twBBCodeAware ? null : new System.Text.StringBuilder(content.Length);
+
+        // Ensure visuals exist
+        SetupChildren();
+        // Pre-fit for final text so we don't re-fit during reveal
+        PrefitForText(content);
+
+        if (_twBBCodeAware)
+        {
+            (_twBBTokens, _twTotalPlainChars) = TokenizeBBCode(content);
+            // Start with tags-only skeleton
+            SetTypewriterVisibleText(BuildVisibleFromTokens(_twBBTokens, 0));
+        }
+        else
+        {
+            // Prepare tokens for per-word mode
+            if (_twByWord)
+                _twTokens = TokenizeWords(content);
+            else
+                _twTokens = null;
+            // Clear current visible text
+            SetTypewriterVisibleText(string.Empty);
+        }
+
+        _twActive = true;
+        SetProcess(true);
+    }
+
+    public void SkipTypewriter()
+    {
+        if (string.IsNullOrEmpty(_twFinalText)) { StopTypewriter(); return; }
+        SetTypewriterVisibleText(_twFinalText);
+        StopTypewriter();
+    }
+
+    public void StopTypewriter()
+    {
+        bool wasActive = _twActive;
+        string current = string.Empty;
+        if (_richLabel != null && IsInstanceValid(_richLabel))
+            current = _richLabel.Text;
+        else if (_label != null && IsInstanceValid(_label))
+            current = _label.Text;
+
+        _twActive = false;
+        if (!string.IsNullOrEmpty(current))
+            _text = current;
+
+        _twBuilder = null;
+        _twTokens = null;
+        _twBBTokens = null;
+
+        if (wasActive)
+            EmitSignal(SignalName.TypewriterCompleted);
+    }
+
+
+    private void ProcessTypewriter(double delta)
+    {
+        if (!_twActive) return;
+        double step = 1.0 / Math.Max(1.0f, _twCps);
+        _twAccum += delta;
+        bool changed = false;
+        if (_twBBCodeAware && _twBBTokens != null)
+        {
+            while (_twAccum >= step && _twVisiblePlainChars < _twTotalPlainChars)
+            {
+                _twAccum -= step;
+                _twVisiblePlainChars++;
+                changed = true;
+            }
+            if (changed)
+                SetTypewriterVisibleText(BuildVisibleFromTokens(_twBBTokens, _twVisiblePlainChars));
+            if (_twVisiblePlainChars >= _twTotalPlainChars)
+                StopTypewriter();
+        }
+        else if (_twByWord && _twTokens != null)
+        {
+            while (_twAccum >= step && _twIndex < _twTokens.Count)
+            {
+                _twAccum -= step;
+                _twBuilder!.Append(_twTokens[_twIndex]);
+                _twIndex++;
+                changed = true;
+            }
+            if (changed)
+                SetTypewriterVisibleText(_twBuilder!.ToString());
+            if (_twIndex >= _twTokens.Count)
+                StopTypewriter();
+        }
+        else
+        {
+            while (_twAccum >= step && _twIndex < _twFinalText.Length)
+            {
+                _twAccum -= step;
+                _twBuilder!.Append(_twFinalText[_twIndex]);
+                _twIndex++;
+                changed = true;
+            }
+            if (changed)
+                SetTypewriterVisibleText(_twBuilder!.ToString());
+            if (_twIndex >= _twFinalText.Length)
+                StopTypewriter();
+        }
+    }
+
+    private void SetTypewriterVisibleText(string current)
+    {
+        if (_label != null && IsInstanceValid(_label))
+            _label.Text = current;
+        if (_richLabel != null && IsInstanceValid(_richLabel))
+            _richLabel.Text = current;
+        if (!_twActive)
+            _text = current;
+    }
+
+    private System.Collections.Generic.List<string> TokenizeWords(string s)
+    {
+        var list = new System.Collections.Generic.List<string>();
+        int i = 0;
+        while (i < s.Length)
+        {
+            int start = i;
+            while (i < s.Length && !char.IsWhiteSpace(s[i])) i++;
+            int wordEnd = i;
+            while (i < s.Length && char.IsWhiteSpace(s[i])) i++;
+            int end = i;
+            if (end > start)
+                list.Add(s.Substring(start, end - start));
+        }
+        return list;
+    }
+
+    private void PrefitForText(string content)
+    {
+        var avail = CalculateAvailableArea();
+        if (avail.X <= 1.0f || avail.Y <= 1.0f) return;
+        if (_richLabel != null && !string.IsNullOrEmpty(_richLabelText))
+        {
+            var rtl = _richLabel;
+            if (rtl == null || !IsInstanceValid(rtl)) return;
+            var fnt = LabelFont ?? ThemeDB.FallbackFont;
+            if (fnt == null) return;
+            string plain = StripKnownBBCode(content);
+            float wrap = (LabelAutowrap != TextServer.AutowrapMode.Off) ? avail.X : -1f;
+            int size = FindBestFontSize(fnt, plain, avail, wrap);
+            ApplyRichLabelFontOverrides(rtl, fnt, size);
+            _richCurrentFontSize = size;
+            _lastFitFontSize = size;
+        }
+        else if (_label != null)
+        {
+            var label = _label;
+            if (label == null || !IsInstanceValid(label)) return;
+            var fnt = GetRobustFont(label);
+            if (fnt == null) return;
+            float wrap = (LabelAutowrap != TextServer.AutowrapMode.Off) ? avail.X : -1f;
+            int size = FindBestFontSize(fnt, content, avail, wrap);
+            ApplyFontSettings(label, fnt, size);
+            _lastFitFontSize = size;
+        }
+    }
+
+    // ===== BBCode-aware typing support =====
+    private struct BBToken { public bool IsTag; public string Content; public BBToken(bool t, string c) { IsTag = t; Content = c; } }
+    private bool _twBBCodeAware = false;
+    [Export] public bool SuspendHoverDuringTypewriter { get; set; } = true;
+    [Export] public bool DelayEffectTagsDuringTypewriter { get; set; } = true;
+    private bool _twDelayEffects => DelayEffectTagsDuringTypewriter;
+    private System.Collections.Generic.List<BBToken>? _twBBTokens;
+    private int _twVisiblePlainChars = 0;
+    private int _twTotalPlainChars = 0;
+
+    private (System.Collections.Generic.List<BBToken>, int) TokenizeBBCode(string s)
+    {
+        var tokens = new System.Collections.Generic.List<BBToken>();
+        int i = 0;
+        int totalPlain = 0;
+        while (i < s.Length)
+        {
+            if (s[i] == '[')
+            {
+                int j = s.IndexOf(']', i + 1);
+                if (j > i)
+                {
+                    tokens.Add(new BBToken(true, s.Substring(i, j - i + 1)));
+                    i = j + 1;
+                    continue;
+                }
+                // Unmatched '[' â€” treat as plain text
+                i++;
+                totalPlain++;
+                tokens.Add(new BBToken(false, "["));
+                continue;
+            }
+            // accumulate plain text until next tag
+            int start = i;
+            while (i < s.Length && s[i] != '[')
+                i++;
+            string text = s.Substring(start, i - start);
+            if (text.Length > 0)
+            {
+                tokens.Add(new BBToken(false, text));
+                totalPlain += text.Length;
+            }
+        }
+        return (tokens, totalPlain);
+    }
+
+    private string BuildVisibleFromTokens(System.Collections.Generic.List<BBToken> tokens, int visiblePlainChars)
+    {
+        var sb = new System.Text.StringBuilder(_twFinalText?.Length ?? 64);
+        int remain = Math.Max(0, visiblePlainChars);
+        foreach (var t in tokens)
+        {
+            if (t.IsTag)
+            {
+                // Optionally delay effect tags until typing completes
+                if (_twDelayEffects && visiblePlainChars < _twTotalPlainChars && IsEffectTag(t.Content))
+                {
+                    continue;
+                }
+                sb.Append(t.Content);
+                continue;
+            }
+            if (remain <= 0) continue;
+            int take = Math.Min(remain, t.Content.Length);
+            sb.Append(t.Content.AsSpan(0, take));
+            remain -= take;
+        }
+        return sb.ToString();
+    }
+    // Effect tags that can be expensive or glitchy mid-typing; delay until complete
+    private static readonly System.Collections.Generic.HashSet<string> EffectTags = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    { "wave", "rainbow", "tornado", "pulse", "shake", "fade" };
+    private bool IsEffectTag(string tag)
+    {
+        if (string.IsNullOrEmpty(tag)) return false;
+        int start = tag.IndexOf('[');
+        int end = tag.IndexOf(']');
+        if (start < 0 || end <= start) return false;
+        var inner = tag.Substring(start + 1, end - start - 1).Trim();
+        if (inner.StartsWith("/")) inner = inner.Substring(1).TrimStart();
+        int sp = inner.IndexOf(' ');
+        var name = sp >= 0 ? inner.Substring(0, sp) : inner;
+        return EffectTags.Contains(name);
+    }
     #endregion
     #region Property List Builder
     private Array<Dictionary> BuildPropertyList()
@@ -2945,3 +3422,7 @@ public partial class OmniButton : Control
     }
     #endregion
 }
+
+
+
+

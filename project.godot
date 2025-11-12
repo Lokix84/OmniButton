@@ -11,9 +11,9 @@ config_version=5
 [application]
 
 config/name="OmniButton"
-run/main_scene="uid://b7nlnllxbfp5y"
-config/features=PackedStringArray("4.5", "C#", "Forward Plus")
-config/icon="uid://djvtr4x1cdmfj"
+run/main_scene="uid://d3ukhudxpvpvd"
+config/features=PackedStringArray("4.5", "C#")
+config/icon="uid://qmauyj7sntg6"
 
 [display]
 

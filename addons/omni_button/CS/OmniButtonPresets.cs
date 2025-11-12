@@ -17,7 +17,6 @@ namespace OmniButtonKit
         public static OmniButton ApplyToggle(this OmniButton b)
         {
             b.InteractionMode = OmniButton.InteractionModeEnum.ToggleOnPress;
-            b.EnableSelectedOverlay = true;
             b.FollowMode = OmniButton.FollowModeEnum.None;
             return b;
         }

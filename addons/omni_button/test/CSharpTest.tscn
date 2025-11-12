@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3 uid="uid://d3ukhudxpvpvd"]
+[gd_scene load_steps=22 format=3 uid="uid://d3ukhudxpvpvd"]
 
 [ext_resource type="Script" uid="uid://n54ewwkpv83g" path="res://addons/omni_button/test/CSharpTest.cs" id="1_dqdkr"]
 [ext_resource type="Theme" uid="uid://ckanb5o8kc3u" path="res://addons/omni_button/test/style/UI.tres" id="2_5d3si"]
@@ -6,8 +6,12 @@
 [ext_resource type="Texture2D" uid="uid://c8gpacmdt8yrf" path="res://addons/omni_button/test/icons/Icon-UpArrow1.png" id="3_honpn"]
 [ext_resource type="Texture2D" uid="uid://ruv70baanys7" path="res://addons/omni_button/test/icons/Icon-Sword1.png" id="4_5d3si"]
 [ext_resource type="Texture2D" uid="uid://b5lx4c8vwy73h" path="res://addons/omni_button/test/icons/Icon-DownArrow1.png" id="4_7ixqu"]
+[ext_resource type="Texture2D" uid="uid://klaq0aj1w3hg" path="res://addons/omni_button/test/icons/Icon-UpRightArrow1.png" id="4_vrpdn"]
+[ext_resource type="Texture2D" uid="uid://x4lckxqycmap" path="res://addons/omni_button/test/icons/Icon-UpLeftArrow1.png" id="5_d77sa"]
 [ext_resource type="Texture2D" uid="uid://c1ecj2g07rj4n" path="res://addons/omni_button/test/icons/Icon-LeftArrow1.png" id="5_fh7gc"]
 [ext_resource type="Texture2D" uid="uid://c0aaku6680sid" path="res://addons/omni_button/test/icons/Icon-RightArrow1.png" id="6_2wksf"]
+[ext_resource type="Texture2D" uid="uid://ct35d7s44a16h" path="res://addons/omni_button/test/icons/Icon-DownRightArrow1.png" id="6_i4x1d"]
+[ext_resource type="Texture2D" uid="uid://bxwap4tj4kyoh" path="res://addons/omni_button/test/icons/Icon-DownLeftArrow1.png" id="7_i4x1d"]
 [ext_resource type="Texture2D" uid="uid://d3na4mhfwnpqk" path="res://addons/omni_button/test/icons/Icon-Circle1.png" id="7_xgukv"]
 [ext_resource type="Texture2D" uid="uid://b14lr3jagn4ip" path="res://addons/omni_button/test/icons/Icon-Circle5.png" id="8_rs1nt"]
 [ext_resource type="Texture2D" uid="uid://rwqys46yqk5i" path="res://addons/omni_button/test/icons/Icon-Potion6.png" id="9_7ixqu"]
@@ -95,6 +99,50 @@ InvertModes = 4
 TouchSwipeExit = 1
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
+[node name="UpRight" type="Control" parent="Gamepad"]
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -100.0
+offset_top = 50.0
+offset_right = -50.0
+offset_bottom = 100.0
+grow_horizontal = 0
+pivot_offset = Vector2(25, 25)
+script = ExtResource("2_dqdkr")
+PresetSelection = 99
+IconTexture = ExtResource("4_vrpdn")
+LabelType = 1
+MinFontSize = 12
+LabelAutowrap = 2
+InvertModes = 4
+TouchSwipeExit = 1
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="UpLeft" type="Control" parent="Gamepad"]
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -245.0
+offset_top = 50.0
+offset_right = -195.0
+offset_bottom = 100.0
+grow_horizontal = 0
+pivot_offset = Vector2(25, 25)
+script = ExtResource("2_dqdkr")
+PresetSelection = 99
+IconTexture = ExtResource("5_d77sa")
+LabelType = 1
+MinFontSize = 12
+LabelAutowrap = 2
+InvertModes = 4
+TouchSwipeExit = 1
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
 [node name="Down" type="Control" parent="Gamepad"]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 1
@@ -112,6 +160,50 @@ pivot_offset = Vector2(50, 50)
 script = ExtResource("2_dqdkr")
 PresetSelection = 99
 IconTexture = ExtResource("4_7ixqu")
+MinFontSize = 12
+LabelAutowrap = 2
+InvertModes = 4
+TouchSwipeExit = 1
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="DownRight" type="Control" parent="Gamepad"]
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -100.0
+offset_top = 200.0
+offset_right = -50.0
+offset_bottom = 250.0
+grow_horizontal = 0
+pivot_offset = Vector2(25, 25)
+script = ExtResource("2_dqdkr")
+PresetSelection = 99
+IconTexture = ExtResource("6_i4x1d")
+LabelType = 1
+MinFontSize = 12
+LabelAutowrap = 2
+InvertModes = 4
+TouchSwipeExit = 1
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="DownLeft" type="Control" parent="Gamepad"]
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -245.0
+offset_top = 200.0
+offset_right = -195.0
+offset_bottom = 250.0
+grow_horizontal = 0
+pivot_offset = Vector2(25, 25)
+script = ExtResource("2_dqdkr")
+PresetSelection = 99
+IconTexture = ExtResource("7_i4x1d")
+LabelType = 1
 MinFontSize = 12
 LabelAutowrap = 2
 InvertModes = 4
@@ -191,6 +283,7 @@ EnableDefaultThumb = false
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
 [node name="LookJoystick" type="Control" parent="."]
+visible = false
 custom_minimum_size = Vector2(150, 150)
 layout_mode = 1
 anchors_preset = 8
@@ -295,7 +388,6 @@ script = ExtResource("2_dqdkr")
 PresetSelection = 99
 IconTexture = ExtResource("8_rs1nt")
 Text = "Press Button"
-LabelText = "Press Button"
 IconExpandMode = 1
 IconStretchMode = 5
 IconFlipH = true
@@ -321,7 +413,6 @@ script = ExtResource("2_dqdkr")
 PresetSelection = 99
 IconTexture = ExtResource("8_rs1nt")
 Text = "Toggle Button"
-LabelText = "Toggle Button"
 IconExpandMode = 1
 IconStretchMode = 5
 LabelVerticalAlignment = 2
@@ -346,7 +437,6 @@ script = ExtResource("2_dqdkr")
 PresetSelection = 99
 IconTexture = ExtResource("8_rs1nt")
 Text = "Hold Button"
-LabelText = "Hold Button"
 IconExpandMode = 1
 IconStretchMode = 5
 IconFlipH = true
@@ -381,7 +471,6 @@ script = ExtResource("2_dqdkr")
 PresetSelection = 99
 IconTexture = ExtResource("8_rs1nt")
 Text = "Swipe Button"
-LabelText = "Swipe Button"
 IconExpandMode = 1
 IconStretchMode = 5
 IconFlipV = true
@@ -411,7 +500,6 @@ script = ExtResource("2_dqdkr")
 PresetSelection = 99
 IconTexture = ExtResource("8_rs1nt")
 Text = "Draggable Button"
-LabelText = "Draggable Button"
 IconExpandMode = 1
 IconStretchMode = 5
 IconFlipV = true
@@ -460,8 +548,6 @@ script = ExtResource("2_dqdkr")
 PresetSelection = 99
 IconTexture = ExtResource("9_7ixqu")
 Text = "x10"
-LabelText = "x10"
-EnableSelectedOverlay = true
 PanelThemeType = ""
 PanelStyleBox = ExtResource("11_mpc5m")
 BackgroundExpandMode = 1
@@ -492,8 +578,6 @@ script = ExtResource("2_dqdkr")
 PresetSelection = 99
 IconTexture = ExtResource("11_fh7gc")
 Text = "x10"
-LabelText = "x10"
-EnableSelectedOverlay = true
 PanelThemeType = ""
 PanelStyleBox = ExtResource("11_mpc5m")
 BackgroundExpandMode = 1
@@ -524,8 +608,6 @@ script = ExtResource("2_dqdkr")
 PresetSelection = 99
 IconTexture = ExtResource("12_fh7gc")
 Text = "x10"
-LabelText = "x10"
-EnableSelectedOverlay = true
 PanelThemeType = ""
 PanelStyleBox = ExtResource("11_mpc5m")
 BackgroundExpandMode = 1
@@ -573,9 +655,6 @@ Selected = true
 PresetSelection = 99
 BackgroundType = 1
 Text = "Use Item"
-LabelText = "Use Item"
-RichLabelUseBBCode = false
-EnableSelectedOverlay = true
 SelectedColor = Color(0.15686275, 0.15686275, 0.15686275, 0.63529414)
 PanelStyleBox = ExtResource("11_mpc5m")
 LabelTextColor = Color(0.015686275, 1, 0.039215688, 1)
@@ -607,7 +686,6 @@ script = ExtResource("2_dqdkr")
 PresetSelection = 99
 IconTexture = ExtResource("4_5d3si")
 Text = "Cooldown"
-LabelText = "Cooldown"
 IconExpandMode = 1
 IconStretchMode = 5
 LabelVerticalAlignment = 2
@@ -640,8 +718,6 @@ script = ExtResource("2_dqdkr")
 PresetSelection = 99
 IconTexture = ExtResource("14_xgukv")
 Text = "Buildup and hold with cooldown"
-LabelText = "Buildup and hold with cooldown"
-RichLabelUseBBCode = false
 IconExpandMode = 1
 IconStretchMode = 5
 LabelTextColor = Color(0.9372549, 0.11372549, 0.23137255, 1)
@@ -664,7 +740,8 @@ SuspendHoverScaleDuringCooldown = true
 AllowHoldDuringCooldown = true
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="ButtonOutput" type="Control" parent="."]
+[node name="TextBlock" type="Control" parent="."]
+unique_name_in_owner = true
 texture_filter = 1
 custom_minimum_size = Vector2(500, 400)
 layout_mode = 1
@@ -683,10 +760,30 @@ pivot_offset = Vector2(250, 200)
 script = ExtResource("2_dqdkr")
 PresetSelection = 99
 LabelType = 1
-Text = "[p]Initial [b]State[/b] - this is a test of the [u]rich text label[/u] functionality that exists within the omni button. the purpose of this is to show that a large amount of text can be displayed and still utilize the [i]functionality[/i] such as bold, underline, italisis and etc. that is present within the bbcode enabled rich text label. Check it out [color=green]the color green[/color] thats wild another color in the middle of a text block. wow i'm so shocked that this does that soooo seemlessly. very impressive. [/p] please refer to [url]https://docs.godotengine.org/en/latest/tutorials/ui/bbcode_in_richtextlabel.html[/url] for a complete list of bbcode usage in godots documentation.[wave amp=50.0 freq=5.0 connected=1]it can get wavy too thats crazy.[/wave][pulse freq=1.0 color=#ffffff40 ease=-2.0]or if you are feeling it it can do a pulse thats prett cool.[/pulse][tornado radius=10.0 freq=1.0 connected=1]theres also like a tornado looking thing.[/tornado]theres also a [shake rate=20.0 level=5 connected=1]shake[/shake].honestly i'm just trying to fill up the space oooo[fade start=4 length=14] how about a fade[/fade]. that could be fun. always the classic [rainbow freq=1.0 sat=0.8 val=0.8 speed=1.0]rainbow [/rainbow]. really the take away here is that there are a lot of functions in bbcode that can really enhance your text output. so if you need it. its here to use as you see fit :).[br][br] p.s. you will have to restart this scene to see this text again"
-RichLabelText = "[p]Initial [b]State[/b] - this is a test of the [u]rich text label[/u] functionality that exists within the omni button. the purpose of this is to show that a large amount of text can be displayed and still utilize the [i]functionality[/i] such as bold, underline, italisis and etc. that is present within the bbcode enabled rich text label. Check it out [color=green]the color green[/color] thats wild another color in the middle of a text block. wow i'm so shocked that this does that soooo seemlessly. very impressive. [/p] please refer to [url]https://docs.godotengine.org/en/latest/tutorials/ui/bbcode_in_richtextlabel.html[/url] for a complete list of bbcode usage in godots documentation.[wave amp=50.0 freq=5.0 connected=1]it can get wavy too thats crazy.[/wave][pulse freq=1.0 color=#ffffff40 ease=-2.0]or if you are feeling it it can do a pulse thats prett cool.[/pulse][tornado radius=10.0 freq=1.0 connected=1]theres also like a tornado looking thing.[/tornado]theres also a [shake rate=20.0 level=5 connected=1]shake[/shake].honestly i'm just trying to fill up the space oooo[fade start=4 length=14] how about a fade[/fade]. that could be fun. always the classic [rainbow freq=1.0 sat=0.8 val=0.8 speed=1.0]rainbow [/rainbow]. really the take away here is that there are a lot of functions in bbcode that can really enhance your text output. so if you need it. its here to use as you see fit :).[br][br] p.s. you will have to restart this scene to see this text again"
+TextToType = "[p]Initial [b]State[/b] - this is a test of the [u]rich text label[/u] functionality that exists within the omni button. the purpose of this is to show that a large amount of text can be displayed and still utilize the [i]functionality[/i] such as bold, underline, italisis and etc. that is present within the bbcode enabled rich text label. Check it out [color=green]the color green[/color] thats wild another color in the middle of a text block. wow i'm so shocked that this does that soooo seemlessly. very impressive. [/p] please refer to [url]https://docs.godotengine.org/en/latest/tutorials/ui/bbcode_in_richtextlabel.html[/url] for a complete list of bbcode usage in godots documentation.[wave amp=50.0 freq=5.0 connected=1]it can get wavy too thats crazy.[/wave][pulse freq=1.0 color=#ffffff40 ease=-2.0]or if you are feeling it it can do a pulse thats prett cool.[/pulse][tornado radius=10.0 freq=1.0 connected=1]theres also like a tornado looking thing.[/tornado]theres also a [shake rate=20.0 level=5 connected=1]shake[/shake].honestly i'm just trying to fill up the space oooo[fade start=4 length=14] how about a fade[/fade]. that could be fun. always the classic [rainbow freq=1.0 sat=0.8 val=0.8 speed=1.0]rainbow [/rainbow]. really the take away here is that there are a lot of functions in bbcode that can really enhance your text output. so if you need it. its here to use as you see fit :).[br][br] p.s. you will have to restart this scene to see this text again"
 MinFontSize = 12
 LabelHorizontalAlignment = 0
+LabelAutowrap = 2
+TouchSwipeExit = 1
+metadata/_custom_type_script = "uid://3msmjo362g7m"
+
+[node name="ButtonOutput" type="Control" parent="."]
+unique_name_in_owner = true
+texture_filter = 1
+custom_minimum_size = Vector2(500, 25)
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 0
+pivot_offset = Vector2(250, 12.5)
+script = ExtResource("2_dqdkr")
+PresetSelection = 99
+LabelType = 1
+MinFontSize = 12
 LabelAutowrap = 2
 TouchSwipeExit = 1
 metadata/_custom_type_script = "uid://3msmjo362g7m"

@@ -92,6 +92,8 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
+DebugAutosizeTimings = null
+ManagedDrawOnTop = true
 
 [node name="Down" type="Control" parent="Gamepad"]
 custom_minimum_size = Vector2(100, 100)
@@ -122,6 +124,8 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
+DebugAutosizeTimings = null
+ManagedDrawOnTop = true
 
 [node name="Left" type="Control" parent="Gamepad"]
 custom_minimum_size = Vector2(100, 100)
@@ -149,6 +153,8 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
+DebugAutosizeTimings = null
+ManagedDrawOnTop = true
 
 [node name="Right" type="Control" parent="Gamepad"]
 custom_minimum_size = Vector2(100, 100)
@@ -179,6 +185,8 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
+DebugAutosizeTimings = null
+ManagedDrawOnTop = true
 
 [node name="Center" type="Control" parent="Gamepad"]
 custom_minimum_size = Vector2(100, 100)
@@ -210,8 +218,10 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
+DebugAutosizeTimings = null
 EnableVirtualJoystick = true
 ClampToBounds = false
+ManagedDrawOnTop = true
 
 [node name="LookJoystick" type="Control" parent="."]
 visible = false
@@ -268,7 +278,9 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
+DebugAutosizeTimings = null
 EnableVirtualJoystick = true
+ManagedDrawOnTop = true
 
 [node name="UI" type="Control" parent="."]
 layout_mode = 1
@@ -374,6 +386,8 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
+DebugAutosizeTimings = null
+ManagedDrawOnTop = true
 
 [node name="SelectedItem2" type="Control" parent="UI/HotbarHUD/SingleSelectList"]
 clip_contents = true
@@ -400,6 +414,8 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
+DebugAutosizeTimings = null
+ManagedDrawOnTop = true
 
 [node name="SelectedItem3" type="Control" parent="UI/HotbarHUD/SingleSelectList"]
 clip_contents = true
@@ -426,6 +442,8 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
+DebugAutosizeTimings = null
+ManagedDrawOnTop = true
 
 [node name="Actions" type="Control" parent="UI"]
 custom_minimum_size = Vector2(350, 100)
@@ -465,6 +483,8 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
+DebugAutosizeTimings = null
+ManagedDrawOnTop = true
 
 [node name="Attack" type="Control" parent="UI/Actions"]
 custom_minimum_size = Vector2(100, 100)
@@ -492,6 +512,8 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
+DebugAutosizeTimings = null
+ManagedDrawOnTop = true
 
 [node name="Defend" type="Control" parent="UI/Actions"]
 custom_minimum_size = Vector2(100, 100)
@@ -518,6 +540,8 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
+DebugAutosizeTimings = null
+ManagedDrawOnTop = true
 
 [node name="ButtonOutput" type="Control" parent="."]
 custom_minimum_size = Vector2(500, 400)
@@ -547,4 +571,6 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
+DebugAutosizeTimings = null
+ManagedDrawOnTop = true
 metadata/_custom_type_script = "uid://dw4mvkaj30lb5"
