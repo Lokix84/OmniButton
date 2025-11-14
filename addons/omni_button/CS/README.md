@@ -7,6 +7,7 @@ Minimum Godot: 4.x (.NET)
 Contents
 - Signals
 - Exported Properties (by group)
+- Debugger Log
 - Accessors (ergonomic helpers)
 - Behavior notes and examples
 - Migration notes
@@ -22,10 +23,14 @@ Contents
 - SwipeEnded() — Emitted when a swipe session ends.
 - JoystickStarted, JoystickAxis(Vector2 axis), JoystickEnded — Virtual joystick lifecycle and axes.
 - Log(string), Warning(string), Error(string) — Optional logging signals.
+- TypewriterCompleted — Raised when typewriter text finishes (also fires when SkipTypewriter() is called).
 
 Tip: Use OmniButton.SignalName.* for refactor-safe signal names.
 
 ## Exported Properties
+
+### Debugger Log
+- DebuggerLog — `Off` (default) or `Basic`. When set to `Basic`, OmniButton prints a detailed per-button trace to the Godot output console covering autosize decisions, hover/toggle transitions, swipe and joystick events, cooldown/hold/typewriter lifecycles, etc. Use this to diagnose a single button without spamming the whole UI.
 
 ### State
 - Disabled — Blocks input and visual reactions.
@@ -87,6 +92,10 @@ Tip: Use OmniButton.SignalName.* for refactor-safe signal names.
 - CooldownDuration, CooldownStartFilled, CooldownColor, CooldownFillDirection
 - SuspendHoverScaleDuringCooldown, AllowHoldDuringCooldown, HideCooldownDuringHoldBuildUp
 
+### Typewriter
+- TextToType, DelayEffectTagsDuringTypewriter, SuspendHoverDuringTypewriter, FinishTypewriterOnPress
+- StartTypewriter(cps, byWord, preserveBBCodeTags), SkipTypewriter(), StopTypewriter()
+
 ## Accessors (ergonomic helpers)
 - LabelNode, IconNode, BackgroundNode, PanelNode, OverlayNode, CooldownNode, ChargeUpNode
 - Examples:
@@ -100,8 +109,15 @@ Tip: Use OmniButton.SignalName.* for refactor-safe signal names.
   ```
 
 ## Behavior notes
-- Action bits auto-enable once: when you first connect an external handler (editor or code) to a signal, the matching ActionMask bit turns on. If you disable it later, it remains off.
-- Editor live refresh: inspector changes re-render immediately via editor-only polling of exported properties.
+- **Action bits auto-enable once:** When you first connect an external handler (editor or code) to a signal, the matching ActionMask bit turns on. If you disable it later, it remains off.
+- **Per-button debugger:** Flip `DebuggerLog` to `Basic` for any instance to print a trace of autosize decisions, pressed/hover/toggle transitions, swipe + joystick events, hold/cooldown/typewriter lifecycle, and signal emissions. This is invaluable for diagnosing a single button without spamming other buttons.
+- **Text autosizing parity:** The autosizer now uses Godot’s TextParagraph pipeline and re-runs whenever wrap/padding/text changes. Cached font sizes are invalidated automatically and a secondary search “grows” the font back up when more room becomes available. If text still overflows, enable the debugger log to inspect measurements vs available space.
+- **Hold build-up:** When `EnableHoldBuildUp` is true, OmniButton creates a `HoldFill` ColorRect and animates it according to `HoldFillDirection`. The `Hold` signal fires once the timer reaches `HoldDuration`.
+- **Swipe handling:** Swipes respect per-device init/exit settings, ActionMask bits, thresholds, and `HitSlop`. Runtime logs show whether the swipe bit is disabled or the pointer left bounds.
+- **Follow / Virtual joystick:** `FollowMode` controls whether the button drags, stays put, or becomes a joystick. Joystick sessions clamp to circular/rectangular regions, emit axis values/started/ended signals, and optionally show a ring (`EnableJoystickArea`). The debugger logs start/stop events and clamp info.
+- **Cooldowns:** Any triggerable cooldown automatically clears pressed visuals, can optionally suspend hover scale, and emits debugger logs when starting or finishing. You can hide the overlay during hold build-up for “charge + cooldown” combos.
+- **Typewriter text:** `StartTypewriter()` respects BBCode, word mode, and CPS, and can defer effect tags. Skip/Stop log when they emit `TypewriterCompleted` so you can tell if a script cancelled unexpectedly.
+- **Runtime/editor parity:** Editor live refresh mirrors runtime by polling exported properties, rebuilding managed children, and running the autosizer immediately.
 
 ## Migration notes
 - Prefer LabelType + Text over LabelText/RichLabelText. Legacy properties remain for compatibility but route to the new API.
