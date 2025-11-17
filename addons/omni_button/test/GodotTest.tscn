@@ -1,8 +1,18 @@
-[gd_scene load_steps=7 format=3 uid="uid://b7nlnllxbfp5y"]
+[gd_scene load_steps=17 format=3 uid="uid://b7nlnllxbfp5y"]
 
 [ext_resource type="Script" uid="uid://dsy7se21478dt" path="res://addons/omni_button/test/GodotTest.gd" id="1_1o0i0"]
 [ext_resource type="Script" uid="uid://dw4mvkaj30lb5" path="res://addons/omni_button/GD/omni_button.gd" id="2_ov6p0"]
 [ext_resource type="Theme" uid="uid://ckanb5o8kc3u" path="res://addons/omni_button/test/style/UI.tres" id="3_ly7v3"]
+[ext_resource type="Texture2D" uid="uid://rwqys46yqk5i" path="res://addons/omni_button/test/icons/Icon-Potion6.png" id="4_nfjrx"]
+[ext_resource type="Texture2D" uid="uid://c8gpacmdt8yrf" path="res://addons/omni_button/test/icons/Icon-UpArrow1.png" id="4_xntu3"]
+[ext_resource type="Texture2D" uid="uid://b5lx4c8vwy73h" path="res://addons/omni_button/test/icons/Icon-DownArrow1.png" id="5_7nnny"]
+[ext_resource type="Texture2D" uid="uid://l8n04aejxhyq" path="res://addons/omni_button/test/icons/Icon-Potion7.png" id="6_dw80u"]
+[ext_resource type="Texture2D" uid="uid://c1ecj2g07rj4n" path="res://addons/omni_button/test/icons/Icon-LeftArrow1.png" id="6_rf0ao"]
+[ext_resource type="Texture2D" uid="uid://c0aaku6680sid" path="res://addons/omni_button/test/icons/Icon-RightArrow1.png" id="7_4j7m3"]
+[ext_resource type="Texture2D" uid="uid://b01hwuht0khkc" path="res://addons/omni_button/test/icons/Icon-Potion10.png" id="7_mb060"]
+[ext_resource type="Texture2D" uid="uid://d3na4mhfwnpqk" path="res://addons/omni_button/test/icons/Icon-Circle1.png" id="8_2ka2f"]
+[ext_resource type="Texture2D" uid="uid://ruv70baanys7" path="res://addons/omni_button/test/icons/Icon-Sword1.png" id="8_mb060"]
+[ext_resource type="Texture2D" uid="uid://7gj2r6qeswvv" path="res://addons/omni_button/test/icons/Icon-Shield5.png" id="9_4im83"]
 [ext_resource type="StyleBox" uid="uid://pm2mjmy1hg7a" path="res://addons/omni_button/test/style/Unselected.tres" id="10_c3pcx"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xgukv"]
@@ -67,6 +77,7 @@ grow_vertical = 2
 theme = SubResource("Theme_rs1nt")
 
 [node name="Up" type="Control" parent="Gamepad"]
+z_index = 1
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 1
 anchors_preset = 5
@@ -80,6 +91,7 @@ pivot_offset = Vector2(50, 50)
 focus_mode = 2
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
+IconTexture = ExtResource("4_xntu3")
 MinFontSize = 12
 LabelAutowrap = 2
 PressedAction = Callable()
@@ -92,10 +104,10 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
-DebugAutosizeTimings = null
 ManagedDrawOnTop = true
 
 [node name="Down" type="Control" parent="Gamepad"]
+z_index = 1
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 1
 anchors_preset = 7
@@ -112,6 +124,7 @@ pivot_offset = Vector2(50, 50)
 focus_mode = 2
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
+IconTexture = ExtResource("5_7nnny")
 MinFontSize = 12
 LabelAutowrap = 2
 PressedAction = Callable()
@@ -124,10 +137,10 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
-DebugAutosizeTimings = null
 ManagedDrawOnTop = true
 
 [node name="Left" type="Control" parent="Gamepad"]
+z_index = 1
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 1
 anchors_preset = 4
@@ -141,6 +154,7 @@ pivot_offset = Vector2(50, 50)
 focus_mode = 2
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
+IconTexture = ExtResource("6_rf0ao")
 MinFontSize = 12
 LabelAutowrap = 2
 PressedAction = Callable()
@@ -153,10 +167,10 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
-DebugAutosizeTimings = null
 ManagedDrawOnTop = true
 
 [node name="Right" type="Control" parent="Gamepad"]
+z_index = 1
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 1
 anchors_preset = 6
@@ -173,6 +187,7 @@ pivot_offset = Vector2(50, 50)
 focus_mode = 2
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
+IconTexture = ExtResource("7_4j7m3")
 MinFontSize = 12
 LabelAutowrap = 2
 PressedAction = Callable()
@@ -185,10 +200,10 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
-DebugAutosizeTimings = null
 ManagedDrawOnTop = true
 
 [node name="Center" type="Control" parent="Gamepad"]
+z_index = 1
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 1
 anchors_preset = 8
@@ -206,6 +221,7 @@ pivot_offset = Vector2(50, 50)
 focus_mode = 2
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
+IconTexture = ExtResource("8_2ka2f")
 MinFontSize = 12
 LabelAutowrap = 2
 PressedAction = Callable()
@@ -218,7 +234,6 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
-DebugAutosizeTimings = null
 EnableVirtualJoystick = true
 ClampToBounds = false
 ManagedDrawOnTop = true
@@ -278,7 +293,6 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
-DebugAutosizeTimings = null
 EnableVirtualJoystick = true
 ManagedDrawOnTop = true
 
@@ -369,6 +383,7 @@ focus_mode = 2
 theme = ExtResource("3_ly7v3")
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
+IconTexture = ExtResource("4_nfjrx")
 SelectedColor = Color(0.89492244, 0.89492244, 0.8949224, 0.3019608)
 PanelThemeType = ""
 PanelStyleBox = ExtResource("10_c3pcx")
@@ -386,7 +401,6 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
-DebugAutosizeTimings = null
 ManagedDrawOnTop = true
 
 [node name="SelectedItem2" type="Control" parent="UI/HotbarHUD/SingleSelectList"]
@@ -398,6 +412,7 @@ focus_mode = 2
 theme = ExtResource("3_ly7v3")
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
+IconTexture = ExtResource("6_dw80u")
 SelectedColor = Color(0.89492244, 0.89492244, 0.8949224, 0.3019608)
 PanelStyleBox = ExtResource("10_c3pcx")
 IconExpandMode = 1
@@ -414,7 +429,6 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
-DebugAutosizeTimings = null
 ManagedDrawOnTop = true
 
 [node name="SelectedItem3" type="Control" parent="UI/HotbarHUD/SingleSelectList"]
@@ -426,6 +440,7 @@ focus_mode = 2
 theme = ExtResource("3_ly7v3")
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
+IconTexture = ExtResource("7_mb060")
 SelectedColor = Color(0.89492244, 0.89492244, 0.8949224, 0.3019608)
 PanelStyleBox = ExtResource("10_c3pcx")
 IconExpandMode = 1
@@ -442,7 +457,6 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
-DebugAutosizeTimings = null
 ManagedDrawOnTop = true
 
 [node name="Actions" type="Control" parent="UI"]
@@ -471,6 +485,9 @@ pivot_offset = Vector2(50, 50)
 focus_mode = 2
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
+BackgroundType = 1
+Text = "Use Item"
+LabelText = "Use Item"
 MinFontSize = 12
 LabelAutowrap = 2
 PressedAction = Callable()
@@ -483,7 +500,6 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
-DebugAutosizeTimings = null
 ManagedDrawOnTop = true
 
 [node name="Attack" type="Control" parent="UI/Actions"]
@@ -500,6 +516,7 @@ pivot_offset = Vector2(50, 50)
 focus_mode = 2
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
+IconTexture = ExtResource("8_mb060")
 MinFontSize = 12
 LabelAutowrap = 2
 PressedAction = Callable()
@@ -512,7 +529,6 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
-DebugAutosizeTimings = null
 ManagedDrawOnTop = true
 
 [node name="Defend" type="Control" parent="UI/Actions"]
@@ -528,6 +544,7 @@ pivot_offset = Vector2(50, 50)
 focus_mode = 2
 theme_type_variation = &"normal"
 script = ExtResource("2_ov6p0")
+IconTexture = ExtResource("9_4im83")
 MinFontSize = 12
 LabelAutowrap = 2
 PressedAction = Callable()
@@ -540,10 +557,9 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
-DebugAutosizeTimings = null
 ManagedDrawOnTop = true
 
-[node name="ButtonOutput" type="Control" parent="."]
+[node name="TextBlock" type="Control" parent="."]
 custom_minimum_size = Vector2(500, 400)
 layout_mode = 1
 anchors_preset = 8
@@ -571,6 +587,36 @@ SwipeAction = Callable()
 LogAction = Callable()
 WarningAction = Callable()
 ErrorAction = Callable()
-DebugAutosizeTimings = null
+ManagedDrawOnTop = true
+metadata/_custom_type_script = "uid://dw4mvkaj30lb5"
+
+[node name="ButtonOutput" type="Control" parent="."]
+custom_minimum_size = Vector2(500, 25)
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -250.0
+offset_top = -25.0
+offset_right = 250.0
+grow_horizontal = 2
+grow_vertical = 0
+theme = ExtResource("3_ly7v3")
+script = ExtResource("2_ov6p0")
+LabelType = 1
+LabelAutowrap = 1
+EnableHoverScale = true
+PressedAction = Callable()
+ReleasedAction = Callable()
+HoverInAction = Callable()
+HoverOutAction = Callable()
+ToggledAction = Callable()
+HoldAction = Callable()
+SwipeAction = Callable()
+LogAction = Callable()
+WarningAction = Callable()
+ErrorAction = Callable()
 ManagedDrawOnTop = true
 metadata/_custom_type_script = "uid://dw4mvkaj30lb5"

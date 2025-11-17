@@ -27,6 +27,13 @@ enum JoystickClampShape {Circle = 0, Rectangle = 1}
 enum SwipeInitMode {OnHoverIn = 0, OnPressed = 1}
 enum SwipeExitMode {OnHoverOut = 0, OnReleased = 1}
 enum CooldownTriggerEnum {None = 0, OnPress = 1, OnRelease = 2, OnPressAndRelease = 3}
+enum DebuggerLogMode {OFF = 0, BASIC = 1}
+
+@export var DebuggerLog: DebuggerLogMode = DebuggerLogMode.OFF
+
+func _debug(message: String) -> void:
+	if not Engine.is_editor_hint() and DebuggerLog != DebuggerLogMode.OFF:
+		print("[OmniButton:%s] %s" % [name, message])
 
 # InvertModes and ActionMask bit flags
 const INVERT_PRESS := 1
@@ -54,21 +61,35 @@ var _disabled := false
 var _selected := false
 @export var Selected: bool:
 	get: return _selected
-	set(value): _selected = value; _update_overlay(); _apply_visual_state()
+	set(value):
+		if _selected == value:
+			return
+		_selected = value
+		_debug("Selected=%s" % str(value))
+		_update_overlay()
+		_apply_visual_state()
 
 var _is_toggled := false
 @export var IsToggled: bool:
 	get: return _is_toggled
-	set(value): _is_toggled = value; _update_overlay(); _apply_visual_state()
+	set(value):
+		if _is_toggled == value:
+			return
+		_is_toggled = value
+		_debug("IsToggled=%s" % str(value))
+		_update_overlay()
+		_apply_visual_state()
 
 var _is_pressed := false
 @export var IsPressed: bool:
 	get: return _is_pressed
 	set(value):
 		if _is_pressed == value:
-			_apply_visual_state(); return
+			_apply_visual_state();
+			return
 		var was := _is_pressed
 		_is_pressed = value
+		_debug("IsPressed=%s" % str(value))
 		if (not was) and _is_pressed and EnableHoldBuildUp and not _is_holding:
 			_hold_timer = 0.0; _ensure_hold_fill_rect(); _update_hold_fill_visual(); if is_instance_valid(_hold_fill): _hold_fill.visible = true; set_process(true)
 		elif was and (not _is_pressed):
@@ -78,7 +99,12 @@ var _is_pressed := false
 var _is_hovering := false
 @export var IsHovering: bool:
 	get: return _is_hovering
-	set(value): _is_hovering = value; _apply_visual_state()
+	set(value):
+		if _is_hovering == value:
+			return
+		_is_hovering = value
+		_debug("IsHovering=%s" % str(value))
+		_apply_visual_state()
 
 var _is_holding := false
 @export var IsHolding: bool:
@@ -88,6 +114,8 @@ var _is_holding := false
 		_is_holding = value
 		if (not was) and _is_holding:
 			_remove_hold_fill()
+		if was != value:
+			_debug("IsHolding=%s" % str(value))
 		_apply_visual_state()
 
 # Presets
@@ -190,7 +218,16 @@ var _text: String = ""
 @export_range(0, 300, 1) var FixedFontSize: int = 0
 @export var LabelHorizontalAlignment: HorizontalAlignment = HORIZONTAL_ALIGNMENT_CENTER
 @export var LabelVerticalAlignment: VerticalAlignment = VERTICAL_ALIGNMENT_CENTER
-@export var LabelAutowrap: TextServer.AutowrapMode = TextServer.AUTOWRAP_OFF
+var _label_autowrap: TextServer.AutowrapMode = TextServer.AUTOWRAP_OFF
+@export var LabelAutowrap: TextServer.AutowrapMode:
+	get: return _label_autowrap
+	set(value):
+		if _label_autowrap == value:
+			return
+		_label_autowrap = value
+		_invalidate_autosize_state()
+		_apply_visual_state()
+		_fit_label_text()
 @export var LabelPadding: Vector2 = Vector2.ZERO
 @export_range(0, 4096, 1) var LabelAdditionalPaddingLeft: float = 0.0
 @export_range(0, 4096, 1) var LabelAdditionalPaddingTop: float = 0.0
@@ -218,7 +255,15 @@ var _text: String = ""
 @export_subgroup("Hold Build-Up")
 @export var HoldAction: Callable
 @export_range(0.05, 5.0, 0.05) var HoldDuration: float = 0.5
-@export var EnableHoldBuildUp: bool = false
+var _enable_hold_build_up := false
+@export var EnableHoldBuildUp: bool:
+	get: return _enable_hold_build_up
+	set(value):
+		if _enable_hold_build_up == value:
+			return
+		_enable_hold_build_up = value
+		_invalidate_autosize_state()
+		_apply_visual_state()
 @export var HoldFillColor: Color = Color(1, 1, 1, 0.25)
 @export var HoldFillDirection: int = CooldownDirection.BottomToTop
 @export_subgroup("Swipe")
@@ -234,11 +279,9 @@ var _text: String = ""
 @export var WarningAction: Callable
 @export var ErrorAction: Callable
 
-# Debug: log autosize timings to help profile text-fitting
-@export var DebugAutosizeTimings: bool = false
-
 # Cache the last chosen autosize to accelerate append cases
 var _last_fit_font_size: int = -1
+var _rich_current_font_size: int = -1
 
 # Typewriter support
 var _tw_active := false
@@ -249,6 +292,11 @@ var _tw_final_text: String = ""
 var _tw_index: int = 0
 var _tw_tokens: Array[String] = []
 var _tw_buffer: String = ""
+
+func _invalidate_autosize_state() -> void:
+	_fit_cache_sig = ""
+	_last_fit_font_size = -1
+	_rich_current_font_size = -1
 
 # Convenience per-action toggles to mirror inspector usage seen in tests
 @export var EnablePressedActions: bool:
@@ -607,10 +655,13 @@ func _process(delta: float) -> void:
 	# Hold progression
 	if _is_pressed and (not EnableCooldown or not _cooldown_active or AllowHoldDuringCooldown or EnableHoldBuildUp):
 		_hold_timer += delta
-		if not _is_holding and _hold_timer >= HoldDuration:
-			_is_holding = true
-			if _action_enabled(ACT_HOLD): emit_signal("hold"); if HoldAction.is_valid(): HoldAction.call()
-			_remove_hold_fill()
+	if not _is_holding and _hold_timer >= HoldDuration:
+		_is_holding = true
+		if _action_enabled(ACT_HOLD):
+			emit_signal("hold")
+			_debug("Hold signal emitted")
+			if HoldAction.is_valid(): HoldAction.call()
+		_remove_hold_fill()
 		if EnableHoldBuildUp:
 			if not _is_holding: _update_hold_fill_visual()
 			else: _remove_hold_fill()
@@ -668,6 +719,7 @@ func _process(delta: float) -> void:
 		_update_cooldown_visual()
 		if _cooldown_time_left <= 0.0:
 			_cooldown_active = false
+			_debug("Cooldown completed")
 			if is_instance_valid(_cooldown): _cooldown.visible = false
 			if is_instance_valid(_cooldown): _cooldown.size = Vector2.ZERO; _cooldown.position = Vector2.ZERO
 
@@ -754,6 +806,7 @@ func _gui_input(event: InputEvent) -> void:
 				if JoystickSnapToInput: _move_to_global(mb.global_position)
 				if JoystickHideWhenInactive: visible = true
 				emit_signal("joystick_started")
+				_debug("JoystickStarted (mouse)")
 				_emit_joystick_axis_for(mb.global_position)
 				if EnableJoystickArea:
 					_ensure_and_refresh_joystick_area(_vj_home_global)
@@ -766,13 +819,17 @@ func _gui_input(event: InputEvent) -> void:
 				_swipe_start = mb.position
 			if _action_enabled(ACT_PRESSED):
 				emit_signal("pressed")
+				_debug("Pressed signal emitted (mouse)")
 				if PressedAction.is_valid(): PressedAction.call()
+			else:
+				_debug("Pressed skipped (mouse ActionMask)")
 			# Toggle on press for explicit ToggleOnPress, or momentary+Toggle action
 			if InteractionMode == InteractionModeEnum.ToggleOnPress or (InteractionMode == InteractionModeEnum.Momentary and _action_enabled(ACT_TOGGLE)):
 				_is_toggled = not _is_toggled
 				_update_overlay()
 				emit_signal("toggled", _is_toggled)
 				if ToggledAction.is_valid(): ToggledAction.call(_is_toggled)
+				_debug("Toggled -> %s (mouse press)" % str(_is_toggled))
 			if EnableCooldown and (CooldownTrigger == CooldownTriggerEnum.OnPress or CooldownTrigger == CooldownTriggerEnum.OnPressAndRelease):
 				call_deferred("_start_cooldown")
 			if EnableHoldBuildUp and not _is_holding:
@@ -789,14 +846,19 @@ func _gui_input(event: InputEvent) -> void:
 			_swipe_start = Vector2.ZERO
 			if _action_enabled(ACT_RELEASED) and inside:
 				emit_signal("released")
+				_debug("Released signal emitted (mouse)")
 				if ReleasedAction.is_valid(): ReleasedAction.call()
+			elif not _action_enabled(ACT_RELEASED):
+				_debug("Released skipped (mouse ActionMask)")
 			if EnableCooldown and (CooldownTrigger == CooldownTriggerEnum.OnRelease or CooldownTrigger == CooldownTriggerEnum.OnPressAndRelease):
 				_start_cooldown()
 			if is_instance_valid(_hold_fill): _remove_hold_fill()
 
 			if _vj_active:
 				emit_signal("joystick_axis", Vector2.ZERO)
+				_debug("JoystickAxis zero (mouse release)")
 				emit_signal("joystick_ended")
+				_debug("JoystickEnded (mouse release)")
 				if JoystickResetOnRelease:
 					global_position = _vj_home_global - size * 0.5
 				if JoystickHideWhenInactive:
@@ -811,6 +873,7 @@ func _gui_input(event: InputEvent) -> void:
 				_update_overlay()
 				emit_signal("toggled", _is_toggled)
 				if ToggledAction.is_valid(): ToggledAction.call(_is_toggled)
+				_debug("Toggled -> %s (mouse release)" % str(_is_toggled))
 			_apply_visual_state()
 
 	elif _is_pressed and event is InputEventMouseMotion:
@@ -828,8 +891,10 @@ func _gui_input(event: InputEvent) -> void:
 			else:
 				var direction := mm.position - _swipe_start
 				if direction.length() > SwipeThreshold:
-					emit_signal("swipe", direction.normalized())
-					if SwipeAction.is_valid(): SwipeAction.call(direction.normalized())
+					var dir_norm := direction.normalized()
+					emit_signal("swipe", dir_norm)
+					_debug("Swipe emitted dir=%s source=MouseMotion" % str(dir_norm))
+					if SwipeAction.is_valid(): SwipeAction.call(dir_norm)
 					_swipe_start = Vector2.ZERO
 		# Update swiping state
 		_is_swiping = (mm.position - _swipe_origin).length() > SwipeThreshold
@@ -857,8 +922,10 @@ func _gui_input(event: InputEvent) -> void:
 				else:
 					var direction3 := sd.position - _swipe_start
 					if direction3.length() > SwipeThreshold:
-						emit_signal("swipe", direction3.normalized())
-						if SwipeAction.is_valid(): SwipeAction.call(direction3.normalized())
+						var dir_norm3 := direction3.normalized()
+						emit_signal("swipe", dir_norm3)
+						_debug("Swipe emitted dir=%s source=TouchDrag" % str(dir_norm3))
+						if SwipeAction.is_valid(): SwipeAction.call(dir_norm3)
 						_swipe_start = Vector2.ZERO
 		# Update swiping state
 		_is_swiping = _input_inside(sd) and (sd.position - _swipe_origin).length() > SwipeThreshold
@@ -874,9 +941,12 @@ func _gui_input(event: InputEvent) -> void:
 				_vj_active = true
 				_vj_home_global = global_position + size * 0.5
 				_enable_top_level(true)
-				if JoystickSnapToInput: _move_to_global(gp)
-				if JoystickHideWhenInactive: visible = true
+				if JoystickSnapToInput:
+					_move_to_global(gp)
+				if JoystickHideWhenInactive:
+					visible = true
 				emit_signal("joystick_started")
+				_debug("JoystickStarted (touch)")
 				_emit_joystick_axis_for(gp)
 				if EnableJoystickArea:
 					_ensure_and_refresh_joystick_area(_vj_home_global)
@@ -886,7 +956,11 @@ func _gui_input(event: InputEvent) -> void:
 				_move_to_global(gp)
 			if _action_enabled(ACT_PRESSED):
 				emit_signal("pressed")
-				if PressedAction.is_valid(): PressedAction.call()
+				_debug("Pressed signal emitted (touch)")
+				if PressedAction.is_valid():
+					PressedAction.call()
+			else:
+				_debug("Pressed skipped (touch ActionMask)")
 			_apply_visual_state()
 		elif not st.pressed:
 			_is_pressed = false
@@ -895,10 +969,16 @@ func _gui_input(event: InputEvent) -> void:
 			_swipe_start = Vector2.ZERO
 			if _action_enabled(ACT_RELEASED) and inside:
 				emit_signal("released")
-				if ReleasedAction.is_valid(): ReleasedAction.call()
+				_debug("Released signal emitted (touch)")
+				if ReleasedAction.is_valid():
+					ReleasedAction.call()
+			elif not _action_enabled(ACT_RELEASED):
+				_debug("Released skipped (touch ActionMask)")
 			if _vj_active:
 				emit_signal("joystick_axis", Vector2.ZERO)
+				_debug("JoystickAxis zero (touch release)")
 				emit_signal("joystick_ended")
+				_debug("JoystickEnded (touch release)")
 				if JoystickResetOnRelease:
 					global_position = _vj_home_global - size * 0.5
 				if JoystickHideWhenInactive:
@@ -917,8 +997,10 @@ func _gui_input(event: InputEvent) -> void:
 		else:
 			var direction := drag.position - _swipe_start
 			if direction.length() > SwipeThreshold:
-				emit_signal("swipe", direction.normalized())
-				if SwipeAction.is_valid(): SwipeAction.call(direction.normalized())
+				var dir_norm := direction.normalized()
+				emit_signal("swipe", dir_norm)
+				_debug("Swipe emitted dir=%s source=TouchDrag" % str(dir_norm))
+				if SwipeAction.is_valid(): SwipeAction.call(dir_norm)
 				_swipe_start = Vector2.ZERO
 	elif _action_enabled(ACT_SWIPE) and _is_pressed and event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
@@ -927,8 +1009,10 @@ func _gui_input(event: InputEvent) -> void:
 		else:
 			var direction2 := motion.position - _swipe_start
 			if direction2.length() > SwipeThreshold:
-				emit_signal("swipe", direction2.normalized())
-				if SwipeAction.is_valid(): SwipeAction.call(direction2.normalized())
+				var dir_norm2 := direction2.normalized()
+				emit_signal("swipe", dir_norm2)
+				_debug("Swipe emitted dir=%s source=MouseMotion" % str(dir_norm2))
+				if SwipeAction.is_valid(): SwipeAction.call(dir_norm2)
 				_swipe_start = Vector2.ZERO
 	elif _action_enabled(ACT_SWIPE) and MouseSwipeInit == SwipeInitMode.OnHoverIn and event is InputEventMouseMotion:
 		var hover_motion := event as InputEventMouseMotion
@@ -945,8 +1029,9 @@ func _gui_input(event: InputEvent) -> void:
 			else:
 				var directionh := hover_motion.global_position - _swipe_start
 				if directionh.length() > SwipeThreshold:
-					emit_signal("swipe", directionh.normalized())
-					# Keep session alive by advancing the anchor
+					var dir_normh := directionh.normalized()
+					emit_signal("swipe", dir_normh)
+					_debug("Swipe emitted dir=%s source=Hover" % str(dir_normh))
 					_swipe_start = hover_motion.global_position
 			# remain in swiping state while inside; exit controlled by MouseSwipeExit
 			_is_swiping = true
@@ -1124,7 +1209,7 @@ func _reorder_children() -> void:
 	var idx := 0
 	# Background (panel preferred over texture)
 	if _panel != null: move_child(_panel, idx); idx += 1
-	elif _background_tex != null: move_child(_background_tex, idx); idx += 1
+	if _background_tex != null: move_child(_background_tex, idx); idx += 1
 	# Main content
 	if _icon != null: move_child(_icon, idx); idx += 1
 	elif _default_thumb != null: move_child(_default_thumb, idx); idx += 1
@@ -1381,141 +1466,210 @@ func _set_label_text() -> void:
 	if _rich_label != null and is_instance_valid(_rich_label): _configure_rich_label(_rich_label)
 
 func _fit_label_text() -> void:
-	var __t0 := 0
-	if DebugAutosizeTimings:
-		__t0 = Time.get_ticks_usec()
 	if _fitting_label:
 		return
-	_fitting_label = true
-	# Debounce: skip if inputs unchanged
-	var sig := str(_text) + "|" + str(size) + "|" + str(LabelPadding) + "|" + str(LabelAdditionalPaddingLeft) + "," + str(LabelAdditionalPaddingTop) + "," + str(LabelAdditionalPaddingRight) + "," + str(LabelAdditionalPaddingBottom) + "|" + str(LabelAutowrap) + "|" + str(FixedFontSize) + "|" + str(LabelType)
+	var sig := "%s|%s|%s|%s|%s|%s|%s" % [
+		_text,
+		str(size),
+		str(LabelPadding),
+		"%s,%s,%s,%s" % [LabelAdditionalPaddingLeft, LabelAdditionalPaddingTop, LabelAdditionalPaddingRight, LabelAdditionalPaddingBottom],
+		str(LabelAutowrap),
+		str(FixedFontSize),
+		str(LabelType)
+	]
 	if sig == _fit_cache_sig:
-		_fitting_label = false
 		return
-	# Fixed font size bypasses autosize
+	_debug("Autosize begin size=%s type=%s wrap=%s text='%s'" % [str(size), str(LabelType), str(LabelAutowrap), _text])
 	if FixedFontSize > 0:
 		if _label != null and is_instance_valid(_label):
 			_label.add_theme_font_size_override("font_size", FixedFontSize)
 			_label.update_minimum_size()
 		if _rich_label != null and is_instance_valid(_rich_label):
-			for sp in ["normal_font_size", "bold_font_size", "italics_font_size", "bold_italics_font_size", "mono_font_size"]:
-				_rich_label.add_theme_font_size_override(sp, FixedFontSize)
+			for key in ["normal_font_size", "bold_font_size", "italics_font_size", "bold_italics_font_size", "mono_font_size"]:
+				_rich_label.add_theme_font_size_override(key, FixedFontSize)
 			_rich_label.update_minimum_size()
 		_last_fit_font_size = FixedFontSize
-		_fitting_label = false
-		_fit_cache_sig = sig
-		if DebugAutosizeTimings:
-			var us := Time.get_ticks_usec() - __t0
-			print("[Omni_Button] autosize ", us, " us for ", name)
-		return
-	var ep := _get_effective_label_padding()
-	var tp := TextFitPadding
-	var avail := Vector2(
-		max(1.0, size.x - max(0.0, tp.x) - max(0.0, ep.x) - max(0.0, ep.z)),
-		max(1.0, size.y - max(0.0, tp.y) - max(0.0, ep.y) - max(0.0, ep.w))
-	)
-	if avail.x <= 1.0 or avail.y <= 1.0:
-		_fitting_label = false
+		_rich_current_font_size = FixedFontSize
 		_fit_cache_sig = sig
 		return
-	# Fit for plain Label
-	if EnableTextAutoSize and _label != null and is_instance_valid(_label) and _label.text != "":
-		var fnt: Font = _label.get_theme_font("font") if _label.get_theme_font("font") != null else ThemeDB.fallback_font
-		if fnt != null:
-			var wrap_w := avail.x if LabelAutowrap != TextServer.AUTOWRAP_OFF else -1
-			# Fast path: try last size first, then decrement a few steps
-			if _last_fit_font_size > 0:
-				var ts0 := fnt.get_string_size(_label.text, HORIZONTAL_ALIGNMENT_LEFT, wrap_w, _last_fit_font_size)
-				if ts0.x <= avail.x and ts0.y <= avail.y:
-					_label.add_theme_font_override("font", fnt)
-					_label.add_theme_font_size_override("font_size", _last_fit_font_size)
-					_fitting_label = false
-					_fit_cache_sig = sig
-					if DebugAutosizeTimings:
-						var us0 := Time.get_ticks_usec() - __t0
-						print("[Omni_Button] autosize ", us0, " us for ", name)
-					return
-				var s := _last_fit_font_size
-				var guard := 0
-				while s > MinFontSize and guard < 16:
-					s -= 1
-					var ts1 := fnt.get_string_size(_label.text, HORIZONTAL_ALIGNMENT_LEFT, wrap_w, s)
-					if ts1.x <= avail.x and ts1.y <= avail.y:
-						_label.add_theme_font_override("font", fnt)
-						_label.add_theme_font_size_override("font_size", s)
-						_last_fit_font_size = s
-						_fitting_label = false
-						_fit_cache_sig = sig
-						if DebugAutosizeTimings:
-							var us1 := Time.get_ticks_usec() - __t0
-							print("[Omni_Button] autosize ", us1, " us for ", name)
-						return
-					guard += 1
-			# Fall back to full binary search
-			var lo := MinFontSize
-			var hi := MaxFontSize
-			var best := lo
-			while lo <= hi:
-				var mid := int((lo + hi) / 2)
-				var ts := fnt.get_string_size(_label.text, HORIZONTAL_ALIGNMENT_LEFT, wrap_w, mid)
-				if ts.x <= avail.x and ts.y <= avail.y:
-					best = mid
-					lo = mid + 1
-				else:
-					hi = mid - 1
-			_label.add_theme_font_override("font", fnt)
-			_label.add_theme_font_size_override("font_size", best)
-			_last_fit_font_size = best
-	# Fit for RichTextLabel: approximate by stripping BBCode
-	elif EnableTextAutoSize and _rich_label != null and is_instance_valid(_rich_label) and _rich_label.text != "":
-		var base_font: Font = _rich_label.get_theme_font("normal_font") if _rich_label.get_theme_font("normal_font") != null else ThemeDB.fallback_font
-		if base_font != null:
-			var plain := _strip_bbcode(_rich_label.text)
-			var wrap_w2 := avail.x if LabelAutowrap != TextServer.AUTOWRAP_OFF else -1
-			# Fast path: try last size first, then decrement a few steps
-			if _last_fit_font_size > 0:
-				var ts20 := base_font.get_string_size(plain, HORIZONTAL_ALIGNMENT_LEFT, wrap_w2, _last_fit_font_size)
-				if ts20.x <= avail.x and ts20.y <= avail.y:
-					_apply_rich_label_font_overrides(base_font, _last_fit_font_size)
-					_fitting_label = false
-					_fit_cache_sig = sig
-					if DebugAutosizeTimings:
-						var us20 := Time.get_ticks_usec() - __t0
-						print("[Omni_Button] autosize ", us20, " us for ", name)
-					return
-				var s2 := _last_fit_font_size
-				var guard2 := 0
-				while s2 > MinFontSize and guard2 < 16:
-					s2 -= 1
-					var ts21 := base_font.get_string_size(plain, HORIZONTAL_ALIGNMENT_LEFT, wrap_w2, s2)
-					if ts21.x <= avail.x and ts21.y <= avail.y:
-						_apply_rich_label_font_overrides(base_font, s2)
-						_last_fit_font_size = s2
-						_fitting_label = false
-						_fit_cache_sig = sig
-						if DebugAutosizeTimings:
-							var us21 := Time.get_ticks_usec() - __t0
-							print("[Omni_Button] autosize ", us21, " us for ", name)
-						return
-					guard2 += 1
-			# Fall back to full binary search
-			var lo2 := MinFontSize
-			var hi2 := MaxFontSize
-			var best2 := lo2
-			while lo2 <= hi2:
-				var mid2 := int((lo2 + hi2) / 2)
-				var ts2 := base_font.get_string_size(plain, HORIZONTAL_ALIGNMENT_LEFT, wrap_w2, mid2)
-				if ts2.x <= avail.x and ts2.y <= avail.y:
-					best2 = mid2
-					lo2 = mid2 + 1
-				else:
-					hi2 = mid2 - 1
-			_apply_rich_label_font_overrides(base_font, best2)
-			_last_fit_font_size = best2
+	if not EnableTextAutoSize:
+		return
+	_fitting_label = true
+	var did_fit := false
+	if _rich_label != null and is_instance_valid(_rich_label) and _rich_label.text != "":
+		did_fit = _fit_rich_text_label()
+	elif _label != null and is_instance_valid(_label) and _label.text != "":
+		did_fit = _fit_plain_label()
 	_fitting_label = false
-	_fit_cache_sig = sig
+	if did_fit:
+		_fit_cache_sig = sig
+	else:
+		_fit_cache_sig = ""
 
-# Returns Vector4(left, top, right, bottom)
+func _fit_plain_label() -> bool:
+	var wrap_enabled := LabelAutowrap != TextServer.AUTOWRAP_OFF
+	var avail := _calculate_available_area()
+	if avail.x <= 1.0 or avail.y <= 1.0:
+		call_deferred("_fit_label_text")
+		return false
+	if _label == null or not is_instance_valid(_label):
+		return false
+	var fnt: Font = _label.get_theme_font("font") if _label.get_theme_font("font") != null else ThemeDB.fallback_font
+	if fnt == null:
+		return false
+	var wrap_w := avail.x if wrap_enabled else -1.0
+	var text := _label.text
+	if _last_fit_font_size > 0:
+		var sz0 := _measure_paragraph(fnt, text, wrap_w, _last_fit_font_size)
+		if _fits_within(sz0, avail, wrap_enabled):
+			var grown := _grow_font_size(fnt, text, avail, wrap_w, wrap_enabled, _last_fit_font_size)
+			_label.add_theme_font_override("font", fnt)
+			_label.add_theme_font_size_override("font_size", grown)
+			_label.update_minimum_size()
+			_label.queue_redraw()
+			_last_fit_font_size = grown
+			_debug("Autosize plain fast -> %d" % grown)
+			return true
+		var s := _last_fit_font_size
+		var guard := 0
+		while s > MinFontSize and guard < 16:
+			s -= 1
+			var sz1 := _measure_paragraph(fnt, text, wrap_w, s)
+			if _fits_within(sz1, avail, wrap_enabled):
+				_label.add_theme_font_override("font", fnt)
+				_label.add_theme_font_size_override("font_size", s)
+				_label.update_minimum_size()
+				_label.queue_redraw()
+				_last_fit_font_size = s
+				return true
+			guard += 1
+	var best := _find_best_font_size(fnt, text, avail, wrap_w, wrap_enabled)
+	best = _grow_font_size(fnt, text, avail, wrap_w, wrap_enabled, best)
+	_label.add_theme_font_override("font", fnt)
+	_label.add_theme_font_size_override("font_size", best)
+	_label.update_minimum_size()
+	_label.queue_redraw()
+	_last_fit_font_size = best
+	_debug("Autosize plain fitted size=%d avail=%s" % [best, str(avail)])
+	return true
+
+func _fit_rich_text_label() -> bool:
+	var wrap_enabled := LabelAutowrap != TextServer.AUTOWRAP_OFF
+	var avail := _calculate_available_area()
+	if avail.x <= 1.0 or avail.y <= 1.0:
+		call_deferred("_fit_label_text")
+		return false
+	if _rich_label == null or not is_instance_valid(_rich_label):
+		return false
+	var base_font: Font = _rich_label.get_theme_font("normal_font") if _rich_label.get_theme_font("normal_font") != null else ThemeDB.fallback_font
+	if base_font == null:
+		return false
+	var plain := _strip_bbcode(_rich_label.text)
+	var wrap_w := avail.x if wrap_enabled else -1.0
+	var seed := _rich_current_font_size if _rich_current_font_size > 0 else _last_fit_font_size
+	if seed > 0:
+		var sz0 := _measure_paragraph(base_font, plain, wrap_w, seed)
+		if _fits_within(sz0, avail, wrap_enabled):
+			var grown := _grow_font_size(base_font, plain, avail, wrap_w, wrap_enabled, seed)
+			_apply_rich_label_font_overrides(base_font, grown)
+			_rich_label.update_minimum_size()
+			_rich_label.queue_redraw()
+			_rich_current_font_size = grown
+			_last_fit_font_size = grown
+			_debug("Autosize rich fast -> %d" % grown)
+			return true
+		var s := seed
+		var guard := 0
+		while s > MinFontSize and guard < 16:
+			s -= 1
+			var sz1 := _measure_paragraph(base_font, plain, wrap_w, s)
+			if _fits_within(sz1, avail, wrap_enabled):
+				_apply_rich_label_font_overrides(base_font, s)
+				_rich_label.update_minimum_size()
+				_rich_label.queue_redraw()
+				_rich_current_font_size = s
+				_last_fit_font_size = s
+				return true
+			guard += 1
+	var best := _find_best_font_size(base_font, plain, avail, wrap_w, wrap_enabled)
+	best = _grow_font_size(base_font, plain, avail, wrap_w, wrap_enabled, best)
+	_apply_rich_label_font_overrides(base_font, best)
+	_rich_label.update_minimum_size()
+	_rich_label.queue_redraw()
+	_rich_current_font_size = best
+	_last_fit_font_size = best
+	_debug("Autosize rich fitted size=%d avail=%s" % [best, str(avail)])
+	return true
+
+func _calculate_available_area() -> Vector2:
+	var tp := TextFitPadding
+	var ep := _get_effective_label_padding()
+	var horiz: float = max(0.0, tp.x) + max(0.0, ep.x) + max(0.0, ep.z)
+	var vert: float = max(0.0, tp.y) + max(0.0, ep.y) + max(0.0, ep.w)
+	return Vector2(max(1.0, size.x - horiz), max(1.0, size.y - vert))
+
+func _measure_paragraph(fnt: Font, text: String, wrap_width: float, font_size: int) -> Vector2:
+	var para := TextParagraph.new()
+	para.alignment = LabelHorizontalAlignment
+	para.direction = TextServer.DIRECTION_AUTO
+	para.orientation = TextServer.ORIENTATION_HORIZONTAL
+	para.justification_flags = TextServer.JUSTIFICATION_NONE
+	para.break_flags = _get_line_break_flags()
+	para.width = wrap_width if wrap_width > 0.0 else 0.0
+	para.add_string(text, fnt, font_size)
+	return para.get_size()
+
+func _get_line_break_flags() -> int:
+	# Use local fallback constants for Godot versions where TextServer.LINE_BREAK_FLAG_* are absent.
+	# Removed AUTOWRAP_TRIM / AUTOWRAP_TRIM_WORD cases for compatibility with engine versions that do not define them.
+	const LB_NONE := 0
+	const LB_WORD := 2
+	const LB_GRAPHEME := 4
+	const LB_ADAPTIVE := 128
+	# const LB_TRIM_EDGE := 256  # Not used without trim modes
+	match LabelAutowrap:
+		TextServer.AUTOWRAP_WORD:
+			return LB_WORD
+		TextServer.AUTOWRAP_WORD_SMART:
+			return LB_WORD | LB_ADAPTIVE
+		# Treat ARBITRARY as grapheme wrapping for this engine version.
+		TextServer.AUTOWRAP_ARBITRARY:
+			return LB_GRAPHEME
+		_:
+			return LB_NONE
+
+func _fits_within(measured: Vector2, avail: Vector2, wrap_enabled: bool) -> bool:
+	var width_ok := measured.x <= (avail.x + (0.5 if wrap_enabled else 0.0))
+	return width_ok and measured.y <= avail.y
+
+func _grow_font_size(fnt: Font, text: String, avail: Vector2, wrap_width: float, wrap_enabled: bool, current: int) -> int:
+	var lo := current + 1
+	var hi := MaxFontSize
+	var best := current
+	while lo <= hi:
+		var mid := int((lo + hi) / 2)
+		var sz := _measure_paragraph(fnt, text, wrap_width, mid)
+		if _fits_within(sz, avail, wrap_enabled):
+			best = mid
+			lo = mid + 1
+		else:
+			hi = mid - 1
+	return best
+
+func _find_best_font_size(fnt: Font, text: String, avail: Vector2, wrap_width: float, wrap_enabled: bool) -> int:
+	var lo := MinFontSize
+	var hi := MaxFontSize
+	var best := lo
+	while lo <= hi:
+		var mid := int((lo + hi) / 2)
+		var sz := _measure_paragraph(fnt, text, wrap_width, mid)
+		if _fits_within(sz, avail, wrap_enabled):
+			best = mid
+			lo = mid + 1
+		else:
+			hi = mid - 1
+	return best
+
 func _get_effective_label_padding() -> Vector4:
 	var lr := max(0.0, LabelPadding.x)
 	var tb := max(0.0, LabelPadding.y)
@@ -1646,6 +1800,7 @@ func _ensure_default_thumb() -> void:
 		_default_thumb = Panel.new()
 		_default_thumb.name = "DefaultThumb"
 		_default_thumb.mouse_filter = MOUSE_FILTER_PASS
+		_default_thumb.z_index = 2
 		_managed_add_child(_default_thumb)
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = DefaultThumbColor
@@ -1658,6 +1813,7 @@ func _update_default_thumb_visual() -> void:
 	_default_thumb.set_anchors_preset(PRESET_TOP_LEFT)
 	_default_thumb.size = Vector2(side, side)
 	_default_thumb.position = (size - _default_thumb.size) / 2.0
+	_default_thumb.z_index = 2
 	var flat := _default_thumb.get_theme_stylebox("panel")
 	if flat is StyleBoxFlat:
 		var r := int(round(side / 2.0))
@@ -1862,6 +2018,7 @@ func _apply_visual_state() -> void:
 		_panel.visible = true
 		_panel.modulate = PanelModulate
 		_apply_invert(_panel)
+		_panel.z_index = 0
 
 	if BackgroundType == BackgroundMode.UseTexture and _background_tex != null:
 		_background_tex.texture = BackgroundTexture
@@ -1871,6 +2028,7 @@ func _apply_visual_state() -> void:
 		_background_tex.stretch_mode = BackgroundStretchMode
 		_background_tex.modulate = BackgroundModulate
 		_apply_invert(_background_tex)
+		_background_tex.z_index = 1
 
 	if _icon != null:
 		_icon.texture = _icon_texture
@@ -1881,6 +2039,7 @@ func _apply_visual_state() -> void:
 		_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		_icon.modulate = IconModulate
 		_apply_invert(_icon)
+		_icon.z_index = 2
 
 	if _label != null:
 		_label.text = _text
@@ -1888,16 +2047,19 @@ func _apply_visual_state() -> void:
 		_label.add_theme_color_override("font_color", LabelTextColor)
 		_label.modulate = TextModulate
 		_apply_invert(_label)
+		_label.z_index = 3
 	if _rich_label != null:
 		_rich_label.text = _text
 		_configure_rich_label(_rich_label)
 		_rich_label.modulate = TextModulate
 		_apply_invert(_rich_label)
+		_rich_label.z_index = 3
 
 	if _overlay != null and is_instance_valid(_overlay):
 		_overlay.visible = true
 		_overlay.color = SelectedColor
 		_apply_invert(_overlay)
+		_overlay.z_index = 4
 
 	if _cooldown != null and is_instance_valid(_cooldown):
 		_cooldown.color = CooldownColor
@@ -2000,6 +2162,7 @@ func _start_cooldown() -> void:
 	if not EnableCooldown: return
 	_cooldown_active = true
 	_cooldown_time_left = CooldownDuration
+	_debug("Cooldown started duration=%s trigger=%s" % [str(CooldownDuration), str(CooldownTrigger)])
 	_ensure_cooldown()
 	_update_cooldown_visual()
 	set_process(true)
@@ -2148,7 +2311,9 @@ func _connect_signals() -> void:
 	for p in pairs:
 		var sig: StringName = p[0]
 		var cb: Callable = p[1]
-		if has_signal(sig) and get_signal_connection_list(sig).is_empty():
+		if not cb.is_valid():
+			continue
+		if has_signal(sig) and not is_connected(sig, cb):
 			connect(sig, cb)
 
 func _connect_if_not_connected(signal_name: String, callable: Callable) -> void:

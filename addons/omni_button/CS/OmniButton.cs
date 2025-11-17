@@ -1579,11 +1579,23 @@ public partial class OmniButton : Control
         _overlay = null;
         _cooldown = null;
         _holdFill = null;
-        if (_panel != null && IsInstanceValid(_panel)) { RemoveChild(_panel); _panel.QueueFree(); }
+        if (_panel != null && IsInstanceValid(_panel) && _panel.GetParent() == this)
+        {
+            RemoveChild(_panel);
+            _panel.QueueFree();
+        }
         _panel = null;
-        if (_defaultThumb != null && IsInstanceValid(_defaultThumb)) { RemoveChild(_defaultThumb); _defaultThumb.QueueFree(); }
+        if (_defaultThumb != null && IsInstanceValid(_defaultThumb) && _defaultThumb.GetParent() == this)
+        {
+            RemoveChild(_defaultThumb);
+            _defaultThumb.QueueFree();
+        }
         _defaultThumb = null;
-        if (_vjAreaPanel != null && IsInstanceValid(_vjAreaPanel)) { RemoveChild(_vjAreaPanel); _vjAreaPanel.QueueFree(); }
+        if (_vjAreaPanel != null && IsInstanceValid(_vjAreaPanel) && _vjAreaPanel.GetParent() == this)
+        {
+            RemoveChild(_vjAreaPanel);
+            _vjAreaPanel.QueueFree();
+        }
         _vjAreaPanel = null;
     }
     #endregion
@@ -1768,7 +1780,9 @@ public partial class OmniButton : Control
         };
         foreach (var (name, callable) in signals)
         {
-            if (GetSignalConnectionList(name).Count == 0)
+            if ((callable.Target == null && string.IsNullOrEmpty(callable.Method)) || !HasSignal(name))
+                continue;
+            if (!IsConnected(name, callable))
                 Connect(name, callable);
         }
     }
@@ -1795,6 +1809,8 @@ public partial class OmniButton : Control
                     if (dict.TryGetValue("callable", out var callable))
                     {
                         var cb = (Callable)callable;
+                        if (cb.Target == null && string.IsNullOrEmpty(cb.Method))
+                            continue;
                         if (IsConnected(signal, cb))
                             Disconnect(signal, cb);
                     }
@@ -2103,7 +2119,7 @@ public partial class OmniButton : Control
         int idx = 0;
         bool Alive(Control? n) => n != null && IsInstanceValid(n) && n.GetParent() == parent;
         if (Alive(_panel)) parent.MoveChild(_panel!, idx++);
-        else if (Alive(_background)) parent.MoveChild(_background!, idx++);
+        if (Alive(_background)) parent.MoveChild(_background!, idx++);
         if (Alive(_icon)) parent.MoveChild(_icon!, idx++);
         else if (Alive(_defaultThumb)) parent.MoveChild(_defaultThumb!, idx++);
         if (Alive(_label)) parent.MoveChild(_label!, idx++);
@@ -2527,6 +2543,7 @@ public partial class OmniButton : Control
             if (PanelStyleBox != null)
                 _panel.AddThemeStyleboxOverride("panel", PanelStyleBox);
             ApplyInvert(_panel);
+            _panel.ZIndex = 0;
         }
         // Background
         if (_background != null && IsInstanceValid(_background))
@@ -2538,6 +2555,7 @@ public partial class OmniButton : Control
             _background.StretchMode = BackgroundStretchMode;
             _background.Modulate = BackgroundModulate;
             ApplyInvert(_background);
+            _background.ZIndex = 1;
         }
         // Icon
         if (_icon != null && IsInstanceValid(_icon))
@@ -2550,7 +2568,7 @@ public partial class OmniButton : Control
             _icon.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
             _icon.Modulate = IconModulate;
             ApplyInvert(_icon);
-            _icon.ZIndex = -1; // Ensure icon renders behind text
+            _icon.ZIndex = 2;
         }
         // Label
         if (_label != null && IsInstanceValid(_label))
@@ -2566,7 +2584,7 @@ public partial class OmniButton : Control
             _label.Modulate = TextModulate;
             ApplyLabelPaddingOffsets(_label);
             ApplyInvert(_label);
-            _label.ZIndex = 0;
+            _label.ZIndex = 3;
         }
         // Rich Label
         if (_richLabel != null && IsInstanceValid(_richLabel))
@@ -2585,7 +2603,7 @@ public partial class OmniButton : Control
             _richLabel.Modulate = TextModulate;
             ApplyLabelPaddingOffsets(_richLabel);
             ApplyInvert(_richLabel);
-            _richLabel.ZIndex = 0;
+            _richLabel.ZIndex = 3;
         }
         // Overlay
         if (_overlay != null && IsInstanceValid(_overlay))
@@ -2593,6 +2611,7 @@ public partial class OmniButton : Control
             _overlay.Visible = needOverlay;
             _overlay.Color = SelectedColor;
             ApplyInvert(_overlay);
+            _overlay.ZIndex = 4;
         }
         // Cooldown live colors
         if (_cooldown != null && IsInstanceValid(_cooldown))
@@ -2721,6 +2740,7 @@ public partial class OmniButton : Control
         {
             _defaultThumb = new Panel { Name = "DefaultThumb" };
             _defaultThumb.MouseFilter = MouseFilterEnum.Pass;
+            _defaultThumb.ZIndex = 2;
             ManagedAddChild(_defaultThumb);
             var sb = new StyleBoxFlat();
             sb.BgColor = DefaultThumbColor;
@@ -2735,6 +2755,7 @@ public partial class OmniButton : Control
         _defaultThumb.SetAnchorsAndOffsetsPreset(LayoutPreset.TopLeft);
         _defaultThumb.Size = new Vector2(side, side);
         _defaultThumb.Position = (Size - _defaultThumb.Size) / 2f;
+        _defaultThumb.ZIndex = 2;
         if (_defaultThumb.GetThemeStylebox("panel") is StyleBoxFlat flat)
         {
             int r = (int)Mathf.Round(side / 2f);
