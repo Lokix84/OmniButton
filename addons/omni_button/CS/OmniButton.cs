@@ -46,7 +46,7 @@ public partial class OmniButton : Control
             _isSelected = value;
             DebugLog($"Selected={(value ? "true" : "false")}");
             UpdateOverlay();
-            ApplyVisualState();
+            InvalidateVisualState();
         }
     }
     [Export]
@@ -59,7 +59,7 @@ public partial class OmniButton : Control
             _isToggled = value;
             DebugLog($"IsToggled={(value ? "true" : "false")}");
             UpdateOverlay();
-            ApplyVisualState();
+            InvalidateVisualState();
         }
     }
     [Export]
@@ -71,7 +71,7 @@ public partial class OmniButton : Control
             if (_isPressed == value)
             {
                 DebugLog($"IsPressed unchanged={value}");
-                ApplyVisualState();
+                InvalidateVisualState();
                 return;
             }
             bool wasPressed = _isPressed;
@@ -91,7 +91,7 @@ public partial class OmniButton : Control
             {
                 RemoveHoldFill();
             }
-            ApplyVisualState();
+            InvalidateVisualState();
         }
     }
     [Export]
@@ -103,7 +103,7 @@ public partial class OmniButton : Control
             if (_isHovering == value) return;
             _isHovering = value;
             DebugLog($"IsHovering={(value ? "true" : "false")}");
-            ApplyVisualState();
+            InvalidateVisualState();
         }
     }
     [Export]
@@ -119,7 +119,7 @@ public partial class OmniButton : Control
                 RemoveHoldFill();
             if (wasHolding != value)
                 DebugLog($"IsHolding={(value ? "true" : "false")}");
-            ApplyVisualState();
+            InvalidateVisualState();
         }
     }
     #endregion
@@ -163,7 +163,7 @@ public partial class OmniButton : Control
         {
             _iconTexture = value;
             SetupChildren();
-            ApplyVisualState();
+            InvalidateVisualState();
             FitLabelText();
         }
     }
@@ -195,7 +195,7 @@ public partial class OmniButton : Control
             if (_labelType == LabelTypeEnum.Label) { _labelText = _text; _richLabelText = string.Empty; }
             else { _richLabelText = _text; _labelText = string.Empty; }
             SetupChildren();
-            ApplyVisualState();
+            InvalidateVisualState();
             FitLabelText();
         }
     }
@@ -210,7 +210,7 @@ public partial class OmniButton : Control
             if (_labelType == LabelTypeEnum.Label) { _labelText = _text; _richLabelText = string.Empty; }
             else { _richLabelText = _text; _labelText = string.Empty; }
             SetupChildren();
-            ApplyVisualState();
+            InvalidateVisualState();
             FitLabelText();
         }
     }
@@ -254,8 +254,6 @@ public partial class OmniButton : Control
     private Color _selectedColor = new Color(1, 1, 1, 0.3f);
     #region Panel(Exported Properties)
     [ExportSubgroup("Background Settings")]
-    [Export] public string PanelThemeType { get => _panelThemeType; set { _panelThemeType = value; ApplyPanelStyling(); RefreshEditorVisual(); } }
-    private string _panelThemeType = "Panel";
     [Export] public string PanelThemeVariation { get => _panelThemeVariation; set { _panelThemeVariation = value; ApplyPanelStyling(); RefreshEditorVisual(); } }
     private string _panelThemeVariation = "";
     [Export] public StyleBox? PanelStyleBox { get => _panelStyleBox; set { _panelStyleBox = value; ApplyPanelStyling(); RefreshEditorVisual(); } }
@@ -690,15 +688,21 @@ public partial class OmniButton : Control
             if (!_enableCooldown)
             {
                 CooldownTrigger = CooldownTriggerEnum.None;
+                CooldownStartDelay = 0.0f;
                 CooldownDuration = 1.0f;
                 CooldownStartFilled = false;
                 CooldownColor = new Color(0, 0, 0, 0.4f);
                 CooldownFillDirection = CooldownDirection.BottomToTop;
+                InvertOnCooldown = false;
+                CooldownInvertDuration = 0.0f;
                 SuspendHoverScaleDuringCooldown = false;
                 AllowHoldDuringCooldown = false;
                 HideCooldownDuringHoldBuildUp = true;
                 _cooldownActive = false;
                 _cooldownTimeLeft = 0.0;
+                _cooldownDelayPending = false;
+                _cooldownDelayLeft = 0.0;
+                _cooldownElapsed = 0.0;
                 if (_cooldown != null && IsInstanceValid(_cooldown))
                 {
                     _cooldown.Visible = false;
@@ -717,6 +721,10 @@ public partial class OmniButton : Control
         set { _cooldownTrigger = value; SafeNotifyPropertyListChanged(); }
     }
     /// <summary>
+    /// Optional delay before cooldown begins, allowing pressed visuals to show.
+    /// </summary>
+    [Export(PropertyHint.Range, "0.0,10.0,0.01")] public float CooldownStartDelay { get; set; } = 0.0f;
+    /// <summary>
     /// Duration of cooldown in seconds
     /// </summary>
     [Export(PropertyHint.Range, "0.05,60.0,0.05")] public float CooldownDuration { get; set; } = 1.0f;
@@ -733,6 +741,14 @@ public partial class OmniButton : Control
     /// </summary>
     [Export] public CooldownDirection CooldownFillDirection { get; set; } = CooldownDirection.BottomToTop;
     /// <summary>
+    /// Invert visuals while cooldown is active.
+    /// </summary>
+    [Export] public bool InvertOnCooldown { get; set; } = false;
+    /// <summary>
+    /// How long to keep cooldown invert active. 0 = infinite.
+    /// </summary>
+    [Export(PropertyHint.Range, "0.0,10.0,0.01")] public float CooldownInvertDuration { get; set; } = 0.0f;
+    /// <summary>
     /// Temporarily disable hover scaling during active cooldown
     /// </summary>
     [Export] public bool SuspendHoverScaleDuringCooldown { get; set; } = false;
@@ -747,34 +763,6 @@ public partial class OmniButton : Control
     #endregion
     #region Theme Variations(Exported Properties)
     [ExportGroup("Theme Variations")]
-    /// <summary>
-    /// Theme type name used for style lookups
-    /// </summary>
-    [Export] public string ThemeTypeName { get; set; } = "OmniButton";
-    /// <summary>
-    /// Theme variation for normal state
-    /// </summary>
-    [Export] public string VariantNormal { get; set; } = "normal";
-    /// <summary>
-    /// Theme variation for pressed state
-    /// </summary>
-    [Export] public string VariantPressed { get; set; } = "pressed";
-    /// <summary>
-    /// Theme variation for hover state
-    /// </summary>
-    [Export] public string VariantHover { get; set; } = "hover";
-    /// <summary>
-    /// Theme variation for toggled state
-    /// </summary>
-    [Export] public string VariantToggled { get; set; } = "toggled";
-    /// <summary>
-    /// Theme variation for selected state
-    /// </summary>
-    [Export] public string VariantSelected { get; set; } = "selected";
-    /// <summary>
-    /// Theme variation for disabled state
-    /// </summary>
-    [Export] public string VariantDisabled { get; set; } = "disabled";
     #endregion
     #region Private State
     private Panel? _panel;
@@ -805,7 +793,7 @@ public partial class OmniButton : Control
     private Vector2 _swipeOrigin = Vector2.Zero;
     private bool _touchSwipeEligible = false;
     private Panel? _vjAreaPanel;
-
+    private ActionMaskFlags _autoActionOnce = ActionMaskFlags.None;
     private void MarkPresetCustom()
     {
         if (_suppressPresetApply) return;
@@ -883,6 +871,9 @@ public partial class OmniButton : Control
     private double _holdTimer = 0;
     private bool _cooldownActive = false;
     private double _cooldownTimeLeft = 0.0;
+    private bool _cooldownDelayPending = false;
+    private double _cooldownDelayLeft = 0.0;
+    private double _cooldownElapsed = 0.0;
     private bool _vjActive = false;
     private Vector2 _vjHomeGlobal; // center of the button at press time (global)
     private MouseFilterEnum _vjSavedMouseFilter = MouseFilterEnum.Stop;
@@ -959,7 +950,6 @@ public partial class OmniButton : Control
         private readonly OmniButton _o;
         internal PanelAccessor(OmniButton o) { _o = o; }
         public Color Modulate { get => _o.PanelModulate; set { _o.PanelModulate = value; _o.RequestRefresh(false, false, false); } }
-        public string ThemeType { get => _o.PanelThemeType; set { _o.PanelThemeType = value; _o.ApplyPanelStyling(); _o.RequestRefresh(false, false, false); } }
         public string ThemeVariation { get => _o.PanelThemeVariation; set { _o.PanelThemeVariation = value; _o.ApplyPanelStyling(); _o.RequestRefresh(false, false, false); } }
         public StyleBox? PanelStyle { get => _o.PanelStyleBox; set { _o.PanelStyleBox = value; _o.ApplyPanelStyling(); _o.RequestRefresh(false, false, false); } }
     }
@@ -987,48 +977,6 @@ public partial class OmniButton : Control
         public CooldownDirection Direction { get => _o.HoldFillDirection; set { _o.HoldFillDirection = value; } }
     }
     #endregion
-    // Auto-enable actions once when user attaches external signal handlers
-    private ActionMaskFlags _autoActionOnce = ActionMaskFlags.None;
-    private void AutoEnableActionsFromConnectionsOnce()
-    {
-        var map = new (string signal, ActionMaskFlags flag)[]
-        {
-            (SignalName.Pressed, ActionMaskFlags.Pressed),
-            (SignalName.Released, ActionMaskFlags.Released),
-            (SignalName.HoverIn, ActionMaskFlags.Hover),
-            (SignalName.HoverOut, ActionMaskFlags.Hover),
-            (SignalName.Toggled, ActionMaskFlags.Toggle),
-            (SignalName.Hold, ActionMaskFlags.Hold),
-            (SignalName.Swipe, ActionMaskFlags.Swipe),
-            (SignalName.Log, ActionMaskFlags.Log),
-            (SignalName.Warning, ActionMaskFlags.Warning),
-            (SignalName.Error, ActionMaskFlags.Error),
-        };
-        foreach (var (signal, flag) in map)
-        {
-            if ((_autoActionOnce & flag) != 0) continue;
-            var conns = GetSignalConnectionList(signal);
-            bool hasExternal = false;
-            foreach (Godot.Collections.Dictionary dict in conns)
-            {
-                if (!dict.TryGetValue("callable", out var callable)) continue;
-                var cb = (Callable)callable;
-                var target = cb.Target;
-                if (target != null && !ReferenceEquals(target, this))
-                {
-                    hasExternal = true; break;
-                }
-            }
-            if (hasExternal)
-            {
-                ActionMask |= flag;
-                _autoActionOnce |= flag;
-            }
-        }
-    }
-    private string _editorLastSig = string.Empty;
-    private double _editorPollAccum = 0.0;
-    private const double EditorPollInterval = 0.2;
     private bool _pendingChildrenRefresh = false;
     private bool _pendingPanelStyling = false;
     private bool _pendingVisualRefresh = false;
@@ -1084,23 +1032,7 @@ public partial class OmniButton : Control
         EnsureManagedRoot();
         _managedRoot!.AddChild(node);
     }
-    private string BuildEditorSignature()
-    {
-        var sb = new System.Text.StringBuilder(1024);
-        // Query Godot's property list so we include exported + dynamic properties
-        var props = GetPropertyList();
-        foreach (Godot.Collections.Dictionary p in props)
-        {
-            if (!p.ContainsKey("usage")) continue;
-            var usage = (long)p["usage"]; // PropertyUsageFlags
-            const long EditorUsage = (long)Godot.PropertyUsageFlags.Editor;
-            if ((usage & EditorUsage) == 0) continue;
-            string name = (string)p["name"];
-            var val = Get(name);
-            sb.Append(name).Append('=').Append(val.ToString()).Append('|');
-        }
-        return sb.ToString();
-    }
+
     #region Godot Lifecycle
     public override void _EnterTree() => Initialize();
     public override void _ExitTree() => Cleanup();
@@ -1110,21 +1042,7 @@ public partial class OmniButton : Control
         // Editor: throttle polling for inspector changes
         if (Engine.IsEditorHint())
         {
-            _editorPollAccum += delta;
-            if (_editorPollAccum >= EditorPollInterval)
-            {
-                _editorPollAccum = 0;
-                var sig = BuildEditorSignature();
-                if (sig != _editorLastSig)
-                {
-                    _editorLastSig = sig;
-                    AutoEnableActionsFromConnectionsOnce();
-                    SetupChildren();
-                    ApplyPanelStyling();
-                    ApplyVisualState();
-                    FitLabelText();
-                }
-            }
+            EditorPollTick(delta);
         }
         // Coalesce pending refresh work
         if (_pendingChildrenRefresh || _pendingPanelStyling || _pendingVisualRefresh || _pendingFitLabel) { if (_pendingChildrenRefresh) { SetupChildren(); _pendingChildrenRefresh = false; } if (_pendingPanelStyling) { ApplyPanelStyling(); _pendingPanelStyling = false; } if (_pendingVisualRefresh) { ApplyVisualState(); _pendingVisualRefresh = false; } if (_pendingFitLabel) { FitLabelText(); _pendingFitLabel = false; } }
@@ -1143,322 +1061,8 @@ public partial class OmniButton : Control
     public override Array<Dictionary> _GetPropertyList() => BuildPropertyList();
 
     // Ensure we observe mouse releases even if they occur off-bounds
-    public override void _UnhandledInput(InputEvent @event)
-    {
-        if (@event is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Left && !mb.Pressed)
-        {
-            // If we had an active press/drag/joystick, cleanly end it even if release happened off this control
-            if (_isPressed || _vjActive || _isSwiping)
-            {
-                _isPressed = false;
-                _isHolding = false;
-                EndSwiping();
 
-                if (_holdFill != null && IsInstanceValid(_holdFill))
-                    RemoveHoldFill();
 
-                if (_vjActive)
-                {
-                    EmitSignal(SignalName.JoystickAxis, Vector2.Zero);
-                    EmitSignal(SignalName.JoystickEnded);
-                    DebugLog("JoystickEnded emitted (_UnhandledInput)");
-                    if (JoystickResetOnRelease)
-                        GlobalPosition = _vjHomeGlobal - Size / 2f;
-                    if (JoystickHideWhenInactive)
-                        Visible = false;
-                    _vjActive = false;
-                }
-
-                EnableHoverTopLevel(false);
-                ApplyVisualState();
-            }
-        }
-    }
-    /// <summary>
-    /// Central input handler. Routes press/release, hover-in-bounds checks,
-    /// drag follow (respecting FollowMode), swipe detection, and virtual
-    /// joystick lifecycle + axis emission.
-    /// </summary>
-    public override void _GuiInput(InputEvent @event)
-    {
-        if (FinishTypewriterOnPress && _twActive && IsPressInput(@event))
-            SkipTypewriter();
-
-        if (Disabled) return;
-        bool inside = IsInputInside(@event);
-        if (EnableCooldown && _cooldownActive) return; // disable actions during cooldown
-        bool wantJoystick = (FollowMode == FollowModeEnum.VirtualJoystick) || EnableVirtualJoystick;
-        if (@event is InputEventScreenTouch st)
-        {
-            if (st.Pressed)
-            {
-                // Touch press: mark eligibility if started inside
-                _touchSwipeEligible = IsInputInside(st);
-                if (_touchSwipeEligible && TouchSwipeInit == SwipeInitMode.OnPressed)
-                {
-                    _swipeOrigin = st.Position;
-                    EndSwiping();
-                    _swipeStart = Vector2.Zero;
-                }
-            }
-            else
-            {
-                // Touch release: optionally end swipe and clear eligibility
-                if (TouchSwipeExit == SwipeExitMode.OnReleased)
-                {
-                    EndSwiping();
-                    _swipeStart = Vector2.Zero;
-                }
-                _touchSwipeEligible = false;
-            }
-        }
-        else if (@event is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Left)
-        {
-            if (mb.Pressed)
-            {
-                if (!inside) return; // only react to press when inside
-                _isPressed = true;
-                _holdTimer = 0;
-                _isHolding = false;
-                EndSwiping();
-                _swipeOrigin = mb.Position;
-                if (wantJoystick)
-                {
-                    _vjActive = true;
-                    _vjHomeGlobal = GlobalPosition + Size / 2f;
-                    EnableHoverTopLevel(true);
-                    if (JoystickSnapToInput)
-                        MoveToGlobal(mb.GlobalPosition);
-                    if (JoystickHideWhenInactive)
-                        Visible = true;
-                    EmitSignal(SignalName.JoystickStarted);
-                    DebugLog("JoystickStarted (mouse press)");
-                    EmitJoystickAxisFor(mb.GlobalPosition);
-                }
-                if (FollowMode != FollowModeEnum.None)
-                {
-                    EnableHoverTopLevel(true);
-                    MoveToGlobal(mb.GlobalPosition);
-                }
-                if ((ActionMask & ActionMaskFlags.Swipe) != 0)
-                    _swipeStart = mb.Position;
-                if ((ActionMask & ActionMaskFlags.Pressed) != 0)
-                {
-                    EmitSignal(SignalName.Pressed);
-                    DebugLog("Pressed signal emitted (mouse)");
-                }
-                else DebugLog("Pressed signal skipped (ActionMask)");
-                bool toggleOnPress = (InteractionMode == InteractionModeEnum.ToggleOnPress) ||
-                                      (InteractionMode == InteractionModeEnum.Momentary && ((ActionMask & ActionMaskFlags.Toggle) != 0));
-                if (toggleOnPress)
-                {
-                    _isToggled = !_isToggled;
-                    UpdateOverlay();
-                    EmitSignal(SignalName.Toggled, _isToggled);
-                    DebugLog($"Toggled -> {_isToggled} (mouse press)");
-                }
-                bool cooldownOnPress = (CooldownTrigger == CooldownTriggerEnum.OnPress || CooldownTrigger == CooldownTriggerEnum.OnPressAndRelease);
-                if (EnableCooldown && cooldownOnPress)
-                    CallDeferred(MethodName.StartCooldown);
-                if (EnableHoldBuildUp && !_isHolding)
-                {
-                    _holdTimer = 0; EnsureHoldFill(); UpdateHoldFillVisual(); SetProcess(true);
-                }
-                ApplyVisualState();
-            }
-            else
-            {
-                _isPressed = false;
-                _isHolding = false;
-                EndSwiping();
-                _swipeStart = Vector2.Zero;
-                if (((ActionMask & ActionMaskFlags.Released) != 0) && inside)
-                {
-                    EmitSignal(SignalName.Released);
-                    DebugLog("Released signal emitted (mouse)");
-                }
-                else if ((ActionMask & ActionMaskFlags.Released) == 0)
-                    DebugLog("Released signal skipped (ActionMask)");
-                bool cooldownOnRelease = (CooldownTrigger == CooldownTriggerEnum.OnRelease || CooldownTrigger == CooldownTriggerEnum.OnPressAndRelease);
-                if (EnableCooldown && cooldownOnRelease)
-                    StartCooldown();
-                if (_holdFill != null && IsInstanceValid(_holdFill))
-                    RemoveHoldFill();
-                if (InteractionMode == InteractionModeEnum.ToggleOnRelease)
-                {
-                    _isToggled = !_isToggled;
-                    UpdateOverlay();
-                    EmitSignal(SignalName.Toggled, _isToggled);
-                    DebugLog($"Toggled -> {_isToggled} (mouse release)");
-                }
-                if (_vjActive)
-                {
-                    EmitSignal(SignalName.JoystickAxis, Vector2.Zero);
-                    DebugLog("JoystickAxis zero (mouse release)");
-                    EmitSignal(SignalName.JoystickEnded);
-                    DebugLog("JoystickEnded (mouse release)");
-                    if (JoystickResetOnRelease)
-                    {
-                        GlobalPosition = _vjHomeGlobal - Size / 2f;
-                    }
-                    if (JoystickHideWhenInactive)
-                        Visible = false;
-                    _vjActive = false;
-                }
-                EnableHoverTopLevel(false);
-                ApplyVisualState();
-            }
-        }
-        else if (_isPressed && @event is InputEventMouseMotion mm)
-        {
-            if (wantJoystick && _vjActive)
-            {
-                if (JoystickSnapToInput)
-                    MoveToGlobal(mm.GlobalPosition);
-                EmitJoystickAxisFor(mm.GlobalPosition);
-            }
-            if (FollowMode != FollowModeEnum.None)
-            {
-                MoveToGlobal(mm.GlobalPosition);
-            }
-            // Swipe detection while pressed (mouse motion)
-            if ((ActionMask & ActionMaskFlags.Swipe) != 0)
-            {
-                if (_swipeStart == Vector2.Zero)
-                    _swipeStart = mm.Position;
-                else
-                {
-                    var direction = mm.Position - _swipeStart;
-                    if (direction.Length() > SwipeThreshold)
-                    {
-                        EmitSignal(SignalName.Swipe, direction.Normalized());
-                        DebugLog($"Swipe emitted dir={direction.Normalized()} source=MouseMotion");
-                        _swipeStart = Vector2.Zero;
-                    }
-                }
-            }
-            // Update swiping state relative to origin regardless of action mask
-            SetSwiping((mm.Position - _swipeOrigin).Length() > SwipeThreshold);
-        }
-        else if (_isPressed && @event is InputEventScreenDrag sd)
-        {
-            if (wantJoystick && _vjActive)
-            {
-                if (JoystickSnapToInput)
-                    MoveToGlobal(sd.Position);
-                EmitJoystickAxisFor(sd.Position);
-            }
-            if (FollowMode != FollowModeEnum.None)
-            {
-                MoveToGlobal(sd.Position);
-            }
-            // Swipe detection while pressed (touch drag)
-            if ((ActionMask & ActionMaskFlags.Swipe) != 0)
-            {
-                bool insideDrag = IsInputInside(sd);
-                bool allowSwipe = (TouchSwipeInit == SwipeInitMode.OnPressed) ? _touchSwipeEligible : insideDrag;
-                bool endOnHoverOut = (TouchSwipeExit == SwipeExitMode.OnHoverOut);
-                if ((!allowSwipe) || (endOnHoverOut && !insideDrag))
-                {
-                    // Stop swipe when touch leaves the button bounds
-                    EndSwiping();
-                    _swipeStart = Vector2.Zero;
-                }
-                else
-                {
-                    if (_swipeStart == Vector2.Zero)
-                        _swipeStart = sd.Position;
-                    else
-                    {
-                        var direction = sd.Position - _swipeStart;
-                        if (direction.Length() > SwipeThreshold)
-                        {
-                            EmitSignal(SignalName.Swipe, direction.Normalized());
-                            DebugLog($"Swipe emitted dir={direction.Normalized()} source=TouchDragPressed");
-                            _swipeStart = Vector2.Zero;
-                        }
-                    }
-                }
-            }
-            // Update swiping state relative to origin regardless of action mask
-            SetSwiping(IsInputInside(sd) && (sd.Position - _swipeOrigin).Length() > SwipeThreshold);
-        }
-        else if (((ActionMask & ActionMaskFlags.Swipe) != 0) && @event is InputEventScreenDrag drag)
-        {
-            // Only allow swipe while touch remains within button bounds (or started from press inside if required)
-            bool insideDrag = IsInputInside(drag);
-            bool allowSwipe = (TouchSwipeInit == SwipeInitMode.OnPressed) ? _touchSwipeEligible : insideDrag;
-            bool endOnHoverOut = (TouchSwipeExit == SwipeExitMode.OnHoverOut);
-            if ((!allowSwipe) || (endOnHoverOut && !insideDrag))
-            {
-                EndSwiping();
-                _swipeStart = Vector2.Zero;
-            }
-            else
-            {
-                if (_swipeStart == Vector2.Zero)
-                    _swipeStart = drag.Position;
-                else
-                {
-                    var direction = drag.Position - _swipeStart;
-                    if (direction.Length() > SwipeThreshold)
-                    {
-                        EmitSignal(SignalName.Swipe, direction.Normalized());
-                        DebugLog($"Swipe emitted dir={direction.Normalized()} source=TouchDrag");
-                        _swipeStart = Vector2.Zero;
-                    }
-                }
-            }
-        }
-        else if (((ActionMask & ActionMaskFlags.Swipe) != 0) && _isPressed && @event is InputEventMouseMotion motion)
-        {
-            if (_swipeStart == Vector2.Zero)
-                _swipeStart = motion.Position;
-            else
-            {
-                var direction = motion.Position - _swipeStart;
-                if (direction.Length() > SwipeThreshold)
-                {
-                    EmitSignal(SignalName.Swipe, direction.Normalized());
-                    DebugLog($"Swipe emitted dir={direction.Normalized()} source=MouseMotionHover");
-                    _swipeStart = Vector2.Zero;
-                }
-            }
-        }
-        else if (((ActionMask & ActionMaskFlags.Swipe) != 0) && MouseSwipeInit == SwipeInitMode.OnHoverIn && @event is InputEventMouseMotion hoverMotion)
-        {
-            bool insideMove = IsInputInside(hoverMotion);
-            if (!insideMove)
-            {
-                if (MouseSwipeExit == SwipeExitMode.OnHoverOut)
-                {
-                    EndSwiping();
-                    _swipeStart = Vector2.Zero;
-                }
-            }
-            else
-            {
-                if (_swipeStart == Vector2.Zero)
-                {
-                    _swipeStart = hoverMotion.GlobalPosition;
-                    _swipeOrigin = hoverMotion.GlobalPosition;
-                }
-                else
-                {
-                    var direction = hoverMotion.GlobalPosition - _swipeStart;
-                    if (direction.Length() > SwipeThreshold)
-                    {
-                        EmitSignal(SignalName.Swipe, direction.Normalized());
-                        DebugLog($"Swipe emitted dir={direction.Normalized()} source=MouseHover");
-                        // For hover-init, keep the swipe session alive: advance anchor instead of clearing.
-                        _swipeStart = hoverMotion.GlobalPosition;
-                    }
-                }
-                // For hover-init, remain in swiping state while inside; exit is controlled by MouseSwipeExit
-                SetSwiping(true);
-            }
-        }
-    }
     public override void _Notification(int what)
     {
         switch (what)
@@ -1493,10 +1097,8 @@ public partial class OmniButton : Control
             case (int)NotificationVisibilityChanged:
                 if (!IsVisibleInTree())
                 {
-                    _isPressed = false;
+                    ResetPressState(emitSwipeEnded: true);
                     _isHovering = false;
-                    _isHolding = false;
-                    EndSwiping();
                     InvalidateVisualState();
                 }
                 break;
@@ -1599,231 +1201,7 @@ public partial class OmniButton : Control
         _vjAreaPanel = null;
     }
     #endregion
-    #region Processing
-    /// <summary>
-    /// Drives hover scaling animation and hold build-up visuals over time.
-    /// Also advances cooldown fill and hides/shows transient overlays as needed.
-    /// </summary>
-    private void ProcessHoverScaling(double delta)
-    {
-        // Optionally suspend hover animations while typewriter is active
-        if (_twActive && SuspendHoverDuringTypewriter)
-        {
-            var tReset = (float)Math.Min(1.0, delta * HoverLerpSpeed);
-            if (_panel != null && IsInstanceValid(_panel)) LerpScaleTo(_panel, Vector2.One, tReset);
-            if (_icon != null && IsInstanceValid(_icon)) LerpScaleTo(_icon, Vector2.One, tReset);
-            if (_label != null && IsInstanceValid(_label)) LerpScaleTo(_label, Vector2.One, tReset);
-            if (_overlay != null && IsInstanceValid(_overlay)) LerpScaleTo(_overlay, Vector2.One, tReset);
-            EnableHoverTopLevel(false);
-            return;
-        }
-        // Avoid reassigning properties every frame; state fields already reflect truth
-        // Hold timer progresses when pressed and either not in cooldown or allowed during cooldown
-        if (_isPressed && (!EnableCooldown || !_cooldownActive || AllowHoldDuringCooldown || EnableHoldBuildUp))
-        {
-            _holdTimer += delta;
-            if (!_isHolding && _holdTimer >= HoldDuration)
-            {
-                _isHolding = true;
-                if ((ActionMask & ActionMaskFlags.Hold) != 0)
-                {
-                    EmitSignal(SignalName.Hold);
-                    DebugLog("Hold signal emitted");
-                }
-                RemoveHoldFill();
-            }
-            if (EnableHoldBuildUp) { if (!_isHolding) UpdateHoldFillVisual(); else RemoveHoldFill(); }
-        }
-        else if (EnableHoldBuildUp)
-        {
-            RemoveHoldFill();
-        }
-        // Hover scaling â€” independent of hover actions
-        if (EnableHoverScale)
-        {
-            // Keep pivots centered so scaling stays symmetric even during swipe/hover
-            if (_isHovering)
-                UpdateHoverPivotOffsets();
-            if (EnableCooldown && _cooldownActive && SuspendHoverScaleDuringCooldown)
-            {
-                var tReset = (float)Math.Min(1.0, delta * HoverLerpSpeed);
-                if (_panel != null && IsInstanceValid(_panel)) LerpScaleTo(_panel, Vector2.One, tReset);
-                if (_icon != null && IsInstanceValid(_icon)) LerpScaleTo(_icon, Vector2.One, tReset);
-                if (_label != null && IsInstanceValid(_label)) LerpScaleTo(_label, Vector2.One, tReset);
-                if (_overlay != null && IsInstanceValid(_overlay)) LerpScaleTo(_overlay, Vector2.One, tReset);
-                EnableHoverTopLevel(false);
-            }
-            else
-            {
-                var target = new Vector2(_hoverTargetScale, _hoverTargetScale);
-                var t = (float)Math.Min(1.0, delta * HoverLerpSpeed);
-                bool anyAnimating = false;
-                // Scale sub-nodes, not the container itself (avoids layout side-effects)
-                if (_panel != null && IsInstanceValid(_panel)) anyAnimating |= LerpScaleTo(_panel, target, t);
-                if (_icon != null && IsInstanceValid(_icon)) anyAnimating |= LerpScaleTo(_icon, target, t);
-                if (_label != null && IsInstanceValid(_label)) anyAnimating |= LerpScaleTo(_label, target, t);
-                if (_overlay != null && IsInstanceValid(_overlay)) anyAnimating |= LerpScaleTo(_overlay, target, t);
-                // Keep processing if a hold build-up is in progress
-                bool holdBuildActive = EnableHoldBuildUp && _isPressed && !_isHolding;
-                if (!anyAnimating && !_isHovering && !(_cooldownActive && EnableCooldown) && !holdBuildActive && !_twActive)
-                {
-                    SetProcess(false);
-                    EnableHoverTopLevel(false);
-                }
-            }
-        }
-        else
-        {
-            // Ensure we reset to default scale if hover actions are disabled
-            var t = (float)Math.Min(1.0, delta * HoverLerpSpeed);
-            bool anyAnimating = false;
-            if (_panel != null && IsInstanceValid(_panel)) anyAnimating |= LerpScaleTo(_panel, Vector2.One, t);
-            if (_icon != null && IsInstanceValid(_icon)) anyAnimating |= LerpScaleTo(_icon, Vector2.One, t);
-            if (_label != null && IsInstanceValid(_label)) anyAnimating |= LerpScaleTo(_label, Vector2.One, t);
-            if (_overlay != null && IsInstanceValid(_overlay)) anyAnimating |= LerpScaleTo(_overlay, Vector2.One, t);
-            // Keep processing if a hold build-up is in progress
-            bool holdBuildActive = EnableHoldBuildUp && _isPressed && !_isHolding;
-            if (!anyAnimating && !(_cooldownActive && EnableCooldown) && !holdBuildActive && !_twActive)
-            {
-                SetProcess(false);
-                EnableHoverTopLevel(false);
-            }
-        }
-        // Optionally hide cooldown overlay while hold build-up is animating
-        if (HideCooldownDuringHoldBuildUp && _cooldown != null && IsInstanceValid(_cooldown))
-        {
-            bool holdActive = EnableHoldBuildUp && _isPressed && !_isHolding;
-            if (holdActive)
-                _cooldown.Visible = false;
-            else if (_cooldownActive)
-                _cooldown.Visible = true;
-        }
-        // Cooldown handling
-        if (_cooldownActive)
-        {
-            _cooldownTimeLeft = Math.Max(0.0, _cooldownTimeLeft - delta);
-            UpdateCooldownVisual();
-            if (_cooldownTimeLeft <= 0.0)
-            {
-                _cooldownActive = false;
-                DebugLog("Cooldown completed");
-                if (_cooldown != null && IsInstanceValid(_cooldown))
-                {
-                    _cooldown.Visible = false;
-                    _cooldown.Size = Vector2.Zero;
-                    _cooldown.Position = Vector2.Zero;
-                }
-            }
-        }
-    }
-    private bool LerpScaleTo(Control node, Vector2 target, float t)
-    {
-        if (node == null || !IsInstanceValid(node)) return false;
-        var newScale = node.Scale.Lerp(target, t);
-        bool changed = (newScale - target).Length() >= 0.001f;
-        node.Scale = newScale;
-        if (!changed) node.Scale = target;
-        return changed;
-    }
-    #endregion
-    #region Signal & Event Management
-    private void InitializeCallables()
-    {
-        var fallbacks = new (string name, Callable callable)[]
-        {
-            ("Pressed", new Callable(this, nameof(RunBuiltInPressed))),
-            ("Released", new Callable(this, nameof(RunBuiltInReleased))),
-            ("HoverIn", new Callable(this, nameof(RunBuiltInHoverIn))),
-            ("HoverOut", new Callable(this, nameof(RunBuiltInHoverOut))),
-            ("Toggled", new Callable(this, nameof(RunBuiltInToggled))),
-            ("Log", new Callable(this, nameof(RunBuiltInLog))),
-            ("Hold", new Callable(this, nameof(RunBuiltInHold))),
-            ("Swipe", new Callable(this, nameof(RunBuiltInSwipe))),
-            ("Warning", new Callable(this, nameof(RunBuiltInWarning))),
-            ("Error", new Callable(this, nameof(RunBuiltInError)))
-        };
-        foreach (var (name, callable) in fallbacks)
-        {
-            SetCallableProperty(name, AdoptConnectedCallable(name, callable));
-        }
-    }
-    private void SetCallableProperty(string name, Callable callable)
-    {
-        switch (name)
-        {
-            case "Pressed": PressedAction = callable; break;
-            case "Released": ReleasedAction = callable; break;
-            case "HoverIn": HoverInAction = callable; break;
-            case "HoverOut": HoverOutAction = callable; break;
-            case "Toggled": ToggledAction = callable; break;
-            case "Log": LogAction = callable; break;
-            case "Hold": HoldAction = callable; break;
-            case "Swipe": SwipeAction = callable; break;
-            case "Warning": WarningAction = callable; break;
-            case "Error": ErrorAction = callable; break;
-        }
-    }
-    private void ConnectSignals()
-    {
-        var signals = new (string name, Callable callable)[]
-        {
-            ("Pressed", PressedAction),
-            ("Released", ReleasedAction),
-            ("HoverIn", HoverInAction),
-            ("HoverOut", HoverOutAction),
-            ("Toggled", ToggledAction),
-            ("Log", LogAction),
-            ("Hold", HoldAction),
-            ("Swipe", SwipeAction),
-            ("Warning", WarningAction),
-            ("Error", ErrorAction)
-        };
-        foreach (var (name, callable) in signals)
-        {
-            if ((callable.Target == null && string.IsNullOrEmpty(callable.Method)) || !HasSignal(name))
-                continue;
-            if (!IsConnected(name, callable))
-                Connect(name, callable);
-        }
-    }
-    private void ConnectMouseEvents()
-    {
-        ConnectIfNotConnected("mouse_entered", new Callable(this, nameof(OnMouseEntered)));
-        ConnectIfNotConnected("mouse_exited", new Callable(this, nameof(OnMouseExited)));
-    }
-    private void ConnectIfNotConnected(string signal, Callable callable)
-    {
-        if (!IsConnected(signal, callable))
-            Connect(signal, callable);
-    }
-    private void DisconnectAllSignalHandlers()
-    {
-        foreach (var signal in OwnSignals)
-        {
-            if (HasSignal(signal))
-            {
-                var connections = GetSignalConnectionList(signal);
-                foreach (var connection in connections)
-                {
-                    var dict = connection;
-                    if (dict.TryGetValue("callable", out var callable))
-                    {
-                        var cb = (Callable)callable;
-                        if (cb.Target == null && string.IsNullOrEmpty(cb.Method))
-                            continue;
-                        if (IsConnected(signal, cb))
-                            Disconnect(signal, cb);
-                    }
-                }
-            }
-        }
-    }
-    private Callable AdoptConnectedCallable(string signalName, Callable fallback)
-    {
-        var connections = GetSignalConnectionList(signalName);
-        return connections.Count > 0 ? ((Callable)connections[0]["callable"]) : fallback;
-    }
-    #endregion
+
     #region Mouse Events
     private void OnPressed()
     {
@@ -1909,7 +1287,7 @@ public partial class OmniButton : Control
     }
     #endregion
     #region Child Node Management
-    private void SetupChildren()
+    internal void SetupChildren()
     {
         // In editor, duplicated nodes may carry serialized managed children (Icon/Label/etc.)
         // which causes stacked visuals when properties change. Proactively clean any
@@ -2142,7 +1520,7 @@ public partial class OmniButton : Control
         if (LabelFont != null)
             _label.AddThemeFontOverride("font", LabelFont);
     }
-    private void FitLabelText()
+    internal void FitLabelText()
     {
         var __sig = $"{_text}|{Size}|{_labelPadding}|{_labelPadLeft},{_labelPadTop},{_labelPadRight},{_labelPadBottom}|{_labelAutowrap}|{FixedFontSize}|{_labelType}";
         if (_fitCacheSig == __sig) return;
@@ -2518,174 +1896,8 @@ public partial class OmniButton : Control
         });
     }
     #endregion
-    #region Visual State & Theme
-    private void ApplyVisualState()
-    {
-        // Ensure required children exist based on current flags/state
-        if (BackgroundType == BackgroundMode.UsePanel && _panel == null)
-        {
-            _panel = CreateChildNodeAtPosition<Panel>("Panel", 0);
-            ConfigurePanel(_panel);
-            ApplyPanelStyling();
-        }
-        // Ensure overlay co-exists with panel and others
-        bool overlayAlive = _overlay != null && IsInstanceValid(_overlay) && (_overlay.GetParent() == this || _overlay.GetParent() == _managedRoot);
-        bool needOverlay = _isSelected;
-        if (needOverlay && !overlayAlive)
-        {
-            _overlay = CreateChildNodeAtPosition<ColorRect>("Overlay", GetChildCount());
-        }
-        // Panel
-        if (BackgroundType == BackgroundMode.UsePanel && _panel != null && IsInstanceValid(_panel))
-        {
-            _panel.Visible = true;
-            _panel.Modulate = PanelModulate;
-            if (PanelStyleBox != null)
-                _panel.AddThemeStyleboxOverride("panel", PanelStyleBox);
-            ApplyInvert(_panel);
-            _panel.ZIndex = 0;
-        }
-        // Background
-        if (_background != null && IsInstanceValid(_background))
-        {
-            _background.Texture = BackgroundTexture;
-            _background.FlipH = BackgroundFlipH;
-            _background.FlipV = BackgroundFlipV;
-            _background.ExpandMode = BackgroundExpandMode;
-            _background.StretchMode = BackgroundStretchMode;
-            _background.Modulate = BackgroundModulate;
-            ApplyInvert(_background);
-            _background.ZIndex = 1;
-        }
-        // Icon
-        if (_icon != null && IsInstanceValid(_icon))
-        {
-            _icon.Texture = IconTexture;
-            _icon.FlipH = IconFlipH;
-            _icon.FlipV = IconFlipV;
-            _icon.ExpandMode = IconExpandMode;
-            _icon.StretchMode = IconStretchMode;
-            _icon.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
-            _icon.Modulate = IconModulate;
-            ApplyInvert(_icon);
-            _icon.ZIndex = 2;
-        }
-        // Label
-        if (_label != null && IsInstanceValid(_label))
-        {
-            if (!_twActive)
-                _label.Text = _text;
-            _label.HorizontalAlignment = LabelHorizontalAlignment;
-            _label.VerticalAlignment = LabelVerticalAlignment;
-            _label.AutowrapMode = LabelAutowrap;
-            if (LabelFont != null)
-                _label.AddThemeFontOverride("font", LabelFont);
-            _label.AddThemeColorOverride("font_color", _labelTextColor);
-            _label.Modulate = TextModulate;
-            ApplyLabelPaddingOffsets(_label);
-            ApplyInvert(_label);
-            _label.ZIndex = 3;
-        }
-        // Rich Label
-        if (_richLabel != null && IsInstanceValid(_richLabel))
-        {
-            _richLabel.BbcodeEnabled = true;
-            if (!_twActive)
-                _richLabel.Text = _text;
-            _richLabel.HorizontalAlignment = LabelHorizontalAlignment;
-            _richLabel.AutowrapMode = LabelAutowrap;
-            if (LabelFont != null)
-            {
-                foreach (var key in new[] { "normal_font", "bold_font", "italics_font", "bold_italics_font", "mono_font" })
-                    _richLabel.AddThemeFontOverride(key, LabelFont);
-            }
-            _richLabel.AddThemeColorOverride("default_color", _labelTextColor);
-            _richLabel.Modulate = TextModulate;
-            ApplyLabelPaddingOffsets(_richLabel);
-            ApplyInvert(_richLabel);
-            _richLabel.ZIndex = 3;
-        }
-        // Overlay
-        if (_overlay != null && IsInstanceValid(_overlay))
-        {
-            _overlay.Visible = needOverlay;
-            _overlay.Color = SelectedColor;
-            ApplyInvert(_overlay);
-            _overlay.ZIndex = 4;
-        }
-        // Cooldown live colors
-        if (_cooldown != null && IsInstanceValid(_cooldown))
-            _cooldown.Color = CooldownColor;
-        if (_holdFill != null && IsInstanceValid(_holdFill))
-            _holdFill.Color = HoldFillColor;
-
-        // Maintain correct draw order after any add/remove during state application
-        ReorderChildren();
-    }
-    private void ApplyInvert(Control node)
-    {
-        bool usePress = (InvertModes & InvertDisplayModes.Press) != 0;
-        bool useToggle = (InvertModes & InvertDisplayModes.Toggle) != 0;
-        bool useHover = (InvertModes & InvertDisplayModes.Hover) != 0;
-        bool useHold = (InvertModes & InvertDisplayModes.Hold) != 0;
-        bool shouldInvert = (_isPressed && usePress)
-                            || (_isToggled && useToggle)
-                            || (_isHovering && useHover)
-                            || (_isHolding && useHold);
-        if (_invertMaterial != null && shouldInvert)
-            node.Material = _invertMaterial;
-        else
-            node.Material = null;
-    }
-    private void ApplyFontSettings(Label label, Font font, int fontSize)
-    {
-        label.AddThemeFontOverride("font", font);
-        label.AddThemeFontSizeOverride("font_size", fontSize);
-    }
-    private void ApplyRichLabelFontOverrides(RichTextLabel rtl, Font font, int fontSize)
-    {
-        if (rtl == null || !IsInstanceValid(rtl)) return;
-        foreach (var key in new[] { "normal_font", "bold_font", "italics_font", "bold_italics_font", "mono_font" })
-            rtl.AddThemeFontOverride(key, font);
-        foreach (var key in new[] { "normal_font_size", "bold_font_size", "italics_font_size", "bold_italics_font_size", "mono_font_size" })
-            rtl.AddThemeFontSizeOverride(key, fontSize);
-    }
-    private void InvalidateVisualState()
-    {
-        _lastVisualState = null;
-        ApplyVisualState();
-        ApplyThemeNow();
-    }
-    private void ApplyThemeNow()
-    {
-        if (_themeApplying) return;
-        _themeApplying = true;
-        try
-        {
-            if (_label != null && IsInstanceValid(_label))
-                _label.Theme = Theme;
-            if (_richLabel != null && IsInstanceValid(_richLabel))
-                _richLabel.Theme = Theme;
-            if (_icon != null && IsInstanceValid(_icon))
-                _icon.Theme = Theme;
-        }
-        finally
-        {
-            _themeApplying = false;
-        }
-    }
-    private void ApplyThemeToChildren()
-    {
-        if (_label != null && IsInstanceValid(_label))
-            _label.Theme = Theme;
-        if (_richLabel != null && IsInstanceValid(_richLabel))
-            _richLabel.Theme = Theme;
-        if (_icon != null && IsInstanceValid(_icon))
-            _icon.Theme = Theme;
-    }
-    #endregion
     #region Panel Styling
-    private void ApplyPanelStyling()
+    internal void ApplyPanelStyling()
     {
         if (BackgroundType != BackgroundMode.UsePanel)
         {
@@ -2715,21 +1927,37 @@ public partial class OmniButton : Control
     public void StartCooldown()
     {
         if (!EnableCooldown) return;
+        _cooldownActive = false;
+        _cooldownElapsed = 0.0;
+        _cooldownTimeLeft = 0.0;
+        _cooldownDelayPending = CooldownStartDelay > 0.0f;
+        _cooldownDelayLeft = CooldownStartDelay;
+        DebugLog($"Cooldown scheduled delay={CooldownStartDelay} duration={CooldownDuration} trigger={CooldownTrigger}");
+        if (_cooldown != null && IsInstanceValid(_cooldown))
+        {
+            _cooldown.Visible = false;
+            _cooldown.Size = Vector2.Zero;
+            _cooldown.Position = Vector2.Zero;
+        }
+        SetProcess(true);
+        if (!_cooldownDelayPending)
+            BeginCooldownNow();
+    }
+    private void BeginCooldownNow()
+    {
         _cooldownActive = true;
+        _cooldownElapsed = 0.0;
         _cooldownTimeLeft = CooldownDuration;
         DebugLog($"Cooldown started duration={CooldownDuration} trigger={CooldownTrigger}");
         EnsureCooldown();
         UpdateCooldownVisual();
-        SetProcess(true);
         CallDeferred(nameof(ResetPressedVisualsAfterCooldownStart));
     }
     private void ResetPressedVisualsAfterCooldownStart()
     {
         // Clear pressed so invert-on-press reverts, but keep hover state
         // so invert-on-hover can continue to work during cooldown.
-        _isPressed = false;
-        _isHolding = false;
-        EndSwiping();
+        ResetPressState(emitSwipeEnded: true);
         EnableHoverTopLevel(false);
         ApplyVisualState();
     }
@@ -2971,26 +2199,7 @@ public partial class OmniButton : Control
     }
     #endregion
     #region Input Helpers
-    private bool IsInputInside(InputEvent @event)
-    {
-        Vector2 position = Vector2.Zero;
-        if (@event is InputEventMouseButton mouseButton)
-            position = mouseButton.GlobalPosition;
-        else if (@event is InputEventMouseMotion mouseMotion)
-            position = mouseMotion.GlobalPosition;
-        else if (@event is InputEventScreenTouch screenTouch)
-            position = screenTouch.Position; // ScreenTouch uses global screen coordinates
-        else if (@event is InputEventScreenDrag screenDrag)
-            position = screenDrag.Position; // ScreenDrag uses global screen coordinates
-        else
-            return false;
-        Rect2 bounds = BoundsSource != null
-            ? new Rect2(BoundsSource.GetGlobalRect().Position, BoundsSource.GetGlobalRect().Size)
-            : GetGlobalRect();
-        if (HitSlop != Vector2.Zero)
-            bounds = bounds.GrowIndividual(HitSlop.X, HitSlop.Y, HitSlop.X, HitSlop.Y);
-        return bounds.HasPoint(position);
-    }
+
     private float HoverTargetForViewport()
     {
         // Limit hover scale so the visual stays within the viewport bounds
@@ -3018,67 +2227,9 @@ public partial class OmniButton : Control
         if (_overlay != null && IsInstanceValid(_overlay)) _overlay.PivotOffset = _overlay.Size / 2.0f;
         if (_richLabel != null && IsInstanceValid(_richLabel)) _richLabel.PivotOffset = _richLabel.Size / 2.0f;
     }
-    private Control? GetExternalJoystickArea()
-    {
-        if (JoystickAreaExternalPath.IsEmpty) return null;
-        return GetNodeOrNull<Control>(JoystickAreaExternalPath);
-    }
-    private void EnsureAndRefreshJoystickArea(Vector2 homeCenterGlobal)
-    {
-        if (!EnableJoystickArea) return;
-        var target = GetExternalJoystickArea();
-        if (target == null)
-        {
-            if (_vjAreaPanel == null || !IsInstanceValid(_vjAreaPanel))
-            {
-                _vjAreaPanel = new Panel();
-                _vjAreaPanel.Name = "JoystickArea";
-                _vjAreaPanel.TopLevel = true;
-                _vjAreaPanel.MouseFilter = MouseFilterEnum.Ignore;
-                _vjAreaPanel.ZIndex = -1000;
-                ManagedAddChild(_vjAreaPanel);
-            }
-            target = _vjAreaPanel;
-            var sb = new StyleBoxFlat();
-            sb.BgColor = new Color(0, 0, 0, 0);
-            sb.BorderColor = JoystickAreaColor;
-            sb.BorderWidthTop = sb.BorderWidthBottom = sb.BorderWidthLeft = sb.BorderWidthRight = JoystickAreaThickness;
-            _vjAreaPanel.AddThemeStyleboxOverride("panel", sb);
-        }
-        var clampRect = GetFollowClampRect();
-        bool useCircle = (ClampShape == JoystickClampShape.Circle) && !JoystickAreaUseRectForClamp;
-        if (useCircle)
-        {
-            float radius = JoystickRadiusPx > 0 ? JoystickRadiusPx : ComputeAutoJoystickRadius(homeCenterGlobal, clampRect);
-            var size = new Vector2(radius * 2f, radius * 2f);
-            if (target is Panel p && p.GetThemeStylebox("panel") is StyleBoxFlat flat)
-            {
-                int r = (int)Mathf.Round(radius);
-                flat.CornerRadiusTopLeft = flat.CornerRadiusTopRight = flat.CornerRadiusBottomLeft = flat.CornerRadiusBottomRight = r;
-            }
-            target.Size = size;
-            target.GlobalPosition = homeCenterGlobal - size / 2f;
-        }
-        else
-        {
-            Vector2 halfExtents = JoystickRectSizePx != Vector2.Zero ? JoystickRectSizePx / 2f : ComputeAutoJoystickHalfExtents(homeCenterGlobal, clampRect);
-            var size = halfExtents * 2f;
-            if (target is Panel p && p.GetThemeStylebox("panel") is StyleBoxFlat flat)
-            {
-                flat.CornerRadiusTopLeft = flat.CornerRadiusTopRight = flat.CornerRadiusBottomLeft = flat.CornerRadiusBottomRight = 0;
-            }
-            target.Size = size;
-            target.GlobalPosition = homeCenterGlobal - size / 2f;
-        }
-    }
-    private void SetJoystickAreaVisible(bool vis)
-    {
-        var external = GetExternalJoystickArea();
-        if (external != null)
-            external.Visible = vis;
-        else if (_vjAreaPanel != null && IsInstanceValid(_vjAreaPanel))
-            _vjAreaPanel.Visible = vis;
-    }
+
+
+
     private bool _hoverTopLevelActive = false;
     private Vector2 _savedGlobalPos;
     private void EnableHoverTopLevel(bool enable)
@@ -3178,422 +2329,18 @@ public partial class OmniButton : Control
     /// current virtual joystick home position and a clamped pointer location.
     /// Applies circular or rectangular normalization and a deadzone.
     /// </summary>
-    private void EmitJoystickAxisFor(Vector2 pointerGlobal)
-    {
-        // Current stick center (global)
-        var currentCenter = GlobalPosition + Size / 2f;
-        // Clamp pointer to movement bounds to keep axis consistent with visible clamp
-        var clamp = GetFollowClampRect(); // already respects BoundsSource or parent
-        var clamped = new Vector2(
-            Mathf.Clamp(pointerGlobal.X, clamp.Position.X, clamp.Position.X + clamp.Size.X),
-            Mathf.Clamp(pointerGlobal.Y, clamp.Position.Y, clamp.Position.Y + clamp.Size.Y)
-        );
-        // Use clamped point to infer the target center (where we tried to move to)
-        // Then compute axis from home -> target
-        var delta = (clamped - _vjHomeGlobal);
-        Vector2 axis;
-        bool useCircle = (ClampShape == JoystickClampShape.Circle);
-        if (useCircle)
-        {
-            float radius = JoystickRadiusPx > 0
-                ? JoystickRadiusPx
-                : ComputeAutoJoystickRadius(_vjHomeGlobal, clamp);
-            float len = delta.Length();
-            axis = (len < 1e-4f || radius < 1e-4f) ? Vector2.Zero : (delta / radius);
-            if (axis.Length() > 1f) axis = axis.Normalized();
-        }
-        else
-        {
-            Vector2 halfExtents = JoystickRectSizePx != Vector2.Zero
-                ? JoystickRectSizePx / 2f
-                : ComputeAutoJoystickHalfExtents(_vjHomeGlobal, clamp);
-            float hx = Math.Max(1e-4f, halfExtents.X);
-            float hy = Math.Max(1e-4f, halfExtents.Y);
-            axis = new Vector2(Mathf.Clamp(delta.X / hx, -1f, 1f), Mathf.Clamp(delta.Y / hy, -1f, 1f));
-        }
-        // Deadzone
-        if (axis.Length() < JoystickDeadzone)
-            axis = Vector2.Zero;
-        EmitSignal(SignalName.JoystickAxis, axis);
-    }
-    private float ComputeAutoJoystickRadius(Vector2 homeCenterGlobal, Rect2 clamp)
-    {
-        // Max circle that fits inside the clamp rect around the home center
-        float left = (float)(homeCenterGlobal.X - clamp.Position.X);
-        float right = (float)((clamp.Position.X + clamp.Size.X) - homeCenterGlobal.X);
-        float top = (float)(homeCenterGlobal.Y - clamp.Position.Y);
-        float bottom = (float)((clamp.Position.Y + clamp.Size.Y) - homeCenterGlobal.Y);
-        return Math.Max(1f, Math.Min(Math.Min(left, right), Math.Min(top, bottom)));
-    }
-    private Vector2 ComputeAutoJoystickHalfExtents(Vector2 homeCenterGlobal, Rect2 clamp)
-    {
-        float left = (float)(homeCenterGlobal.X - clamp.Position.X);
-        float right = (float)((clamp.Position.X + clamp.Size.X) - homeCenterGlobal.X);
-        float top = (float)(homeCenterGlobal.Y - clamp.Position.Y);
-        float bottom = (float)((clamp.Position.Y + clamp.Size.Y) - homeCenterGlobal.Y);
-        return new Vector2(Math.Max(1f, Math.Min(left, right)), Math.Max(1f, Math.Min(top, bottom)));
-    }
-    public void StartVirtualJoystickAt(Vector2 globalPoint)
-    {
-        // Allow programmatic start if either the explicit flag is on
-        // or this button is configured to use VirtualJoystick follow mode.
-        if (!EnableVirtualJoystick && FollowMode != FollowModeEnum.VirtualJoystick)
-            return;
-        DebugLog($"Virtual joystick started at {globalPoint}");
-        _vjActive = true;
-        _vjHomeGlobal = GlobalPosition + Size / 2f;
-        // Keep visuals consistent with a press
-        _isPressed = true;
-        ApplyVisualState();
-        // Allow input to pass through this button (so underlying controls can hover)
-        _vjSavedMouseFilter = MouseFilter;
-        MouseFilter = MouseFilterEnum.Ignore;
-        // Move in screen space and clamp to bounds
-        EnableHoverTopLevel(true);
-        if (JoystickSnapToInput)
-            MoveToGlobal(globalPoint);
-        if (JoystickHideWhenInactive)
-            Visible = true;
-        EmitSignal(SignalName.JoystickStarted);
-        DebugLog("JoystickStarted emitted (programmatic)");
-        EmitJoystickAxisFor(globalPoint);
-        if (EnableJoystickArea)
-        {
-            EnsureAndRefreshJoystickArea(_vjHomeGlobal);
-            SetJoystickAreaVisible(true);
-        }
-    }
-    public void UpdateVirtualJoystick(Vector2 globalPoint)
-    {
-        if (!_vjActive) return;
-        if (JoystickSnapToInput)
-            MoveToGlobal(globalPoint);
-        EmitJoystickAxisFor(globalPoint);
-    }
-    public void StopVirtualJoystick()
-    {
-        if (!_vjActive) return;
-        EmitSignal(SignalName.JoystickAxis, Vector2.Zero);
-        EmitSignal(SignalName.JoystickEnded);
-        DebugLog("Virtual joystick stopped");
-        if (JoystickResetOnRelease)
-            GlobalPosition = _vjHomeGlobal - Size / 2f;
-        _vjActive = false;
-        _isPressed = false;
-        _isHolding = false;
-        EndSwiping(); // clear swiping when joystick session ends
-        ApplyVisualState();
-        // Restore original mouse filter and top-level state
-        MouseFilter = _vjSavedMouseFilter;
-        EnableHoverTopLevel(false);
-        if (EnableJoystickArea && !JoystickAreaPersistent)
-            SetJoystickAreaVisible(false);
-        if (JoystickHideWhenInactive)
-            Visible = false;
-    }
-    // ===== Typewriter API =====
-    // Primary entrypoint: explicit text
-    public void StartTypewriter(string finalText, float cps = 30f, bool byWord = false)
-        => StartTypewriterInternal(finalText, cps, byWord, preserveBBCodeTags: false);
-
-    // Overload: use TextToType and optionally preserve BBCode tags
-    public void StartTypewriter(float cps = 30f, bool byWord = false, bool preserveBBCodeTags = false)
-        => StartTypewriterInternal(TextToType, cps, byWord, preserveBBCodeTags);
-
-    private void StartTypewriterInternal(string finalText, float cps, bool byWord, bool preserveBBCodeTags)
-    {
-        if (string.IsNullOrEmpty(finalText))
-        {
-            SkipTypewriter();
-            return;
-        }
-        DebugLog($"Typewriter start len={finalText.Length} cps={cps} byWord={byWord} bbcode={preserveBBCodeTags}");
-        // Decide BBCode behavior based on current label type
-        bool wantBB = preserveBBCodeTags && (_labelType == LabelTypeEnum.RichTextLabel);
-        string content = wantBB ? finalText : StripKnownBBCode(finalText);
-        _twBBCodeAware = wantBB;
-        _twByWord = byWord;
-        _twCps = Math.Max(1f, cps);
-        _twAccum = 0.0;
-        _twIndex = 0;
-        _twVisiblePlainChars = 0;
-        _twFinalText = content;
-        _twBuilder = _twBBCodeAware ? null : new System.Text.StringBuilder(content.Length);
-
-        // Ensure visuals exist
-        SetupChildren();
-        // Pre-fit for final text so we don't re-fit during reveal
-        PrefitForText(content);
-
-        if (_twBBCodeAware)
-        {
-            (_twBBTokens, _twTotalPlainChars) = TokenizeBBCode(content);
-            // Start with tags-only skeleton
-            SetTypewriterVisibleText(BuildVisibleFromTokens(_twBBTokens, 0));
-        }
-        else
-        {
-            // Prepare tokens for per-word mode
-            if (_twByWord)
-                _twTokens = TokenizeWords(content);
-            else
-                _twTokens = null;
-            // Clear current visible text
-            SetTypewriterVisibleText(string.Empty);
-        }
-
-        _twActive = true;
-        SetProcess(true);
-    }
-
-    public void SkipTypewriter()
-    {
-        if (string.IsNullOrEmpty(_twFinalText)) { StopTypewriter(); return; }
-        SetTypewriterVisibleText(_twFinalText);
-        StopTypewriter();
-        DebugLog("Typewriter skipped to end");
-    }
-
-    public void StopTypewriter()
-    {
-        bool wasActive = _twActive;
-        string current = string.Empty;
-        if (_richLabel != null && IsInstanceValid(_richLabel))
-            current = _richLabel.Text;
-        else if (_label != null && IsInstanceValid(_label))
-            current = _label.Text;
-
-        _twActive = false;
-        if (!string.IsNullOrEmpty(current))
-            _text = current;
-
-        _twBuilder = null;
-        _twTokens = null;
-        _twBBTokens = null;
-
-        if (wasActive)
-        {
-            EmitSignal(SignalName.TypewriterCompleted);
-            DebugLog("Typewriter completed");
-        }
-    }
 
 
-    private void ProcessTypewriter(double delta)
-    {
-        if (!_twActive) return;
-        double step = 1.0 / Math.Max(1.0f, _twCps);
-        _twAccum += delta;
-        bool changed = false;
-        if (_twBBCodeAware && _twBBTokens != null)
-        {
-            while (_twAccum >= step && _twVisiblePlainChars < _twTotalPlainChars)
-            {
-                _twAccum -= step;
-                _twVisiblePlainChars++;
-                changed = true;
-            }
-            if (changed)
-                SetTypewriterVisibleText(BuildVisibleFromTokens(_twBBTokens, _twVisiblePlainChars));
-            if (_twVisiblePlainChars >= _twTotalPlainChars)
-                StopTypewriter();
-        }
-        else if (_twByWord && _twTokens != null)
-        {
-            while (_twAccum >= step && _twIndex < _twTokens.Count)
-            {
-                _twAccum -= step;
-                _twBuilder!.Append(_twTokens[_twIndex]);
-                _twIndex++;
-                changed = true;
-            }
-            if (changed)
-                SetTypewriterVisibleText(_twBuilder!.ToString());
-            if (_twIndex >= _twTokens.Count)
-                StopTypewriter();
-        }
-        else
-        {
-            while (_twAccum >= step && _twIndex < _twFinalText.Length)
-            {
-                _twAccum -= step;
-                _twBuilder!.Append(_twFinalText[_twIndex]);
-                _twIndex++;
-                changed = true;
-            }
-            if (changed)
-                SetTypewriterVisibleText(_twBuilder!.ToString());
-            if (_twIndex >= _twFinalText.Length)
-                StopTypewriter();
-        }
-    }
 
-    private void SetTypewriterVisibleText(string current)
-    {
-        if (_label != null && IsInstanceValid(_label))
-            _label.Text = current;
-        if (_richLabel != null && IsInstanceValid(_richLabel))
-            _richLabel.Text = current;
-        if (!_twActive)
-            _text = current;
-    }
 
-    private System.Collections.Generic.List<string> TokenizeWords(string s)
-    {
-        var list = new System.Collections.Generic.List<string>();
-        int i = 0;
-        while (i < s.Length)
-        {
-            int start = i;
-            while (i < s.Length && !char.IsWhiteSpace(s[i])) i++;
-            int wordEnd = i;
-            while (i < s.Length && char.IsWhiteSpace(s[i])) i++;
-            int end = i;
-            if (end > start)
-                list.Add(s.Substring(start, end - start));
-        }
-        return list;
-    }
 
-    private void PrefitForText(string content)
-    {
-        var avail = CalculateAvailableArea();
-        if (avail.X <= 1.0f || avail.Y <= 1.0f) return;
-        if (_richLabel != null && !string.IsNullOrEmpty(_richLabelText))
-        {
-            var rtl = _richLabel;
-            if (rtl == null || !IsInstanceValid(rtl)) return;
-            var fnt = LabelFont ?? ThemeDB.FallbackFont;
-            if (fnt == null) return;
-            string plain = StripKnownBBCode(content);
-            bool wrapEnabled = LabelAutowrap != TextServer.AutowrapMode.Off;
-            float wrap = wrapEnabled ? avail.X : -1f;
-            int size = FindBestFontSize(fnt, plain, avail, wrap, wrapEnabled);
-            ApplyRichLabelFontOverrides(rtl, fnt, size);
-            _richCurrentFontSize = size;
-            _lastFitFontSize = size;
-        }
-        else if (_label != null)
-        {
-            var label = _label;
-            if (label == null || !IsInstanceValid(label)) return;
-            var fnt = GetRobustFont(label);
-            if (fnt == null) return;
-            bool wrapEnabled = LabelAutowrap != TextServer.AutowrapMode.Off;
-            float wrap = wrapEnabled ? avail.X : -1f;
-            int size = FindBestFontSize(fnt, content, avail, wrap, wrapEnabled);
-            ApplyFontSettings(label, fnt, size);
-            _lastFitFontSize = size;
-        }
-    }
 
-    private (System.Collections.Generic.List<BBToken>, int) TokenizeBBCode(string s)
-    {
-        var tokens = new System.Collections.Generic.List<BBToken>();
-        int i = 0;
-        int totalPlain = 0;
-        while (i < s.Length)
-        {
-            if (s[i] == '[')
-            {
-                int j = s.IndexOf(']', i + 1);
-                if (j > i)
-                {
-                    tokens.Add(new BBToken(true, s.Substring(i, j - i + 1)));
-                    i = j + 1;
-                    continue;
-                }
-                // Unmatched '[' â€” treat as plain text
-                i++;
-                totalPlain++;
-                tokens.Add(new BBToken(false, "["));
-                continue;
-            }
-            // accumulate plain text until next tag
-            int start = i;
-            while (i < s.Length && s[i] != '[')
-                i++;
-            string text = s.Substring(start, i - start);
-            if (text.Length > 0)
-            {
-                tokens.Add(new BBToken(false, text));
-                totalPlain += text.Length;
-            }
-        }
-        return (tokens, totalPlain);
-    }
-
-    private string BuildVisibleFromTokens(System.Collections.Generic.List<BBToken> tokens, int visiblePlainChars)
-    {
-        var sb = new System.Text.StringBuilder(_twFinalText?.Length ?? 64);
-        int remain = Math.Max(0, visiblePlainChars);
-        foreach (var t in tokens)
-        {
-            if (t.IsTag)
-            {
-                // Optionally delay effect tags until typing completes
-                if (_twDelayEffects && visiblePlainChars < _twTotalPlainChars && IsEffectTag(t.Content))
-                {
-                    continue;
-                }
-                sb.Append(t.Content);
-                continue;
-            }
-            if (remain <= 0) continue;
-            int take = Math.Min(remain, t.Content.Length);
-            sb.Append(t.Content.AsSpan(0, take));
-            remain -= take;
-        }
-        return sb.ToString();
-    }
-    // Effect tags that can be expensive or glitchy mid-typing; delay until complete
-    private static readonly System.Collections.Generic.HashSet<string> EffectTags = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase)
-    { "wave", "rainbow", "tornado", "pulse", "shake", "fade" };
-    private bool IsEffectTag(string tag)
-    {
-        if (string.IsNullOrEmpty(tag)) return false;
-        int start = tag.IndexOf('[');
-        int end = tag.IndexOf(']');
-        if (start < 0 || end <= start) return false;
-        var inner = tag.Substring(start + 1, end - start - 1).Trim();
-        if (inner.StartsWith("/")) inner = inner.Substring(1).TrimStart();
-        int sp = inner.IndexOf(' ');
-        var name = sp >= 0 ? inner.Substring(0, sp) : inner;
-        return EffectTags.Contains(name);
-    }
-    #endregion
     #region Property List Builder
-    private Array<Dictionary> BuildPropertyList()
-    {
-        // Do not hide or rewrite any properties dynamically; return an empty list
-        // so the Inspector shows all exported properties as-is.
-        return new Array<Dictionary>();
-    }
-    // Debounced inspector refresh to avoid recursive updates
-    private bool _pendingInspectorRefresh = false;
-    private void SafeNotifyPropertyListChanged()
-    {
-        if (!Engine.IsEditorHint()) return;
-        if (_pendingInspectorRefresh) return;
-        _pendingInspectorRefresh = true;
-        CallDeferred(nameof(DoNotifyPropertyListChanged));
-    }
-    private void DoNotifyPropertyListChanged()
-    {
-        _pendingInspectorRefresh = false;
-        NotifyPropertyListChanged();
-    }
-    #endregion
-    private static bool IsPressInput(InputEvent ev)
-    {
-        if (ev is InputEventScreenTouch st)
-            return st.Pressed;
-        if (ev is InputEventMouseButton mb)
-            return mb.Pressed && mb.ButtonIndex == MouseButton.Left;
-        return false;
-    }
 
-    #region Logging
+
+
+    #endregion
+
     public void PrintLog(string message)
     {
         if (HasSignal(SignalName.Log))

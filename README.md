@@ -171,7 +171,7 @@ Feature reference and examples
     ```
 
 - Panel & Icon Settings
-  - PanelThemeType, PanelThemeVariation, PanelStyleBox
+  - PanelThemeVariation, PanelStyleBox
   - IconExpandMode, IconStretchMode, IconFlipH, IconFlipV
 
 - Invert Display
@@ -180,9 +180,6 @@ Feature reference and examples
     ```csharp
     btn.InvertModes = OmniButton.InvertDisplayModes.Press | OmniButton.InvertDisplayModes.Hover;
     ```
-
-- Theme Variations
-  - ThemeTypeName, VariantNormal/Pressed/Hover/Toggled/Selected/Disabled
 
 Tips & troubleshooting
 - Ensure ActionMaskBits includes the signals you want (e.g., Swipe, Pressed, Released).

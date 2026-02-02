@@ -8,11 +8,15 @@
 
 config_version=5
 
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+
 [application]
 
 config/name="OmniButton"
 run/main_scene="uid://d3ukhudxpvpvd"
-config/features=PackedStringArray("4.5", "C#")
+config/features=PackedStringArray("4.6", "C#")
 config/icon="uid://qmauyj7sntg6"
 
 [display]
@@ -25,7 +29,7 @@ project/assembly_name="OmniButton"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/omni_button/CS/plugin.cfg", "res://addons/omni_button/GD/plugin.cfg")
+enabled=PackedStringArray("res://addons/omni_button/GD/plugin.cfg")
 
 [rendering]
 

@@ -51,7 +51,7 @@ Tip: Use OmniButton.SignalName.* for refactor-safe signal names.
 - SelectedColor — Overlay color.
 
 ### Background Settings
-- PanelThemeType, PanelThemeVariation, PanelStyleBox
+- PanelThemeVariation, PanelStyleBox
 - BackgroundTexture, BackgroundExpandMode, BackgroundStretchMode, BackgroundFlipH, BackgroundFlipV
 - PanelModulate, BackgroundModulate
 

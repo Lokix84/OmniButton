@@ -553,12 +553,6 @@ public partial class OmniButtonUnitTest : Control
         {
             ClearArena();
             var b = MakeBaseButton(new Vector2(100, 560), new Vector2(240, 110), "Theme Variations");
-            b.VariantNormal = "normal";
-            b.VariantPressed = "pressed";
-            b.VariantHover = "hover";
-            b.VariantToggled = "toggled";
-            b.VariantSelected = "selected";
-            b.VariantDisabled = "disabled";
             b.Selected = true;
             b.Disabled = false;
             _statusLabel.Text = "Theme variation strings assigned";

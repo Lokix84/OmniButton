@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3 uid="uid://d3ukhudxpvpvd"]
+[gd_scene format=3 uid="uid://d3ukhudxpvpvd"]
 
 [ext_resource type="Script" uid="uid://n54ewwkpv83g" path="res://addons/omni_button/test/CSharpTest.cs" id="1_dqdkr"]
 [ext_resource type="Theme" uid="uid://ckanb5o8kc3u" path="res://addons/omni_button/test/style/UI.tres" id="2_5d3si"]
@@ -30,7 +30,7 @@ corner_radius_bottom_left = 150
 [sub_resource type="Theme" id="Theme_rs1nt"]
 Panel/styles/panel = SubResource("StyleBoxFlat_xgukv")
 
-[node name="Main" type="Control"]
+[node name="Main" type="Control" unique_id=1172833069]
 texture_filter = 1
 layout_mode = 3
 anchors_preset = 15
@@ -41,7 +41,7 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_dqdkr")
 
-[node name="TouchArea" type="HBoxContainer" parent="."]
+[node name="TouchArea" type="HBoxContainer" parent="." unique_id=1331975506]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -50,15 +50,15 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Move" type="Control" parent="TouchArea"]
+[node name="Move" type="Control" parent="TouchArea" unique_id=1008058718]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Look" type="Control" parent="TouchArea"]
+[node name="Look" type="Control" parent="TouchArea" unique_id=9167403]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Gamepad" type="Control" parent="."]
+[node name="Gamepad" type="Control" parent="." unique_id=849603773]
 visible = false
 custom_minimum_size = Vector2(300, 300)
 layout_mode = 1
@@ -70,7 +70,7 @@ offset_right = 0.47998047
 grow_vertical = 0
 pivot_offset = Vector2(150, 150)
 
-[node name="Border" type="Panel" parent="Gamepad"]
+[node name="Border" type="Panel" parent="Gamepad" unique_id=201177916]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -79,7 +79,7 @@ grow_horizontal = 2
 grow_vertical = 2
 theme = SubResource("Theme_rs1nt")
 
-[node name="Up" type="Control" parent="Gamepad"]
+[node name="Up" type="Control" parent="Gamepad" unique_id=960010577]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 1
 anchors_preset = 5
@@ -99,7 +99,7 @@ InvertModes = 4
 TouchSwipeExit = 1
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="UpRight" type="Control" parent="Gamepad"]
+[node name="UpRight" type="Control" parent="Gamepad" unique_id=912991992]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 1
 anchors_preset = 1
@@ -121,7 +121,7 @@ InvertModes = 4
 TouchSwipeExit = 1
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="UpLeft" type="Control" parent="Gamepad"]
+[node name="UpLeft" type="Control" parent="Gamepad" unique_id=1928882962]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 1
 anchors_preset = 1
@@ -143,7 +143,7 @@ InvertModes = 4
 TouchSwipeExit = 1
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="Down" type="Control" parent="Gamepad"]
+[node name="Down" type="Control" parent="Gamepad" unique_id=650238775]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 1
 anchors_preset = 7
@@ -166,7 +166,7 @@ InvertModes = 4
 TouchSwipeExit = 1
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="DownRight" type="Control" parent="Gamepad"]
+[node name="DownRight" type="Control" parent="Gamepad" unique_id=112435233]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 1
 anchors_preset = 1
@@ -188,7 +188,7 @@ InvertModes = 4
 TouchSwipeExit = 1
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="DownLeft" type="Control" parent="Gamepad"]
+[node name="DownLeft" type="Control" parent="Gamepad" unique_id=920605071]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 1
 anchors_preset = 1
@@ -210,7 +210,7 @@ InvertModes = 4
 TouchSwipeExit = 1
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="Left" type="Control" parent="Gamepad"]
+[node name="Left" type="Control" parent="Gamepad" unique_id=848043572]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 1
 anchors_preset = 4
@@ -230,7 +230,7 @@ InvertModes = 4
 TouchSwipeExit = 1
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="Right" type="Control" parent="Gamepad"]
+[node name="Right" type="Control" parent="Gamepad" unique_id=929473023]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 1
 anchors_preset = 6
@@ -253,7 +253,7 @@ InvertModes = 4
 TouchSwipeExit = 1
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="Center" type="Control" parent="Gamepad" node_paths=PackedStringArray("BoundsSource")]
+[node name="Center" type="Control" parent="Gamepad" unique_id=427140978 node_paths=PackedStringArray("BoundsSource")]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 1
 anchors_preset = 8
@@ -282,7 +282,7 @@ JoystickAreaExternalPath = NodePath("../Border")
 EnableDefaultThumb = false
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="LookJoystick" type="Control" parent="."]
+[node name="LookJoystick" type="Control" parent="." unique_id=902726670]
 visible = false
 custom_minimum_size = Vector2(150, 150)
 layout_mode = 1
@@ -299,7 +299,7 @@ grow_horizontal = 2
 grow_vertical = 2
 pivot_offset = Vector2(150, 150)
 
-[node name="Center" type="Control" parent="LookJoystick" node_paths=PackedStringArray("BoundsSource")]
+[node name="Center" type="Control" parent="LookJoystick" unique_id=1647839504 node_paths=PackedStringArray("BoundsSource")]
 custom_minimum_size = Vector2(75, 75)
 layout_mode = 1
 anchors_preset = 8
@@ -329,7 +329,7 @@ JoystickAreaColor = Color(0.1254902, 0.1254902, 0.1254902, 0.24705882)
 JoystickAreaThickness = 5
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="UI" type="Control" parent="."]
+[node name="UI" type="Control" parent="." unique_id=1481359398]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -338,7 +338,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="PlayerInfoHUD" type="Control" parent="UI"]
+[node name="PlayerInfoHUD" type="Control" parent="UI" unique_id=1343195703]
 custom_minimum_size = Vector2(300, 100)
 layout_mode = 1
 anchor_left = 0.022000002
@@ -351,7 +351,7 @@ offset_right = 0.13598633
 offset_bottom = -0.06400299
 mouse_filter = 2
 
-[node name="GeneralInfoHUD" type="Control" parent="UI"]
+[node name="GeneralInfoHUD" type="Control" parent="UI" unique_id=1129779531]
 custom_minimum_size = Vector2(400, 100)
 layout_mode = 1
 anchor_left = 0.326
@@ -364,7 +364,7 @@ offset_right = -0.44799805
 offset_bottom = -0.06400299
 grow_horizontal = 2
 
-[node name="Icons" type="Control" parent="UI"]
+[node name="Icons" type="Control" parent="UI" unique_id=110585069]
 custom_minimum_size = Vector2(200, 100)
 layout_mode = 1
 anchor_left = 0.71800005
@@ -377,7 +377,7 @@ offset_right = 0.34399414
 offset_bottom = -0.06400299
 grow_horizontal = 0
 
-[node name="PressButton" type="Control" parent="UI/Icons"]
+[node name="PressButton" type="Control" parent="UI/Icons" unique_id=53878532]
 custom_minimum_size = Vector2(100, 50)
 layout_mode = 1
 anchors_preset = 0
@@ -400,7 +400,7 @@ TouchSwipeExit = 1
 JoystickSnapToInput = false
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="ToggleButton" type="Control" parent="UI/Icons"]
+[node name="ToggleButton" type="Control" parent="UI/Icons" unique_id=1146894348]
 custom_minimum_size = Vector2(100, 50)
 layout_mode = 1
 anchors_preset = 1
@@ -425,7 +425,7 @@ TouchSwipeExit = 1
 JoystickSnapToInput = false
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="HoldButton" type="Control" parent="UI/Icons"]
+[node name="HoldButton" type="Control" parent="UI/Icons" unique_id=852274466]
 custom_minimum_size = Vector2(100, 50)
 layout_mode = 1
 anchors_preset = 2
@@ -457,7 +457,7 @@ CooldownStartFilled = true
 CooldownFillDirection = 1
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="SwipeButton" type="Control" parent="UI/Icons"]
+[node name="SwipeButton" type="Control" parent="UI/Icons" unique_id=1923584694]
 custom_minimum_size = Vector2(100, 50)
 layout_mode = 1
 anchors_preset = 3
@@ -485,7 +485,7 @@ ActionMaskBits = 32
 SwipeThreshold = 0.0
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="DraggableButton" type="Control" parent="UI/Icons"]
+[node name="DraggableButton" type="Control" parent="UI/Icons" unique_id=1131970468]
 custom_minimum_size = Vector2(100, 50)
 layout_mode = 1
 anchors_preset = 8
@@ -515,7 +515,7 @@ TouchSwipeExit = 1
 FollowMode = 3
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="HotbarHUD" type="Panel" parent="UI"]
+[node name="HotbarHUD" type="Panel" parent="UI" unique_id=705293233]
 clip_contents = true
 custom_minimum_size = Vector2(350, 100)
 layout_mode = 1
@@ -532,7 +532,7 @@ grow_horizontal = 2
 grow_vertical = 0
 theme = ExtResource("2_5d3si")
 
-[node name="SingleSelectList" type="HBoxContainer" parent="UI/HotbarHUD"]
+[node name="SingleSelectList" type="HBoxContainer" parent="UI/HotbarHUD" unique_id=89702842]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -541,7 +541,7 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 4
 
-[node name="SelectedItem" type="Control" parent="UI/HotbarHUD/SingleSelectList" node_paths=PackedStringArray("BoundsSource")]
+[node name="SelectedItem" type="Control" parent="UI/HotbarHUD/SingleSelectList" unique_id=1074269182 node_paths=PackedStringArray("BoundsSource")]
 clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -554,7 +554,6 @@ PresetSelection = 99
 IconTexture = ExtResource("9_7ixqu")
 Text = "x10"
 LabelText = "x10"
-PanelThemeType = ""
 PanelStyleBox = ExtResource("11_mpc5m")
 BackgroundExpandMode = 1
 IconExpandMode = 1
@@ -569,10 +568,9 @@ InvertModes = 4
 ActionMaskBits = 1
 TouchSwipeExit = 1
 BoundsSource = NodePath(".")
-ThemeTypeName = "Panel"
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="SelectedItem2" type="Control" parent="UI/HotbarHUD/SingleSelectList" node_paths=PackedStringArray("BoundsSource")]
+[node name="SelectedItem2" type="Control" parent="UI/HotbarHUD/SingleSelectList" unique_id=470481196 node_paths=PackedStringArray("BoundsSource")]
 clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -585,7 +583,6 @@ PresetSelection = 99
 IconTexture = ExtResource("11_fh7gc")
 Text = "x10"
 LabelText = "x10"
-PanelThemeType = ""
 PanelStyleBox = ExtResource("11_mpc5m")
 BackgroundExpandMode = 1
 IconExpandMode = 1
@@ -600,10 +597,9 @@ InvertModes = 4
 ActionMaskBits = 1
 TouchSwipeExit = 1
 BoundsSource = NodePath(".")
-ThemeTypeName = ""
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="SelectedItem3" type="Control" parent="UI/HotbarHUD/SingleSelectList" node_paths=PackedStringArray("BoundsSource")]
+[node name="SelectedItem3" type="Control" parent="UI/HotbarHUD/SingleSelectList" unique_id=36373339 node_paths=PackedStringArray("BoundsSource")]
 clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -616,7 +612,6 @@ PresetSelection = 99
 IconTexture = ExtResource("12_fh7gc")
 Text = "x10"
 LabelText = "x10"
-PanelThemeType = ""
 PanelStyleBox = ExtResource("11_mpc5m")
 BackgroundExpandMode = 1
 IconExpandMode = 1
@@ -631,10 +626,9 @@ InvertModes = 4
 ActionMaskBits = 1
 TouchSwipeExit = 1
 BoundsSource = NodePath(".")
-ThemeTypeName = ""
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="Actions" type="Control" parent="UI"]
+[node name="Actions" type="Control" parent="UI" unique_id=1597170919]
 custom_minimum_size = Vector2(350, 100)
 layout_mode = 1
 anchor_left = 0.674
@@ -648,7 +642,7 @@ offset_bottom = 0.27197266
 grow_horizontal = 0
 grow_vertical = 0
 
-[node name="UseItem" type="Control" parent="UI/Actions"]
+[node name="UseItem" type="Control" parent="UI/Actions" unique_id=1057096548]
 texture_filter = 1
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 1
@@ -667,11 +661,13 @@ LabelText = "Use Item"
 SelectedColor = Color(0.15686275, 0.15686275, 0.15686275, 0.63529414)
 PanelStyleBox = ExtResource("11_mpc5m")
 LabelTextColor = Color(0.015686275, 1, 0.039215688, 1)
+InvertModes = 1
 EnableHoverScale = true
 ActionMaskBits = 1
 TouchSwipeExit = 1
 EnableCooldown = true
 CooldownTrigger = 1
+CooldownStartDelay = 0.1
 CooldownDuration = 0.5
 CooldownStartFilled = true
 CooldownColor = Color(0.7539839, 0.75398386, 0.75398386, 0.4)
@@ -679,7 +675,7 @@ CooldownFillDirection = 1
 SuspendHoverScaleDuringCooldown = true
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="Attack" type="Control" parent="UI/Actions"]
+[node name="Attack" type="Control" parent="UI/Actions" unique_id=345030267]
 texture_filter = 1
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 1
@@ -699,12 +695,14 @@ LabelText = "Cooldown"
 IconExpandMode = 1
 IconStretchMode = 5
 LabelVerticalAlignment = 2
+InvertModes = 1
 EnableHoverScale = true
 HoverScale = 1.5
 ActionMaskBits = 1
 TouchSwipeExit = 1
 EnableCooldown = true
 CooldownTrigger = 1
+CooldownStartDelay = 0.1
 CooldownDuration = 0.25
 CooldownStartFilled = true
 CooldownColor = Color(0.90359825, 0.90359825, 0.9035982, 0.4)
@@ -713,7 +711,7 @@ SuspendHoverScaleDuringCooldown = true
 AllowHoldDuringCooldown = true
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="Defend" type="Control" parent="UI/Actions"]
+[node name="Defend" type="Control" parent="UI/Actions" unique_id=44179912]
 texture_filter = 1
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 1
@@ -751,7 +749,7 @@ SuspendHoverScaleDuringCooldown = true
 AllowHoldDuringCooldown = true
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="TextBlock" type="Control" parent="."]
+[node name="TextBlock" type="Control" parent="." unique_id=1129076638]
 unique_name_in_owner = true
 texture_filter = 1
 custom_minimum_size = Vector2(500, 400)
@@ -778,7 +776,7 @@ LabelAutowrap = 2
 TouchSwipeExit = 1
 metadata/_custom_type_script = "uid://3msmjo362g7m"
 
-[node name="ButtonOutput" type="Control" parent="."]
+[node name="ButtonOutput" type="Control" parent="." unique_id=864542839]
 unique_name_in_owner = true
 texture_filter = 1
 custom_minimum_size = Vector2(500, 25)
