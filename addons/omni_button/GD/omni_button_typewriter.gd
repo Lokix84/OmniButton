@@ -7,14 +7,12 @@ func _init(o: Omni_Button) -> void:
 	_o = o
 
 func start_typewriter(final_text: String = "", cps: float = 30.0, by_word: bool = false, preserve_bbcode_tags: bool = false) -> void:
-	var target := final_text
-	if target == null or target == "":
-		target = _o.TextToType
-	if target == "":
+	# Match C# StartTypewriterInternal: empty string cancels (no silent fallback to TextToType).
+	if final_text == null or final_text == "":
 		skip_typewriter()
 		return
 	var want_bb := preserve_bbcode_tags and _o._label_type == _o.LabelKind.RichTextLabel
-	var content := target if want_bb else _o._strip_bbcode(target)
+	var content := final_text if want_bb else _o._strip_bbcode(final_text)
 	_o._debug("Typewriter start len=%d cps=%.2f by_word=%s bbcode=%s" % [content.length(), cps, str(by_word), str(want_bb)])
 	_o._tw_bbcode_aware = want_bb
 	_o._tw_final_text = content
@@ -30,7 +28,7 @@ func start_typewriter(final_text: String = "", cps: float = 30.0, by_word: bool 
 	_o._setup_children()
 	_prefit_for_text(content)
 	if _o._tw_bbcode_aware:
-		var info := _tokenize_bbcode(target)
+		var info := _tokenize_bbcode(content)
 		_o._tw_bb_tokens = info["tokens"]
 		_o._tw_total_plain_chars = info["plain"]
 		_set_typewriter_visible_text(_build_visible_from_tokens(_o._tw_bb_tokens, 0))
@@ -44,7 +42,9 @@ func start_typewriter(final_text: String = "", cps: float = 30.0, by_word: bool 
 	_o.set_process(true)
 
 func start_typewriter_from_text_to_type(cps: float = 30.0, by_word: bool = false, preserve_bbcode_tags: bool = false) -> void:
-	start_typewriter(_o.TextToType, cps, by_word, preserve_bbcode_tags)
+	# Same source selection as CSharpTest: TextToType when set, else main Text (Text / RichLabelText backing).
+	var src := _o.TextToType if _o.TextToType != "" else _o._text
+	start_typewriter(src, cps, by_word, preserve_bbcode_tags)
 
 func skip_typewriter() -> void:
 	if _o._tw_final_text == "":
@@ -87,6 +87,10 @@ func _set_typewriter_visible_text(s: String) -> void:
 		_o._rich_label.text = s
 	if not _o._tw_active:
 		_o._text = s
+	elif _o.EnableTextAutoSize and _o.FixedFontSize <= 0:
+		# Label text changed but backing _text is unchanged — invalidate fit cache and shrink/grow font for current visible string.
+		_o._fit_cache_sig = ""
+		_o._fit_label_text()
 
 func process_typewriter(delta: float) -> void:
 	if not _o._tw_active:
@@ -209,36 +213,41 @@ func _prefit_for_text(content: String) -> void:
 	)
 	if avail.x <= 1.0 or avail.y <= 1.0: return
 	if _o._label_type == _o.LabelKind.RichTextLabel and _o._rich_label != null and is_instance_valid(_o._rich_label):
-		var base_font: Font = _o._rich_label.get_theme_font("normal_font") if _o._rich_label.get_theme_font("normal_font") != null else ThemeDB.fallback_font
-		if base_font == null: return
+		var fnt: Font = _o._get_rich_fit_font()
+		if fnt == null: return
 		var plain := _o._strip_bbcode(content)
-		var wrap_w := avail.x if _o.LabelAutowrap != TextServer.AUTOWRAP_OFF else -1
+		var wrap_enabled := _o.LabelAutowrap != TextServer.AUTOWRAP_OFF
+		var wrap_w := avail.x if wrap_enabled else -1.0
 		var lo := _o.MinFontSize
 		var hi := _o.MaxFontSize
 		var best := lo
 		while lo <= hi:
 			var mid := int((lo + hi) / 2)
-			var ts := base_font.get_string_size(plain, HORIZONTAL_ALIGNMENT_LEFT, wrap_w, mid)
-			if ts.x <= avail.x and ts.y <= avail.y:
+			var sz := _o._measure_paragraph(fnt, plain, wrap_w, mid)
+			if _o._fits_within(sz, avail, wrap_enabled):
 				best = mid; lo = mid + 1
 			else:
 				hi = mid - 1
-		_o._apply_rich_label_font_overrides(base_font, best)
+		best = _o._grow_font_size(fnt, plain, avail, wrap_w, wrap_enabled, best)
+		_o._apply_rich_label_font_overrides(fnt, best)
 		_o._last_fit_font_size = best
+		_o._rich_current_font_size = best
 	elif _o._label_type == _o.LabelKind.Label and _o._label != null and is_instance_valid(_o._label):
-		var fnt: Font = _o._label.get_theme_font("font") if _o._label.get_theme_font("font") != null else ThemeDB.fallback_font
-		if fnt == null: return
-		var wrap_w2 := avail.x if _o.LabelAutowrap != TextServer.AUTOWRAP_OFF else -1
+		var fnt2: Font = _o._label.get_theme_font("font") if _o._label.get_theme_font("font") != null else ThemeDB.fallback_font
+		if fnt2 == null: return
+		var wrap_en2 := _o.LabelAutowrap != TextServer.AUTOWRAP_OFF
+		var wrap_w2 := avail.x if wrap_en2 else -1.0
 		var lo2 := _o.MinFontSize
 		var hi2 := _o.MaxFontSize
 		var best2 := lo2
 		while lo2 <= hi2:
 			var mid2 := int((lo2 + hi2) / 2)
-			var ts2 := fnt.get_string_size(content, HORIZONTAL_ALIGNMENT_LEFT, wrap_w2, mid2)
-			if ts2.x <= avail.x and ts2.y <= avail.y:
+			var sz2 := _o._measure_paragraph(fnt2, content, wrap_w2, mid2)
+			if _o._fits_within(sz2, avail, wrap_en2):
 				best2 = mid2; lo2 = mid2 + 1
 			else:
 				hi2 = mid2 - 1
-		_o._label.add_theme_font_override("font", fnt)
+		best2 = _o._grow_font_size(fnt2, content, avail, wrap_w2, wrap_en2, best2)
+		_o._label.add_theme_font_override("font", fnt2)
 		_o._label.add_theme_font_size_override("font_size", best2)
 		_o._last_fit_font_size = best2

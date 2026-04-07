@@ -1,6 +1,10 @@
 @tool
 class_name Omni_Button
 extends Control
+## Flexible UI control (press/hover/toggle/hold/swipe, cooldown, optional virtual joystick).
+## User decorations: add as direct children (siblings of the internal _Managed node), not inside _Managed.
+## Reserved names (purged on refresh): Panel, Background, Icon, Label, RichLabel, Overlay, HoldFill, Cooldown, DefaultThumb, JoystickArea.
+## Use ManagedDrawOnTop for draw order; on decorative children set mouse_filter to IGNORE or PASS so input still reaches the button.
 
 const _accessors = preload("res://addons/omni_button/GD/omni_button_accessors.gd")
 const _visuals_script = preload("res://addons/omni_button/GD/omni_button_visuals.gd")
@@ -33,8 +37,8 @@ enum SwipeInitMode {OnHoverIn = 0, OnPressed = 1}
 enum SwipeExitMode {OnHoverOut = 0, OnReleased = 1}
 enum CooldownTriggerEnum {None = 0, OnPress = 1, OnRelease = 2, OnPressAndRelease = 3}
 enum DebuggerLogMode {OFF = 0, BASIC = 1}
-
-@export_enum("Off", "Basic") var DebuggerLog: int = DebuggerLogMode.OFF
+## Which modality owns the current press (mouse vs native touch) when emulate_mouse_from_touch is on.
+enum PointerGestureSource {None = 0, Mouse = 1, NativeTouch = 2}
 
 func _debug(message: String) -> void:
 	if not Engine.is_editor_hint() and DebuggerLog != DebuggerLogMode.OFF:
@@ -55,6 +59,20 @@ const ACT_SWIPE := 32
 const ACT_LOG := 64
 const ACT_WARNING := 128
 const ACT_ERROR := 256
+
+# Presets (Essentials)
+var _preset := Preset.None
+@export_category("Essentials")
+@export_group("Presets")
+@export var PresetSelection: Preset:
+	get: return _preset
+	set(value):
+		if _preset == value:
+			return
+		_preset = value
+		if _preset == Preset.Custom or _preset == Preset.None:
+			return
+		_apply_preset(_preset)
 
 # State
 @export_group("State")
@@ -130,21 +148,9 @@ var _is_holding := false
 			_debug("IsHolding=%s" % str(value))
 		_invalidate_visual_state()
 
-# Presets
-var _preset := Preset.None
-@export_group("Presets")
-@export var PresetSelection: Preset:
-	get: return _preset
-	set(value):
-		if _preset == value:
-			return
-		_preset = value
-		if _preset == Preset.Custom or _preset == Preset.None:
-			return
-		_apply_preset(_preset)
-
-# Content Display
-@export_group("Content Display")
+# Appearance
+@export_category("Appearance")
+@export_group("Background")
 var _background_mode := BackgroundMode.None
 @export var BackgroundType: BackgroundMode:
 	get: return _background_mode
@@ -155,54 +161,12 @@ var _background_mode := BackgroundMode.None
 		_invalidate_visual_state()
 
 var _icon_texture: Texture2D
-@export var IconTexture: Texture2D:
-	get: return _icon_texture
-	set(value):
-		_icon_texture = value
-		queue_refresh(true, false, true)
 
 enum LabelKind {Label = 0, RichTextLabel = 1}
 var _label_type: LabelKind = LabelKind.Label
-@export var LabelType: LabelKind:
-	get: return _label_type
-	set(value):
-		_label_type = value
-		_set_label_text()
-		_invalidate_visual_state()
-		_fit_label_text()
-
 var _text: String = ""
-@export_multiline var Text: String:
-	get: return _text
-	set(value):
-		_text = value if value != null else ""
-		_set_label_text()
-		_invalidate_visual_state()
-		_fit_label_text()
 
-@export_multiline var LabelText: String:
-	get: return _text if _label_type == LabelKind.Label else ""
-	set(value):
-		_text = value if value != null else ""
-		_label_type = LabelKind.Label
-		_set_label_text()
-		_invalidate_visual_state()
-		_fit_label_text()
-
-@export_multiline var RichLabelText: String:
-	get: return _text if _label_type == LabelKind.RichTextLabel else ""
-	set(value):
-		_text = value if value != null else ""
-		_label_type = LabelKind.RichTextLabel
-		_set_label_text()
-		_invalidate_visual_state()
-		_fit_label_text()
-
-@export_multiline var TextToType: String = ""
-@export var SelectedColor: Color = Color(1, 1, 1, 0.3)
-
-# Background Settings
-@export_subgroup("Background Settings")
+@export_subgroup("Panel & Texture")
 @export var PanelThemeVariation: String = ""
 @export var PanelStyleBox: StyleBox
 @export var BackgroundTexture: Texture2D
@@ -213,31 +177,75 @@ var _text: String = ""
 @export var PanelModulate: Color = Color.WHITE
 @export var BackgroundModulate: Color = Color.WHITE
 
-# Icon Settings
-@export_subgroup("Icon Settings")
+@export_group("Icon")
+@export var IconTexture: Texture2D:
+	get: return _icon_texture
+	set(value):
+		_icon_texture = value
+		queue_refresh(true, false, true)
 @export var IconExpandMode: int = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 @export var IconStretchMode: int = TextureRect.STRETCH_SCALE
 @export var IconFlipH: bool = false
 @export var IconFlipV: bool = false
 @export var IconModulate: Color = Color.WHITE
 
-# Label Settings
-@export_subgroup("Label Settings")
+@export_group("Text")
+@export var LabelType: LabelKind:
+	get: return _label_type
+	set(value):
+		_label_type = value
+		if _tw_active:
+			_invalidate_visual_state()
+			return
+		_set_label_text()
+		_invalidate_visual_state()
+		_schedule_fit_label()
+
+@export_multiline var Text: String:
+	get: return _text
+	set(value):
+		_text = value if value != null else ""
+		if _tw_active:
+			_invalidate_visual_state()
+			return
+		_set_label_text()
+		_invalidate_visual_state()
+		_schedule_fit_label()
+
+@export_subgroup("Legacy Scenes")
+@export_multiline var LabelText: String:
+	get: return _text if _label_type == LabelKind.Label else ""
+	set(value):
+		_text = value if value != null else ""
+		_label_type = LabelKind.Label
+		if _tw_active:
+			_invalidate_visual_state()
+			return
+		_set_label_text()
+		_invalidate_visual_state()
+		_schedule_fit_label()
+
+@export_multiline var RichLabelText: String:
+	get: return _text if _label_type == LabelKind.RichTextLabel else ""
+	set(value):
+		_text = value if value != null else ""
+		_label_type = LabelKind.RichTextLabel
+		if _tw_active:
+			_invalidate_visual_state()
+			return
+		_set_label_text()
+		_invalidate_visual_state()
+		_schedule_fit_label()
+
+@export_multiline var TextToType: String = ""
+
+@export_group("Label")
+@export_subgroup("Typography")
 @export var LabelFont: Font
 @export var LabelTextColor: Color = Color.WHITE
 @export var TextModulate: Color = Color.WHITE
-@export var TextFitPadding: Vector2 = Vector2(12, 4)
-@export_range(6, 300, 1) var MinFontSize: int = 6
-@export_range(6, 300, 1) var MaxFontSize: int = 100
-@export_range(0, 300, 1) var FixedFontSize: int = 0
-@export var EnableTextAutoSize: bool = true
 @export var LabelHorizontalAlignment: HorizontalAlignment = HORIZONTAL_ALIGNMENT_CENTER
 @export var LabelVerticalAlignment: VerticalAlignment = VERTICAL_ALIGNMENT_CENTER
-@export var LabelPadding: Vector2 = Vector2.ZERO
-@export_range(0, 4096, 1) var LabelAdditionalPaddingLeft: float = 0.0
-@export_range(0, 4096, 1) var LabelAdditionalPaddingTop: float = 0.0
-@export_range(0, 4096, 1) var LabelAdditionalPaddingRight: float = 0.0
-@export_range(0, 4096, 1) var LabelAdditionalPaddingBottom: float = 0.0
 var _label_autowrap: TextServer.AutowrapMode = TextServer.AUTOWRAP_OFF
 @export var LabelAutowrap: TextServer.AutowrapMode:
 	get: return _label_autowrap
@@ -247,22 +255,40 @@ var _label_autowrap: TextServer.AutowrapMode = TextServer.AUTOWRAP_OFF
 		_label_autowrap = value
 		_invalidate_autosize_state()
 		_invalidate_visual_state()
-		_fit_label_text()
+		_schedule_fit_label()
+
+@export_subgroup("Sizing & Fit")
+@export var TextFitPadding: Vector2 = Vector2(12, 4)
+## Autosize binary search cost scales with log2(MaxFontSize - MinFontSize). Keep the range tight for UI perf.
+@export_range(6, 300, 1) var MinFontSize: int = 6
+@export_range(6, 300, 1) var MaxFontSize: int = 100
+@export_range(0, 300, 1) var FixedFontSize: int = 0
+@export var EnableTextAutoSize: bool = true
+@export var LabelPadding: Vector2 = Vector2.ZERO
+@export_range(0, 4096, 1) var LabelAdditionalPaddingLeft: float = 0.0
+@export_range(0, 4096, 1) var LabelAdditionalPaddingTop: float = 0.0
+@export_range(0, 4096, 1) var LabelAdditionalPaddingRight: float = 0.0
+@export_range(0, 4096, 1) var LabelAdditionalPaddingBottom: float = 0.0
+
+@export_group("Typewriter")
 @export var SuspendHoverDuringTypewriter: bool = true
 @export var DelayEffectTagsDuringTypewriter: bool = true
 @export var FinishTypewriterOnPress: bool = true
 
-# Invert Display
+@export_group("Visual Effects")
 @export_subgroup("Invert Display")
 @export_flags("Press", "Toggle", "Hover", "Hold") var InvertModes: int = 0
 
-# Hover Scaling
 @export_subgroup("Hover Scaling")
 @export var EnableHoverScale: bool = false
 @export_range(1.0, 3.0, 0.01) var HoverScale: float = 1.25
 @export_range(0.0, 100.0, 0.1) var HoverLerpSpeed: float = 25.0
 
-# Actions
+@export_group("Selection")
+@export var SelectedColor: Color = Color(1, 1, 1, 0.3)
+
+# Behavior
+@export_category("Behavior")
 @export_group("Actions")
 @export_flags("Pressed", "Released", "Hover", "Toggle", "Hold", "Swipe", "Log", "Warning", "Error") var ActionMaskBits: int = 0
 var PressedAction: Callable
@@ -353,6 +379,7 @@ var EnableErrorActions: bool:
 # Cache the last chosen autosize to accelerate append cases
 var _last_fit_font_size: int = -1
 var _rich_current_font_size: int = -1
+var _rich_verify_passes: int = 0
 
 # Typewriter support
 const TYPEWRITER_EFFECT_TAGS := {
@@ -413,20 +440,67 @@ func _invalidate_autosize_state() -> void:
 	_fit_cache_sig = ""
 	_last_fit_font_size = -1
 	_rich_current_font_size = -1
+	_rich_verify_passes = 0
 
 # Toggle Behavior
 enum InteractionModeEnum {Momentary = 0, ToggleOnPress = 1, ToggleOnRelease = 2}
 @export_subgroup("Toggle Behavior")
 @export var InteractionMode: InteractionModeEnum = InteractionModeEnum.Momentary
 
-# Input
-@export_group("Input")
+# Cooldown
+@export_group("Cooldown")
+var _enable_cooldown := false
+@export var EnableCooldown: bool:
+	get: return _enable_cooldown
+	set(value):
+		if _enable_cooldown == value:
+			return
+		_enable_cooldown = value
+		if not _enable_cooldown:
+			CooldownTrigger = CooldownTriggerEnum.None
+			CooldownStartDelay = 0.0
+			CooldownDuration = 1.0
+			CooldownStartFilled = false
+			CooldownColor = Color(0, 0, 0, 0.4)
+			CooldownFillDirection = CooldownDirection.BottomToTop
+			InvertOnCooldown = false
+			CooldownInvertDuration = 0.0
+			SuspendHoverScaleDuringCooldown = false
+			AllowHoldDuringCooldown = false
+			HideCooldownDuringHoldBuildUp = true
+			_cooldown_active = false
+			_cooldown_time_left = 0.0
+			_cooldown_delay_pending = false
+			_cooldown_delay_left = 0.0
+			_cooldown_elapsed = 0.0
+			if _cooldown != null and is_instance_valid(_cooldown):
+				_cooldown.visible = false
+				_cooldown.size = Vector2.ZERO
+				_cooldown.position = Vector2.ZERO
+@export var CooldownTrigger: CooldownTriggerEnum = CooldownTriggerEnum.None
+@export_range(0.0, 10.0, 0.01) var CooldownStartDelay: float = 0.0
+@export_range(0.05, 60.0, 0.05) var CooldownDuration: float = 1.0
+@export var CooldownStartFilled: bool = false
+@export var CooldownColor: Color = Color(0, 0, 0, 0.4)
+@export var CooldownFillDirection: int = CooldownDirection.BottomToTop
+@export var InvertOnCooldown: bool = false
+@export_range(0.0, 10.0, 0.01) var CooldownInvertDuration: float = 0.0
+@export var SuspendHoverScaleDuringCooldown: bool = false
+@export var AllowHoldDuringCooldown: bool = false
+@export var HideCooldownDuringHoldBuildUp: bool = true
+
+# Input & Motion
+@export_category("Input & Motion")
+@export_group("Input bounds")
+## If set, hit tests use this control's global rect instead of the OmniButton's (larger target, match parent, etc.).
 @export var BoundsSource: Control
+## Pixels to grow the hit rect on each side (x = left/right, y = top/bottom).
 @export var HitSlop: Vector2 = Vector2.ZERO
 
-# Follow Input
-@export_group("Follow Input")
+# Drag / joystick while pointer is held
+@export_group("Drag & virtual joystick")
 var _follow_mode: FollowModeEnum = FollowModeEnum.None
+## While pressed: None = stays put; FollowBoth = moves with pointer; VirtualJoystick = axis signals (see subgroup below).
 @export var FollowMode: FollowModeEnum:
 	get: return _follow_mode
 	set(value):
@@ -495,48 +569,6 @@ var _enable_default_thumb := true
 @export_subgroup("Legacy Flags (Compat)")
 @export var ClampToBounds: bool = true
 
-# Cooldown
-@export_group("Cooldown")
-var _enable_cooldown := false
-@export var EnableCooldown: bool:
-	get: return _enable_cooldown
-	set(value):
-		if _enable_cooldown == value:
-			return
-		_enable_cooldown = value
-		if not _enable_cooldown:
-			CooldownTrigger = CooldownTriggerEnum.None
-			CooldownStartDelay = 0.0
-			CooldownDuration = 1.0
-			CooldownStartFilled = false
-			CooldownColor = Color(0, 0, 0, 0.4)
-			CooldownFillDirection = CooldownDirection.BottomToTop
-			InvertOnCooldown = false
-			CooldownInvertDuration = 0.0
-			SuspendHoverScaleDuringCooldown = false
-			AllowHoldDuringCooldown = false
-			HideCooldownDuringHoldBuildUp = true
-			_cooldown_active = false
-			_cooldown_time_left = 0.0
-			_cooldown_delay_pending = false
-			_cooldown_delay_left = 0.0
-			_cooldown_elapsed = 0.0
-			if _cooldown != null and is_instance_valid(_cooldown):
-				_cooldown.visible = false
-				_cooldown.size = Vector2.ZERO
-				_cooldown.position = Vector2.ZERO
-@export var CooldownTrigger: CooldownTriggerEnum = CooldownTriggerEnum.None
-@export_range(0.0, 10.0, 0.01) var CooldownStartDelay: float = 0.0
-@export_range(0.05, 60.0, 0.05) var CooldownDuration: float = 1.0
-@export var CooldownStartFilled: bool = false
-@export var CooldownColor: Color = Color(0, 0, 0, 0.4)
-@export var CooldownFillDirection: int = CooldownDirection.BottomToTop
-@export var InvertOnCooldown: bool = false
-@export_range(0.0, 10.0, 0.01) var CooldownInvertDuration: float = 0.0
-@export var SuspendHoverScaleDuringCooldown: bool = false
-@export var AllowHoldDuringCooldown: bool = false
-@export var HideCooldownDuringHoldBuildUp: bool = true
-
 # Private state and caches
 var _hover_target_scale := 1.0
 var _hold_timer := 0.0
@@ -549,6 +581,9 @@ var _swipe_start := Vector2.ZERO
 var _swipe_origin := Vector2.ZERO
 var _is_swiping := false
 var _touch_swipe_eligible := false
+## -1 = mouse session; >= 0 = finger index for native touch press on this control
+var _active_touch_index := -1
+var _pointer_gesture_source: PointerGestureSource = PointerGestureSource.None
 var _hover_top_level_active := false
 var _saved_global_pos := Vector2.ZERO
 var _vj_active := false
@@ -576,12 +611,17 @@ var _fit_cache_sig: String = ""
 var _managed_root: Control
 var _managed_draw_on_top := true
 var _runtime_refit_frames := 0
+var _signals: OmniButtonSignals
 
+@export_category("Composition")
 @export var ManagedDrawOnTop: bool:
 	get: return _managed_draw_on_top
 	set(value):
 		_managed_draw_on_top = value
 		_position_managed_root()
+
+@export_category("Debug")
+@export_enum("Off", "Basic") var DebuggerLog: int = DebuggerLogMode.OFF
 
 func _ensure_managed_root() -> void:
 	if _managed_root != null and is_instance_valid(_managed_root):
@@ -616,6 +656,15 @@ func queue_refresh(children:=false, panel_styling:=false, fit_label:=true) -> vo
 	_pending_visual_refresh = true
 	_pending_fit_label = _pending_fit_label or fit_label
 	set_process(true)
+
+## Runtime: coalesce autosize with the next _process pass (after ApplyVisualState). Editor: fit immediately for inspector.
+func _schedule_fit_label() -> void:
+	if Engine.is_editor_hint():
+		_fit_label_text()
+	else:
+		_pending_fit_label = true
+		set_process(true)
+
 func _editor_build_signature() -> String:
 	return _editor.build_signature()
 
@@ -662,7 +711,6 @@ func _ready() -> void:
 @onready var _state = OmniButtonState.new(self )
 @onready var _joystick = OmniButtonJoystick.new(self )
 @onready var _editor = OmniButtonEditor.new(self )
-@onready var _signals = OmniButtonSignals.new(self )
 
 func _exit_tree() -> void:
 	_ensure_signals()
@@ -733,8 +781,43 @@ func _process(delta: float) -> void:
 		_fit_cache_sig = ""
 		_fit_label_text()
 
+	_try_stop_process_when_fully_idle()
 	# Do not reassign exported state properties every frame; avoids extra setter work
 	# Properties are updated at the time state changes (press/hover/toggle/hold)
+
+func _managed_hover_scales_match(target: Vector2, eps := 0.001) -> bool:
+	for n in [_panel, _background_tex, _icon, _label, _rich_label, _overlay]:
+		if n != null and is_instance_valid(n):
+			if n.scale.distance_to(target) >= eps:
+				return false
+	return true
+
+func _hover_scale_animation_pending() -> bool:
+	if not EnableHoverScale:
+		return false
+	if _tw_active and SuspendHoverDuringTypewriter:
+		return not _managed_hover_scales_match(Vector2.ONE)
+	if EnableCooldown and _cooldown_active and SuspendHoverScaleDuringCooldown:
+		return not _managed_hover_scales_match(Vector2.ONE)
+	var ts := _hover_target_scale if _is_hovering else 1.0
+	return not _managed_hover_scales_match(Vector2.ONE * ts)
+
+func _try_stop_process_when_fully_idle() -> void:
+	if Engine.is_editor_hint():
+		return
+	if _pending_children_refresh or _pending_panel_styling or _pending_visual_refresh or _pending_fit_label:
+		return
+	if _runtime_refit_frames > 0:
+		return
+	if _tw_active or _cooldown_delay_pending:
+		return
+	if EnableCooldown and _cooldown_active:
+		return
+	if _is_pressed and (not EnableCooldown or not _cooldown_active or AllowHoldDuringCooldown or EnableHoldBuildUp):
+		return
+	if _hover_scale_animation_pending():
+		return
+	set_process(false)
 
 func _notification(what: int) -> void:
 	match what:
@@ -751,6 +834,12 @@ func _notification(what: int) -> void:
 			if _is_hovering and EnableHoverScale: _hover_target_scale = _hover_target_for_viewport(); set_process(true)
 		NOTIFICATION_VISIBILITY_CHANGED:
 			if not is_visible_in_tree(): _state.reset_press_state(true, true); _is_hovering = false; _invalidate_visual_state()
+		NOTIFICATION_TRANSFORM_CHANGED:
+			if _is_hovering and EnableHoverScale:
+				_update_hover_pivots()
+				_hover_target_scale = _hover_target_for_viewport()
+				set_process(true)
+			_fit_label_text()
 		NOTIFICATION_PREDELETE:
 			_exit_tree()
 
@@ -833,15 +922,21 @@ func _configure_rich_label(rtl: RichTextLabel) -> void:
 	_visuals.configure_rich_label(rtl)
 
 func _set_label_text() -> void:
-	# Remove both if empty
-	if _text == "":
-		if _label != null and is_instance_valid(_label):
-			var p1 := _label.get_parent(); if p1 != null and is_instance_valid(p1): p1.remove_child(_label)
-			_label.queue_free(); _label = null
-		if _rich_label != null and is_instance_valid(_rich_label):
-			var p2 := _rich_label.get_parent(); if p2 != null and is_instance_valid(p2): p2.remove_child(_rich_label)
-			_rich_label.queue_free(); _rich_label = null
+	if _tw_active:
 		return
+	# Remove both if empty — unless a label is still required (C# SetupChildren parity):
+	# RichTextLabel with no Text yet, BBCode typewriter about to run, or plain typewriter seeding from TextToType only.
+	if _text == "":
+		var need_label := (_label_type == LabelKind.RichTextLabel) or _tw_bbcode_aware \
+			or ((_label_type == LabelKind.Label) and (_tw_final_text != "") and not _tw_bbcode_aware)
+		if not need_label:
+			if _label != null and is_instance_valid(_label):
+				var p1 := _label.get_parent(); if p1 != null and is_instance_valid(p1): p1.remove_child(_label)
+				_label.queue_free(); _label = null
+			if _rich_label != null and is_instance_valid(_rich_label):
+				var p2 := _rich_label.get_parent(); if p2 != null and is_instance_valid(p2): p2.remove_child(_rich_label)
+				_rich_label.queue_free(); _rich_label = null
+			return
 	# Create one based on LabelType
 	if _label_type == LabelKind.Label:
 		if _rich_label != null and is_instance_valid(_rich_label):
@@ -861,11 +956,19 @@ func _set_label_text() -> void:
 	if _label != null and is_instance_valid(_label): _configure_label(_label)
 	if _rich_label != null and is_instance_valid(_rich_label): _configure_rich_label(_rich_label)
 
+## Autosize cache must track the string actually shown on the label (typewriter updates the label, not _text).
+func _text_for_fit_signature() -> String:
+	if _rich_label != null and is_instance_valid(_rich_label):
+		return _rich_label.text
+	if _label != null and is_instance_valid(_label):
+		return _label.text
+	return _text
+
 func _fit_label_text() -> void:
 	if _fitting_label:
 		return
 	var sig := "%s|%s|%s|%s|%s|%s|%s" % [
-		_text,
+		_text_for_fit_signature(),
 		str(size),
 		str(LabelPadding),
 		"%s,%s,%s,%s" % [LabelAdditionalPaddingLeft, LabelAdditionalPaddingTop, LabelAdditionalPaddingRight, LabelAdditionalPaddingBottom],
@@ -875,7 +978,7 @@ func _fit_label_text() -> void:
 	]
 	if sig == _fit_cache_sig:
 		return
-	_debug("Autosize begin size=%s type=%s wrap=%s text='%s'" % [str(size), str(LabelType), str(LabelAutowrap), _text])
+	_debug("Autosize begin size=%s type=%s wrap=%s text='%s'" % [str(size), str(LabelType), str(LabelAutowrap), _text_for_fit_signature()])
 	if FixedFontSize > 0:
 		if _label != null and is_instance_valid(_label):
 			_label.add_theme_font_size_override("font_size", FixedFontSize)
@@ -945,11 +1048,23 @@ func _fit_plain_label() -> bool:
 	_label.add_theme_font_size_override("font_size", best)
 	_label.update_minimum_size()
 	_label.queue_redraw()
+	var guard2 := 0
+	while best > MinFontSize and guard2 < 64:
+		var sz := _measure_paragraph(fnt, text, wrap_w, best)
+		if _fits_within(sz, avail, wrap_enabled):
+			break
+		best -= 1
+		_label.add_theme_font_override("font", fnt)
+		_label.add_theme_font_size_override("font_size", best)
+		_label.update_minimum_size()
+		_label.queue_redraw()
+		guard2 += 1
 	_last_fit_font_size = best
 	_debug("Autosize plain fitted size=%d avail=%s" % [best, str(avail)])
 	return true
 
 func _fit_rich_text_label() -> bool:
+	# Match C# FitRichTextLabel: LabelFont ?? ThemeDB.FallbackFont; MeasureParagraph only for search/grow (no RTL mutation in binary search).
 	var wrap_enabled := LabelAutowrap != TextServer.AUTOWRAP_OFF
 	var avail := _calculate_available_area()
 	if avail.x <= 1.0 or avail.y <= 1.0:
@@ -957,17 +1072,17 @@ func _fit_rich_text_label() -> bool:
 		return false
 	if _rich_label == null or not is_instance_valid(_rich_label):
 		return false
-	var base_font: Font = _rich_label.get_theme_font("normal_font") if _rich_label.get_theme_font("normal_font") != null else ThemeDB.fallback_font
-	if base_font == null:
+	var fnt: Font = _get_rich_fit_font()
+	if fnt == null:
 		return false
 	var plain := _strip_bbcode(_rich_label.text)
 	var wrap_w := avail.x if wrap_enabled else -1.0
 	var seed := _rich_current_font_size if _rich_current_font_size > 0 else _last_fit_font_size
 	if seed > 0:
-		var sz0 := _measure_paragraph(base_font, plain, wrap_w, seed)
+		var sz0 := _measure_paragraph(fnt, plain, wrap_w, seed)
 		if _fits_within(sz0, avail, wrap_enabled):
-			var grown := _grow_font_size(base_font, plain, avail, wrap_w, wrap_enabled, seed)
-			_apply_rich_label_font_overrides(base_font, grown)
+			var grown := _grow_font_size(fnt, plain, avail, wrap_w, wrap_enabled, seed)
+			_apply_rich_label_font_overrides(fnt, grown)
 			_rich_label.update_minimum_size()
 			_rich_label.queue_redraw()
 			_rich_current_font_size = grown
@@ -978,24 +1093,76 @@ func _fit_rich_text_label() -> bool:
 		var guard := 0
 		while s > MinFontSize and guard < 16:
 			s -= 1
-			var sz1 := _measure_paragraph(base_font, plain, wrap_w, s)
+			var sz1 := _measure_paragraph(fnt, plain, wrap_w, s)
 			if _fits_within(sz1, avail, wrap_enabled):
-				_apply_rich_label_font_overrides(base_font, s)
+				_apply_rich_label_font_overrides(fnt, s)
 				_rich_label.update_minimum_size()
 				_rich_label.queue_redraw()
 				_rich_current_font_size = s
 				_last_fit_font_size = s
 				return true
 			guard += 1
-	var best := _find_best_font_size(base_font, plain, avail, wrap_w, wrap_enabled)
-	best = _grow_font_size(base_font, plain, avail, wrap_w, wrap_enabled, best)
-	_apply_rich_label_font_overrides(base_font, best)
+	var best := _find_best_font_size(fnt, plain, avail, wrap_w, wrap_enabled)
+	best = _grow_font_size(fnt, plain, avail, wrap_w, wrap_enabled, best)
+	_apply_rich_label_font_overrides(fnt, best)
 	_rich_label.update_minimum_size()
 	_rich_label.queue_redraw()
 	_rich_current_font_size = best
-	_last_fit_font_size = best
-	_debug("Autosize rich fitted size=%d avail=%s" % [best, str(avail)])
+	# Quick clamp (C#: GetContentHeight vs avail.Y; overW uses MeasureParagraph + FitsWithin && width)
+	var guard_r := 0
+	while best > MinFontSize and guard_r < 32:
+		var over_h := _rich_height_exceeds_avail(avail.y, fnt, plain, wrap_w, best)
+		var sz_chk := _measure_paragraph(fnt, plain, wrap_w, best)
+		var over_w := not _fits_within(sz_chk, avail, wrap_enabled) and sz_chk.x > avail.x
+		if not over_h and not over_w:
+			break
+		best -= 1
+		_apply_rich_label_font_overrides(fnt, best)
+		_rich_label.update_minimum_size()
+		_rich_label.queue_redraw()
+		_rich_current_font_size = best
+		guard_r += 1
+	_last_fit_font_size = _rich_current_font_size
+	_debug("Autosize rich fitted size=%d avail=%s" % [_rich_current_font_size, str(avail)])
+	_rich_verify_passes = 0
+	call_deferred("_verify_rich_text_fit")
 	return true
+
+func _verify_rich_text_fit() -> void:
+	if _rich_label == null or not is_instance_valid(_rich_label):
+		return
+	var avail := _calculate_available_area()
+	avail = Vector2(max(1.0, avail.x - 2.0), max(1.0, avail.y - 2.0))
+	if avail.x <= 1.0 or avail.y <= 1.0:
+		return
+	var fnt: Font = _get_rich_fit_font()
+	if fnt == null:
+		return
+	var plain := _strip_bbcode(_rich_label.text)
+	var wrap_enabled := LabelAutowrap != TextServer.AUTOWRAP_OFF
+	var wrap_w := avail.x if wrap_enabled else -1.0
+	var size_px := _rich_current_font_size if _rich_current_font_size > 0 else MinFontSize
+	var guard := 0
+	_rich_label.update_minimum_size()
+	_rich_label.queue_redraw()
+	while size_px > MinFontSize and guard < 64:
+		var over_h := _rich_height_exceeds_avail(avail.y, fnt, plain, wrap_w, size_px)
+		var measured := _measure_paragraph(fnt, plain, wrap_w, size_px)
+		var over_w := not _fits_within(measured, avail, wrap_enabled)
+		if not over_h and not over_w:
+			break
+		size_px -= 1
+		_apply_rich_label_font_overrides(fnt, size_px)
+		_rich_label.update_minimum_size()
+		_rich_label.queue_redraw()
+		_rich_current_font_size = size_px
+		guard += 1
+	var still_over := _rich_height_exceeds_avail(avail.y, fnt, plain, wrap_w, size_px) or not _fits_within(_measure_paragraph(fnt, plain, wrap_w, size_px), avail, wrap_enabled)
+	if still_over and _rich_verify_passes < 8:
+		_rich_verify_passes += 1
+		call_deferred("_verify_rich_text_fit")
+	else:
+		_last_fit_font_size = _rich_current_font_size
 
 func _calculate_available_area() -> Vector2:
 	var tp := TextFitPadding
@@ -1037,6 +1204,20 @@ func _get_line_break_flags() -> int:
 func _fits_within(measured: Vector2, avail: Vector2, wrap_enabled: bool) -> bool:
 	var width_ok := measured.x <= (avail.x + (0.5 if wrap_enabled else 0.0))
 	return width_ok and measured.y <= avail.y
+
+func _get_rich_fit_font() -> Font:
+	if LabelFont != null:
+		return LabelFont
+	return ThemeDB.fallback_font
+
+## Prefer RichTextLabel layout height when ready; otherwise TextParagraph (same frame as fit).
+func _rich_height_exceeds_avail(avail_y: float, fnt: Font, plain: String, wrap_w: float, size_px: int) -> bool:
+	if _rich_label == null or not is_instance_valid(_rich_label):
+		return false
+	var gh: float = _rich_label.get_content_height()
+	if gh > 0.5:
+		return gh > avail_y
+	return _measure_paragraph(fnt, plain, wrap_w, size_px).y > avail_y
 
 func _grow_font_size(fnt: Font, text: String, avail: Vector2, wrap_width: float, wrap_enabled: bool, current: int) -> int:
 	var lo := current + 1
@@ -1194,6 +1375,9 @@ func _get_or_create_label() -> Label:
 
 func _input_inside(event: InputEvent) -> bool:
 	return _input.input_inside(event)
+
+func _screen_drag_matches_active_touch(sd: InputEventScreenDrag) -> bool:
+	return _active_touch_index < 0 or sd.index == _active_touch_index
 
 func _point_inside(global_point: Vector2) -> bool:
 	var rect := get_global_rect()
@@ -1500,9 +1684,11 @@ func _update_hold_fill_visual() -> void:
 
 
 func _set_callable_property(name: String, callable: Callable) -> void:
+	_ensure_signals()
 	_signals.set_callable_property(name, callable)
 
 func _adopt_connected_callable(sig_name: String, fallback: Callable) -> Callable:
+	_ensure_signals()
 	return _signals.adopt_connected_callable(sig_name, fallback)
 
 func _run_built_in_pressed() -> void: pass

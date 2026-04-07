@@ -30,11 +30,57 @@ var _selected_buttons: Array = []
 var _used_button: Omni_Button
 
 func _ready() -> void:
-	# Find nodes already present in the scene (mirrors CSharpTest)
-	_find_nodes()
-	_wire_handlers()
+	# Order mirrors CSharpTest._Ready: touch areas, gamepad + joysticks, wiring, selection, logger, typewriter.
+	_move_area = get_node_or_null("TouchArea/Move")
+	_look_area = get_node_or_null("TouchArea/Look")
+	if is_instance_valid(_move_area):
+		_move_area.mouse_filter = Control.MOUSE_FILTER_STOP
+	if is_instance_valid(_look_area):
+		_look_area.mouse_filter = Control.MOUSE_FILTER_STOP
 
-	# Logger button (unique name, name, or group fallback)
+	_gamepad = get_node_or_null("Gamepad")
+	_center = get_node_or_null("Gamepad/Center")
+	if is_instance_valid(_center):
+		OmniButtonPresets.apply_virtual_joystick(_center)
+	if is_instance_valid(_center) and is_instance_valid(_gamepad):
+		_center.BoundsSource = _gamepad
+		_center.EnableJoystickArea = true
+		_center.JoystickAreaUseRectForClamp = true
+		_center.JoystickAreaPersistent = false
+		_center.JoystickAreaExternalPath = NodePath("../Border")
+		_center.JoystickAreaThickness = 0
+		_center.EnableDefaultThumb = false
+
+	_lookjoystick = get_node_or_null("LookJoystick")
+	_lookcenter = get_node_or_null("LookJoystick/Center")
+	if is_instance_valid(_lookcenter):
+		OmniButtonPresets.apply_virtual_joystick(_lookcenter)
+	if is_instance_valid(_lookcenter) and is_instance_valid(_lookjoystick):
+		_lookcenter.BoundsSource = _lookjoystick
+		_lookcenter.JoystickHideWhenInactive = true
+		_lookcenter.EnableJoystickArea = true
+	if is_instance_valid(_lookjoystick):
+		_lookjoystick.visible = false
+
+	_up = get_node_or_null("Gamepad/Up")
+	_down = get_node_or_null("Gamepad/Down")
+	_left = get_node_or_null("Gamepad/Left")
+	_right = get_node_or_null("Gamepad/Right")
+	_up_left = get_node_or_null("Gamepad/UpLeft")
+	_up_right = get_node_or_null("Gamepad/UpRight")
+	_down_left = get_node_or_null("Gamepad/DownLeft")
+	_down_right = get_node_or_null("Gamepad/DownRight")
+
+	_wire_handlers()
+	_wire_swipe_button()
+
+	_selected_container = get_node_or_null("UI/HotbarHUD/SingleSelectList")
+	if _selected_container == null:
+		_selected_container = get_node_or_null("SelectedItems")
+	_used_button = get_node_or_null("UI/Actions/UseItem")
+	if _selected_container != null:
+		_wire_selected_items(_selected_container)
+
 	_output = get_node_or_null("%ButtonOutput")
 	if _output == null:
 		_output = get_node_or_null("ButtonOutput")
@@ -47,18 +93,6 @@ func _ready() -> void:
 		_output.Text = "Logger ready"
 		_connect_all_buttons_to_output(_output)
 
-	# Optional selected-item container
-	_selected_container = get_node_or_null("UI/HotbarHUD/SingleSelectList")
-	if _selected_container == null:
-		_selected_container = get_node_or_null("SelectedItems")
-	_used_button = get_node_or_null("UI/Actions/UseItem")
-	if is_instance_valid(_used_button):
-		_used_button.Selected = true
-		_used_button.Disabled = true
-	if _selected_container != null:
-		_wire_selected_items(_selected_container)
-
-	# Optional static TextBlock (typewriter demo)
 	_output2 = get_node_or_null("%TextBlock")
 	if _output2 == null:
 		_output2 = get_node_or_null("TextBlock")
@@ -78,46 +112,16 @@ func _ready() -> void:
 				)
 			_output2.start_typewriter_from_text_to_type(40.0, false, true)
 
-func _find_nodes() -> void:
-	_move_area = get_node_or_null("TouchArea/Move")
-	_look_area = get_node_or_null("TouchArea/Look")
-	_gamepad = get_node_or_null("Gamepad")
-	_center = get_node_or_null("Gamepad/Center")
-	_lookjoystick = get_node_or_null("LookJoystick")
-	_lookcenter = get_node_or_null("LookJoystick/Center")
-	if is_instance_valid(_center):
-		OmniButtonPresets.apply_virtual_joystick(_center)
-	if is_instance_valid(_lookcenter):
-		OmniButtonPresets.apply_virtual_joystick(_lookcenter)
-	_up = get_node_or_null("Gamepad/Up")
-	_down = get_node_or_null("Gamepad/Down")
-	_left = get_node_or_null("Gamepad/Left")
-	_right = get_node_or_null("Gamepad/Right")
-	_up_left = get_node_or_null("Gamepad/UpLeft")
-	_up_right = get_node_or_null("Gamepad/UpRight")
-	_down_left = get_node_or_null("Gamepad/DownLeft")
-	_down_right = get_node_or_null("Gamepad/DownRight")
-
-	if is_instance_valid(_move_area):
-		_move_area.mouse_filter = Control.MOUSE_FILTER_STOP
-	if is_instance_valid(_look_area):
-		_look_area.mouse_filter = Control.MOUSE_FILTER_STOP
-
-	# Set bounds for joysticks like CSharpTest
-	if is_instance_valid(_center) and is_instance_valid(_gamepad):
-		_center.BoundsSource = _gamepad
-		_center.EnableJoystickArea = true
-		_center.JoystickAreaUseRectForClamp = true
-		_center.JoystickAreaPersistent = false
-		_center.JoystickAreaExternalPath = NodePath("../Border")
-		_center.JoystickAreaThickness = 0
-		_center.EnableDefaultThumb = false
-	if is_instance_valid(_lookcenter) and is_instance_valid(_lookjoystick):
-		_lookcenter.BoundsSource = _lookjoystick
-		_lookcenter.JoystickHideWhenInactive = true
-		_lookcenter.EnableJoystickArea = true
-	if is_instance_valid(_lookjoystick):
-		_lookjoystick.visible = false
+func _wire_swipe_button() -> void:
+	var swipe_btn := get_node_or_null("UI/Icons/SwipeButton") as Omni_Button
+	if swipe_btn == null:
+		return
+	var c_swipe := Callable(self, "_on_swipe_button_swipe").bind(swipe_btn)
+	var c_end := Callable(self, "_on_swipe_button_swipe_ended").bind(swipe_btn)
+	if not swipe_btn.is_connected("swipe", c_swipe):
+		swipe_btn.connect("swipe", c_swipe)
+	if not swipe_btn.is_connected("swipe_ended", c_end):
+		swipe_btn.connect("swipe_ended", c_end)
 
 func _wire_handlers() -> void:
 	if is_instance_valid(_move_area):
@@ -215,6 +219,10 @@ func _begin_look_at(global_point: Vector2) -> void:
 	_lookcenter.start_virtual_joystick_at(global_point)
 
 func _update_center_follow(global_point: Vector2) -> void:
+	if not _move_active or not is_instance_valid(_gamepad) or not _gamepad.visible:
+		return
+	if not is_instance_valid(_center):
+		return
 	_center.update_virtual_joystick(global_point)
 	var gp := _gamepad.get_global_rect()
 	var probe := Vector2(
@@ -224,6 +232,10 @@ func _update_center_follow(global_point: Vector2) -> void:
 	_update_directional_hover(probe)
 
 func _update_look_follow(global_point: Vector2) -> void:
+	if not _look_active or not is_instance_valid(_lookjoystick) or not _lookjoystick.visible:
+		return
+	if not is_instance_valid(_lookcenter):
+		return
 	_lookcenter.update_virtual_joystick(global_point)
 
 func _end_move() -> void:
@@ -326,7 +338,6 @@ func _wire_selected_items(container: Node) -> void:
 		if child is Omni_Button:
 			_selected_buttons.append(child)
 			var ob: Omni_Button = child
-			ob.BoundsSource = ob
 			_safe_connect(ob, "pressed", func(): _on_selected_item_pressed(ob))
 
 func _on_selected_item_pressed(clicked: Omni_Button) -> void:
@@ -341,8 +352,7 @@ func _on_selected_item_pressed(clicked: Omni_Button) -> void:
 			_used_button.Selected = false
 			_used_button.Disabled = false
 
-func _on_swipe_button_swipe(direction: Vector2) -> void:
-	var source := get_node_or_null("UI/Icons/SwipeButton") as Omni_Button
+func _on_swipe_button_swipe(direction: Vector2, source: Omni_Button) -> void:
 	var d := direction
 	var path := ""
 	if abs(d.x) >= abs(d.y):
@@ -355,8 +365,7 @@ func _on_swipe_button_swipe(direction: Vector2) -> void:
 		_output.LabelType = Omni_Button.LabelKind.RichTextLabel
 		_output.Text = "[SwipeButton] Swipe: %s -> %s" % [str(direction), path.get_file().get_basename()]
 
-func _on_swipe_button_swipe_ended() -> void:
-	var source := get_node_or_null("UI/Icons/SwipeButton") as Omni_Button
+func _on_swipe_button_swipe_ended(source: Omni_Button) -> void:
 	if is_instance_valid(source):
 		source.IconTexture = load("res://addons/omni_button/test/icons/Icon-Circle5.png")
 	if is_instance_valid(_output):

@@ -692,13 +692,136 @@ public partial class OmniButtonUnitTest : Control
             b.QueueFree();
             return hidden && reset;
         });
+
+        // 19) Touch follow ignores ScreenDrag from wrong finger index
+        AddTest("Touch drag ignores wrong finger index", async () =>
+        {
+            ClearArena();
+            var b = MakeBaseButton(new Vector2(100, 640), new Vector2(160, 100), "TouchIdx", wireSignals: false);
+            b.FollowMode = OmniButton.FollowModeEnum.FollowBoth;
+            b.BoundsSource = _arena;
+            var start = b.GlobalPosition;
+            var p = Center(b);
+            b._GuiInput(new InputEventScreenTouch { Pressed = true, Position = p, Index = 0 });
+            b._GuiInput(new InputEventScreenDrag { Position = p + new Vector2(50, 40), Index = 1 });
+            bool wrongFingerNoMove = b.GlobalPosition == start;
+            b._GuiInput(new InputEventScreenDrag { Position = p + new Vector2(50, 40), Index = 0 });
+            bool moved = b.GlobalPosition != start;
+            b._GuiInput(new InputEventScreenTouch { Pressed = false, Position = p + new Vector2(50, 40), Index = 0 });
+            _statusLabel.Text = wrongFingerNoMove && moved ? "Index filter OK" : "Touch drag index mismatch";
+            b.QueueFree();
+            return wrongFingerNoMove && moved;
+        });
+
+        // 20) Native touch session blocks emulated mouse until touch release
+        AddTest("Touch then mouse single press", async () =>
+        {
+            ClearArena();
+            var b = MakeBaseButton(new Vector2(300, 640), new Vector2(180, 100), "TouchMouse", wireSignals: false);
+            b.ActionMaskBits |= (int)OmniButton.ActionMaskFlags.Pressed;
+            int pressed = 0;
+            b.Connect(OmniButton.SignalName.Pressed, Callable.From(() => pressed++));
+            var p = Center(b);
+            b._GuiInput(new InputEventScreenTouch { Pressed = true, Position = p, Index = 0 });
+            b._GuiInput(MousePressAt(p, true));
+            b._GuiInput(MousePressAt(p, false));
+            b._GuiInput(new InputEventScreenTouch { Pressed = false, Position = p, Index = 0 });
+            await Delay(0.05);
+            _statusLabel.Text = pressed == 1 ? "Single press from touch" : $"Pressed count={pressed}";
+            b.QueueFree();
+            return pressed == 1;
+        });
+
+        // 21) Cooldown active while pressed still processes release
+        AddTest("Cooldown during press allows release", async () =>
+        {
+            ClearArena();
+            var b = MakeBaseButton(new Vector2(520, 640), new Vector2(200, 100), "CdRelease", wireSignals: false);
+            b.ActionMaskBits |= (int)OmniButton.ActionMaskFlags.Pressed | (int)OmniButton.ActionMaskFlags.Released;
+            b.EnableCooldown = true;
+            b.CooldownTrigger = OmniButton.CooldownTriggerEnum.OnPress;
+            b.CooldownDuration = 5f;
+            b.CooldownColor = CooldownColorSample;
+            var p = Center(b);
+            b._GuiInput(MousePressAt(p, true));
+            b.StartCooldown();
+            bool stillPressed = b.IsPressed;
+            b._GuiInput(MousePressAt(p, false));
+            bool released = !b.IsPressed;
+            _statusLabel.Text = stillPressed && released ? "Released under cooldown" : $"pressed={stillPressed} releasedOk={released}";
+            b.QueueFree();
+            return stillPressed && released;
+        });
+
+        // 22) Typewriter: Text assignment does not snap label to new string mid-animation
+        AddTest("Typewriter Text assign keeps animated label", async () =>
+        {
+            ClearArena();
+            var b = MakeBaseButton(new Vector2(100, 760), new Vector2(240, 100), "TW", wireSignals: false);
+            b.Text = "seed";
+            b.StartTypewriter("TypewriterTargetText", 20f, false);
+            SimProcess(b, 0.2);
+            const string injected = "InjectedReplacementText";
+            b.Text = injected;
+            SimProcess(b, 0.02);
+            var lbl = b.GetNodeOrNull<Label>("Label");
+            bool ok = lbl != null
+                && lbl.Text.Length > 0
+                && lbl.Text != injected
+                && lbl.Text.Length < injected.Length;
+            _statusLabel.Text = ok ? "Label not replaced mid-TW" : $"label='{lbl?.Text}' textProp='{b.Text}'";
+            b.QueueFree();
+            return ok;
+        });
+
+        // 23) Focused control: ui_accept performs one-shot click
+        AddTest("Focused ui_accept fires Pressed", async () =>
+        {
+            ClearArena();
+            var b = MakeBaseButton(new Vector2(380, 760), new Vector2(220, 100), "Key", wireSignals: false);
+            b.FocusMode = FocusModeEnum.All;
+            b.ActionMaskBits |= (int)OmniButton.ActionMaskFlags.Pressed;
+            int pressed = 0;
+            b.Connect(OmniButton.SignalName.Pressed, Callable.From(() => pressed++));
+            var keyEv = TryCreateUiAcceptKeyPress();
+            if (keyEv == null)
+            {
+                _statusLabel.Text = "No ui_accept key in InputMap";
+                b.QueueFree();
+                return false;
+            }
+            b.GrabFocus();
+            b._GuiInput(keyEv);
+            await Delay(0.05);
+            _statusLabel.Text = pressed == 1 ? "ui_accept OK" : $"pressed={pressed}";
+            b.QueueFree();
+            return pressed == 1;
+        });
     }
 
     // Simple numeric tolerance compare for layout assertions
     private static bool Near(float a, float b, float eps = 0.5f) => Math.Abs(a - b) <= eps;
 
+    /// <summary>First key event bound to <c>ui_accept</c>, duplicated as a fresh key-down (for focused keyboard tests).</summary>
+    private static InputEventKey? TryCreateUiAcceptKeyPress()
+    {
+        if (!InputMap.HasAction("ui_accept")) return null;
+        foreach (var ev in InputMap.ActionGetEvents("ui_accept"))
+        {
+            if (ev is InputEventKey ik)
+            {
+                var copy = ik.Duplicate() as InputEventKey;
+                if (copy == null) continue;
+                copy.Pressed = true;
+                copy.Echo = false;
+                return copy;
+            }
+        }
+        return null;
+    }
+
     // ===== Button helpers =====
-    private OmniButton MakeBaseButton(Vector2 pos, Vector2 size, string title = null)
+    private OmniButton MakeBaseButton(Vector2 pos, Vector2 size, string title = null, bool wireSignals = true)
     {
         var b = new OmniButton { Name = "Button" };
         if (OverrideTheme != null) b.Theme = OverrideTheme;
@@ -713,7 +836,8 @@ public partial class OmniButtonUnitTest : Control
             b.LabelVerticalAlignment = VerticalAlignment.Center;
             b.LabelPadding = new Vector2(6, 4);
         }
-        WireAllSignals(b, b.Name);
+        if (wireSignals)
+            WireAllSignals(b, b.Name);
         return b;
     }
 

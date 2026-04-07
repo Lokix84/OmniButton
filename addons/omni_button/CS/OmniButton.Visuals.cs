@@ -9,16 +9,18 @@ public partial class OmniButton : Control
         // Ensure required children exist based on current flags/state
         if (BackgroundType == BackgroundMode.UsePanel && _panel == null)
         {
-            _panel = CreateChildNodeAtPosition<Panel>("Panel", 0);
+            _panel = CreateManagedChildAtPosition<Panel>("Panel", 0);
             ConfigurePanel(_panel);
             ApplyPanelStyling();
         }
-        // Ensure overlay co-exists with panel and others
-        bool overlayAlive = _overlay != null && IsInstanceValid(_overlay) && (_overlay.GetParent() == this || _overlay.GetParent() == _managedRoot);
+        EnsureOverlayUnderManagedRoot();
+        bool overlayAlive = _overlay != null && IsInstanceValid(_overlay) && _overlay.GetParent() == _managedRoot;
         bool needOverlay = _isSelected;
         if (needOverlay && !overlayAlive)
         {
-            _overlay = CreateChildNodeAtPosition<ColorRect>("Overlay", GetChildCount());
+            EnsureManagedRoot();
+            var append = _managedRoot!.GetChildCount();
+            _overlay = CreateManagedChildAtPosition<ColorRect>("Overlay", append);
         }
         // Panel
         if (BackgroundType == BackgroundMode.UsePanel && _panel != null && IsInstanceValid(_panel))
@@ -98,11 +100,17 @@ public partial class OmniButton : Control
             ApplyInvert(_overlay);
             _overlay.ZIndex = 4;
         }
-        // Cooldown live colors
+        // Cooldown live colors (z above label=3 and overlay=4 so the fill is actually visible)
         if (_cooldown != null && IsInstanceValid(_cooldown))
+        {
             _cooldown.Color = CooldownColor;
+            _cooldown.ZIndex = 5;
+        }
         if (_holdFill != null && IsInstanceValid(_holdFill))
+        {
             _holdFill.Color = HoldFillColor;
+            _holdFill.ZIndex = 6;
+        }
 
         // Maintain correct draw order after any add/remove during state application
         ReorderChildren();
@@ -171,6 +179,20 @@ public partial class OmniButton : Control
             _richLabel.Theme = Theme;
         if (_icon != null && IsInstanceValid(_icon))
             _icon.Theme = Theme;
+    }
+
+    private void OnFocusOutlineRedraw()
+    {
+        if (_showKeyboardFocusOutline && FocusMode != FocusModeEnum.None)
+            QueueRedraw();
+    }
+
+    public override void _Draw()
+    {
+        if (!_showKeyboardFocusOutline || FocusMode == FocusModeEnum.None || !HasFocus())
+            return;
+        float w = Mathf.Max(1f, _keyboardFocusOutlineWidth);
+        DrawRect(new Rect2(Vector2.Zero, Size), _keyboardFocusOutlineColor, false, w);
     }
     #endregion
 }

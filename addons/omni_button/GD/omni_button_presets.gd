@@ -36,7 +36,6 @@ static func apply_draggable(button: Omni_Button) -> Omni_Button:
 
 static func apply_virtual_joystick(button: Omni_Button) -> Omni_Button:
 	button.FollowMode = Omni_Button.FollowModeEnum.VirtualJoystick
-	button.EnableVirtualJoystick = true
 	button.ClampShape = Omni_Button.JoystickClampShape.Circle
 	button.JoystickDeadzone = 0.15
 	button.JoystickSnapToInput = true

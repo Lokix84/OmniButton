@@ -7,6 +7,8 @@ func _init(o: Omni_Button) -> void:
 	_o = o
 
 func reset_press_state(clear_swipe_start:=true, emit_swipe_ended:=false) -> void:
+	_o._active_touch_index = -1
+	_o._pointer_gesture_source = Omni_Button.PointerGestureSource.None
 	_o.IsPressed = false
 	_o.IsHolding = false
 	if _o._is_swiping and emit_swipe_ended:

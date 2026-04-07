@@ -1,6 +1,19 @@
 extends RefCounted
 class_name OmniButtonVisuals
 
+const _MANAGED_CHILD_NAMES := {
+	"Panel": true,
+	"Background": true,
+	"Icon": true,
+	"Label": true,
+	"RichLabel": true,
+	"Overlay": true,
+	"HoldFill": true,
+	"Cooldown": true,
+	"DefaultThumb": true,
+	"JoystickArea": true
+}
+
 var _o: Omni_Button
 
 func _init(o: Omni_Button) -> void:
@@ -10,23 +23,11 @@ func setup_children() -> void:
 	# In editor, duplicated nodes may carry serialized managed children (Icon/Label/etc.)
 	# which causes stacked visuals when properties change. Proactively purge any
 	# pre-existing managed children by name so we rebuild a single correct set.
-	var managed_names := {
-		"Panel": true,
-		"Background": true,
-		"Icon": true,
-		"Label": true,
-		"RichLabel": true,
-		"Overlay": true,
-		"HoldFill": true,
-		"Cooldown": true,
-		"DefaultThumb": true,
-		"JoystickArea": true
-	}
 	var purge_children := func(parent: Node) -> void:
 		if parent == null or not is_instance_valid(parent):
 			return
 		for child in parent.get_children():
-			if child is Node and managed_names.has(child.name):
+			if child is Node and _MANAGED_CHILD_NAMES.has(child.name):
 				parent.remove_child(child)
 				child.queue_free()
 	purge_children.call(_o)
@@ -109,6 +110,46 @@ func overlay_parent_matches(node: Node) -> bool:
 		return true
 	return _o._managed_root != null and is_instance_valid(_o._managed_root) and parent == _o._managed_root
 
+func ensure_overlay_under_managed_root() -> void:
+	if _o._overlay == null or not is_instance_valid(_o._overlay):
+		return
+	var p := _o._overlay.get_parent()
+	if _o._managed_root != null and is_instance_valid(_o._managed_root) and p == _o._managed_root:
+		return
+	if p != _o:
+		return
+	_o._ensure_managed_root()
+	_o.remove_child(_o._overlay)
+	_o._managed_root.add_child(_o._overlay)
+	_o._ensure_full_rect(_o._overlay)
+	_o._overlay.mouse_filter = Control.MOUSE_FILTER_PASS
+
+func _find_managed_panel_for_styling() -> Panel:
+	if _o._managed_root != null and is_instance_valid(_o._managed_root):
+		var n = _o._managed_root.get_node_or_null("Panel")
+		if n is Panel:
+			return n
+	var leg = _o.get_node_or_null("Panel")
+	if leg is Panel:
+		return leg
+	if _o._panel != null and is_instance_valid(_o._panel):
+		return _o._panel
+	return null
+
+func ensure_panel_under_managed_root() -> void:
+	if _o._panel == null or not is_instance_valid(_o._panel):
+		return
+	var p := _o._panel.get_parent()
+	if _o._managed_root != null and is_instance_valid(_o._managed_root) and p == _o._managed_root:
+		return
+	if p != _o:
+		return
+	_o._ensure_managed_root()
+	_o.remove_child(_o._panel)
+	_o._managed_root.add_child(_o._panel)
+	_o._managed_root.move_child(_o._panel, 0)
+	_o._ensure_full_rect(_o._panel)
+
 func cleanup_extra_overlays() -> void:
 	var parents := [_o, _o._managed_root]
 	for parent in parents:
@@ -122,8 +163,9 @@ func cleanup_extra_overlays() -> void:
 				child.queue_free()
 
 func update_overlay() -> void:
+	ensure_overlay_under_managed_root()
 	var need := _o._selected
-	var alive := _o._overlay != null and is_instance_valid(_o._overlay) and overlay_parent_matches(_o._overlay)
+	var alive := _o._overlay != null and is_instance_valid(_o._overlay) and _o._managed_root != null and is_instance_valid(_o._managed_root) and _o._overlay.get_parent() == _o._managed_root
 	if need and not alive:
 		_o._overlay = ColorRect.new()
 		_o._overlay.name = "Overlay"
@@ -148,6 +190,8 @@ func ensure_cooldown() -> void:
 		_o._cooldown.mouse_filter = Control.MOUSE_FILTER_PASS
 		_o._managed_add_child(_o._cooldown)
 		_o._cooldown.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		# Above label (3) and selection overlay (4); otherwise fill is drawn underneath and looks "missing" until other state changes.
+		_o._cooldown.z_index = 5
 
 func ensure_hold_fill_rect() -> void:
 	if _o._hold_fill == null or not is_instance_valid(_o._hold_fill):
@@ -157,6 +201,7 @@ func ensure_hold_fill_rect() -> void:
 		_o._hold_fill.mouse_filter = Control.MOUSE_FILTER_PASS
 		_o._managed_add_child(_o._hold_fill)
 		_o._hold_fill.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		_o._hold_fill.z_index = 6
 
 func remove_hold_fill() -> void:
 	if is_instance_valid(_o._hold_fill):
@@ -209,9 +254,15 @@ func configure_rich_label(rtl: RichTextLabel) -> void:
 	rtl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rtl.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	rtl.bbcode_enabled = true
-	rtl.fit_content = true
+	rtl.scroll_active = false
+	# Match C#: do not shrink the control to content; fill rect and let autosize scale fonts.
+	rtl.fit_content = false
+	rtl.autowrap_mode = _o.LabelAutowrap
+	rtl.horizontal_alignment = _o.LabelHorizontalAlignment
+	rtl.vertical_alignment = _o.LabelVerticalAlignment
 	if _o.LabelFont != null:
 		rtl.add_theme_font_override("normal_font", _o.LabelFont)
+	rtl.add_theme_color_override("default_color", _o.LabelTextColor)
 	rtl.mouse_filter = Control.MOUSE_FILTER_PASS
 
 func apply_visual_state() -> void:
@@ -221,8 +272,11 @@ func apply_visual_state() -> void:
 		_o._managed_add_child(_o._panel)
 		_o._ensure_full_rect(_o._panel)
 		apply_panel_styling()
+	else:
+		ensure_panel_under_managed_root()
 
-	var overlay_alive := _o._overlay != null and is_instance_valid(_o._overlay) and overlay_parent_matches(_o._overlay)
+	ensure_overlay_under_managed_root()
+	var overlay_alive := _o._overlay != null and is_instance_valid(_o._overlay) and _o._managed_root != null and is_instance_valid(_o._managed_root) and _o._overlay.get_parent() == _o._managed_root
 	if _o._selected and not overlay_alive:
 		_o._overlay = ColorRect.new()
 		_o._overlay.name = "Overlay"
@@ -256,14 +310,16 @@ func apply_visual_state() -> void:
 		_o._icon.z_index = 2
 
 	if _o._label != null:
-		_o._label.text = _o._text
+		if not _o._tw_active:
+			_o._label.text = _o._text
 		configure_label(_o._label)
 		_o._label.add_theme_color_override("font_color", _o.LabelTextColor)
 		_o._label.modulate = _o.TextModulate
 		apply_invert(_o._label)
 		_o._label.z_index = 3
 	if _o._rich_label != null:
-		_o._rich_label.text = _o._text
+		if not _o._tw_active:
+			_o._rich_label.text = _o._text
 		configure_rich_label(_o._rich_label)
 		_o._rich_label.modulate = _o.TextModulate
 		apply_invert(_o._rich_label)
@@ -277,8 +333,10 @@ func apply_visual_state() -> void:
 
 	if _o._cooldown != null and is_instance_valid(_o._cooldown):
 		_o._cooldown.color = _o.CooldownColor
+		_o._cooldown.z_index = 5
 	if _o._hold_fill != null and is_instance_valid(_o._hold_fill):
 		_o._hold_fill.color = _o.HoldFillColor
+		_o._hold_fill.z_index = 6
 
 func apply_invert(node: CanvasItem) -> void:
 	var on_pressf := (_o.InvertModes & _o.INVERT_PRESS) != 0
@@ -295,11 +353,17 @@ func apply_invert(node: CanvasItem) -> void:
 
 func apply_panel_styling() -> void:
 	if _o.BackgroundType != Omni_Button.BackgroundMode.UsePanel:
-		if _o._panel != null:
-			if _o._panel.has_theme_stylebox_override("panel"):
-				_o._panel.remove_theme_stylebox_override("panel")
-			_o._panel.queue_redraw()
+		var p_clear := _find_managed_panel_for_styling()
+		if p_clear != null:
+			if p_clear.has_theme_stylebox_override("panel"):
+				p_clear.remove_theme_stylebox_override("panel")
+			p_clear.queue_redraw()
 		return
+	if _o._panel == null or not is_instance_valid(_o._panel):
+		var found := _find_managed_panel_for_styling()
+		if found != null:
+			_o._panel = found
+			ensure_panel_under_managed_root()
 	if _o._panel == null: return
 	_o._panel.theme = null
 	_o._panel.theme_type_variation = _o.PanelThemeVariation

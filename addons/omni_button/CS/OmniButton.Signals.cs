@@ -107,6 +107,8 @@ public partial class OmniButton : Control
         {
             ConnectIfNotConnected("mouse_entered", new Callable(_o, nameof(OnMouseEntered)));
             ConnectIfNotConnected("mouse_exited", new Callable(_o, nameof(OnMouseExited)));
+            ConnectIfNotConnected(Control.SignalName.FocusEntered, new Callable(_o, nameof(OnFocusOutlineRedraw)));
+            ConnectIfNotConnected(Control.SignalName.FocusExited, new Callable(_o, nameof(OnFocusOutlineRedraw)));
         }
 
         public void ConnectIfNotConnected(string signal, Callable callable)

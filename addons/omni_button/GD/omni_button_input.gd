@@ -11,31 +11,19 @@ func gui_input(event: InputEvent) -> void:
 		_o.skip_typewriter()
 	if _o._disabled:
 		return
-	var inside := input_inside(event)
-	if _o.EnableCooldown and _o._cooldown_active:
+	if _o.EnableCooldown and _o._cooldown_active and not _o._is_pressed:
 		return
-
-	# Screen touch swipe eligibility tracking
-	if event is InputEventScreenTouch:
-		var st := event as InputEventScreenTouch
-		if st.pressed:
-			_o._touch_swipe_eligible = input_inside(st)
-			if _o.TouchSwipeInit == _o.SwipeInitMode.OnPressed and _o._touch_swipe_eligible:
-				_o._swipe_origin = st.position
-				_o._is_swiping = false
-				_o._swipe_start = Vector2.ZERO
-		else:
-			if _o.TouchSwipeExit == _o.SwipeExitMode.OnReleased:
-				_o._is_swiping = false
-				_o.emit_signal("swipe_ended")
-			_o._swipe_start = Vector2.ZERO
-			_o._touch_swipe_eligible = false
+	var inside := input_inside(event)
 
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		var mb := event as InputEventMouseButton
 		if mb.pressed:
 			if not inside:
 				return
+			if _o._pointer_gesture_source == Omni_Button.PointerGestureSource.NativeTouch:
+				return
+			_o._pointer_gesture_source = Omni_Button.PointerGestureSource.Mouse
+			_o._active_touch_index = -1
 			_begin_press_state()
 			_o._is_swiping = false
 			_o._swipe_origin = mb.position
@@ -64,6 +52,8 @@ func gui_input(event: InputEvent) -> void:
 				_o.set_process(true)
 			_finish_press_visuals()
 		else:
+			if _o._pointer_gesture_source == Omni_Button.PointerGestureSource.NativeTouch:
+				return
 			_o._state.reset_press_state(true, false)
 			_emit_released("mouse", inside)
 			if _o.EnableCooldown and (_o.CooldownTrigger == _o.CooldownTriggerEnum.OnRelease or _o.CooldownTrigger == _o.CooldownTriggerEnum.OnPressAndRelease):
@@ -95,7 +85,7 @@ func gui_input(event: InputEvent) -> void:
 		# Update swiping state
 		_o._is_swiping = (mm.position - _o._swipe_origin).length() > _o.SwipeThreshold
 
-	elif _o._is_pressed and event is InputEventScreenDrag:
+	elif _o._is_pressed and event is InputEventScreenDrag and _o._screen_drag_matches_active_touch(event as InputEventScreenDrag):
 		var sd := event as InputEventScreenDrag
 		if (_o.EnableVirtualJoystick or _o.FollowMode == _o.FollowModeEnum.VirtualJoystick) and _o._vj_active:
 			if _o.JoystickSnapToInput:
@@ -118,14 +108,62 @@ func gui_input(event: InputEvent) -> void:
 	elif event is InputEventScreenTouch:
 		var st := event as InputEventScreenTouch
 		var gp := st.position
-		if st.pressed and inside:
-			_begin_press_state()
-			_begin_follow_or_joystick(gp, "touch")
-			_emit_pressed("touch")
-			_finish_press_visuals()
-		elif not st.pressed:
+		if st.pressed:
+			_o._touch_swipe_eligible = input_inside(st)
+			if _o.TouchSwipeInit == _o.SwipeInitMode.OnPressed and _o._touch_swipe_eligible:
+				_o._swipe_origin = st.position
+				_o._is_swiping = false
+				_o._swipe_start = Vector2.ZERO
+			if not inside:
+				pass
+			else:
+				if _o._pointer_gesture_source == Omni_Button.PointerGestureSource.Mouse:
+					return
+				_o._pointer_gesture_source = Omni_Button.PointerGestureSource.NativeTouch
+				_o._active_touch_index = st.index
+				_begin_press_state()
+				_o._is_swiping = false
+				_o._swipe_origin = st.position
+				_begin_follow_or_joystick(gp, "touch")
+				if _o._action_enabled(_o.ACT_SWIPE) and _o.TouchSwipeInit == _o.SwipeInitMode.OnPressed:
+					_o._swipe_start = st.position
+				_emit_pressed("touch")
+				if _o.InteractionMode == _o.InteractionModeEnum.ToggleOnPress or (_o.InteractionMode == _o.InteractionModeEnum.Momentary and _o._action_enabled(_o.ACT_TOGGLE)):
+					_o._is_toggled = not _o._is_toggled
+					_o._update_overlay()
+					_o.emit_signal("toggled", _o._is_toggled)
+					if _o.ToggledAction.is_valid():
+						_o.ToggledAction.call(_o._is_toggled)
+					_o._debug("Toggled -> %s (touch press)" % str(_o._is_toggled))
+				if _o.EnableCooldown and (_o.CooldownTrigger == _o.CooldownTriggerEnum.OnPress or _o.CooldownTrigger == _o.CooldownTriggerEnum.OnPressAndRelease):
+					_o.call_deferred("_start_cooldown")
+				if _o.EnableHoldBuildUp and not _o._is_holding:
+					_o._hold_timer = 0.0
+					_o._ensure_hold_fill_rect()
+					_o._update_hold_fill_visual()
+					if is_instance_valid(_o._hold_fill):
+						_o._hold_fill.visible = true
+					_o.set_process(true)
+				_finish_press_visuals()
+		elif _o._active_touch_index >= 0 and st.index == _o._active_touch_index:
+			if _o._pointer_gesture_source != Omni_Button.PointerGestureSource.NativeTouch:
+				return
+			if _o.TouchSwipeExit == _o.SwipeExitMode.OnReleased:
+				_o._is_swiping = false
+				_o.emit_signal("swipe_ended")
+				_o._swipe_start = Vector2.ZERO
+			_o._touch_swipe_eligible = false
 			_o._state.reset_press_state(true, false)
 			_emit_released("touch", inside)
+			if _o.EnableCooldown and (_o.CooldownTrigger == _o.CooldownTriggerEnum.OnRelease or _o.CooldownTrigger == _o.CooldownTriggerEnum.OnPressAndRelease):
+				_o._start_cooldown()
+			if _o.InteractionMode == _o.InteractionModeEnum.ToggleOnRelease:
+				_o._is_toggled = not _o._is_toggled
+				_o._update_overlay()
+				_o.emit_signal("toggled", _o._is_toggled)
+				if _o.ToggledAction.is_valid():
+					_o.ToggledAction.call(_o._is_toggled)
+				_o._debug("Toggled -> %s (touch release)" % str(_o._is_toggled))
 			if _o._vj_active:
 				_end_joystick_if_active("touch release")
 			_finish_release_visuals()
@@ -133,7 +171,8 @@ func gui_input(event: InputEvent) -> void:
 	# Swipe via drag or motion
 	if _o._action_enabled(_o.ACT_SWIPE) and event is InputEventScreenDrag:
 		var drag := event as InputEventScreenDrag
-		_swipe_step(drag.position, "TouchDrag")
+		if _o._screen_drag_matches_active_touch(drag):
+			_swipe_step(drag.position, "TouchDrag")
 	elif _o._action_enabled(_o.ACT_SWIPE) and _o._is_pressed and event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
 		_swipe_step(motion.position, "MouseMotion")
@@ -151,15 +190,91 @@ func gui_input(event: InputEvent) -> void:
 				_swipe_step(hover_motion.global_position, "Hover", false)
 			# remain in swiping state while inside; exit controlled by MouseSwipeExit
 			_o._is_swiping = true
+	elif try_process_ui_accept(event):
+		pass
+
+func try_process_ui_accept(event: InputEvent) -> bool:
+	if _o.focus_mode == Control.FOCUS_NONE or not _o.has_focus():
+		return false
+	if not event is InputEventKey:
+		return false
+	var ik := event as InputEventKey
+	if not ik.pressed or ik.echo:
+		return false
+	if not event.is_action_pressed("ui_accept"):
+		return false
+	if _o.FinishTypewriterOnPress and _o._tw_active:
+		_o.skip_typewriter()
+		_o.accept_event()
+		return true
+	if _o._disabled:
+		return false
+	if (_o.EnableVirtualJoystick or _o.FollowMode == _o.FollowModeEnum.VirtualJoystick) or _o.FollowMode != _o.FollowModeEnum.None:
+		return false
+	if _o.EnableCooldown and _o._cooldown_active and not _o._is_pressed:
+		return false
+	if _o._is_pressed:
+		return false
+	_o.accept_event()
+	_o._pointer_gesture_source = Omni_Button.PointerGestureSource.Mouse
+	_o._active_touch_index = -1
+	_begin_press_state()
+	_emit_pressed("keyboard")
+	if _o.InteractionMode == _o.InteractionModeEnum.ToggleOnPress or (_o.InteractionMode == _o.InteractionModeEnum.Momentary and _o._action_enabled(_o.ACT_TOGGLE)):
+		_o._is_toggled = not _o._is_toggled
+		_o._update_overlay()
+		_o.emit_signal("toggled", _o._is_toggled)
+		if _o.ToggledAction.is_valid():
+			_o.ToggledAction.call(_o._is_toggled)
+	if _o.EnableCooldown and (_o.CooldownTrigger == _o.CooldownTriggerEnum.OnPress or _o.CooldownTrigger == _o.CooldownTriggerEnum.OnPressAndRelease):
+		_o.call_deferred("_start_cooldown")
+	if _o.EnableHoldBuildUp and not _o._is_holding:
+		_o._hold_timer = 0.0
+		_o._ensure_hold_fill_rect()
+		_o._update_hold_fill_visual()
+		if is_instance_valid(_o._hold_fill):
+			_o._hold_fill.visible = true
+		_o.set_process(true)
+	_finish_press_visuals()
+	_o._state.reset_press_state(true, false)
+	_emit_released("keyboard", true)
+	if _o.EnableCooldown and (_o.CooldownTrigger == _o.CooldownTriggerEnum.OnRelease or _o.CooldownTrigger == _o.CooldownTriggerEnum.OnPressAndRelease):
+		_o._start_cooldown()
+	if _o.InteractionMode == _o.InteractionModeEnum.ToggleOnRelease:
+		_o._is_toggled = not _o._is_toggled
+		_o._update_overlay()
+		_o.emit_signal("toggled", _o._is_toggled)
+		if _o.ToggledAction.is_valid():
+			_o.ToggledAction.call(_o._is_toggled)
+	_finish_release_visuals()
+	return true
 
 func unhandled_input(event: InputEvent) -> void:
-	# End active interactions on off-control mouse release (parity with C#)
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not (event as InputEventMouseButton).pressed:
+		if _o._pointer_gesture_source == Omni_Button.PointerGestureSource.NativeTouch:
+			return
+		if _o._active_touch_index >= 0:
+			return
 		if _o._is_pressed or _o._vj_active or _o._is_swiping:
 			_o._state.reset_press_state(true, true)
 			if _o._vj_active:
 				_end_joystick_if_active()
 			_finish_release_visuals()
+			_o.get_viewport().set_input_as_handled()
+	elif event is InputEventScreenTouch:
+		var st := event as InputEventScreenTouch
+		if st.pressed:
+			return
+		if _o._pointer_gesture_source != Omni_Button.PointerGestureSource.NativeTouch:
+			return
+		if _o._active_touch_index < 0 or st.index != _o._active_touch_index:
+			return
+		if _o._is_pressed or _o._vj_active or _o._is_swiping:
+			_o._state.reset_press_state(true, true)
+			if _o._vj_active:
+				_end_joystick_if_active("_unhandled touch")
+			_finish_release_visuals()
+			_o.get_viewport().set_input_as_handled()
 
 func connect_mouse_events() -> void:
 	_o._signals.connect_if_not_connected("mouse_entered", Callable(_o, "_on_mouse_entered"))

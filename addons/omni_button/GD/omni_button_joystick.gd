@@ -67,34 +67,34 @@ func set_joystick_area_visible(vis: bool) -> void:
 	elif _o._vj_area_panel != null and is_instance_valid(_o._vj_area_panel):
 		_o._vj_area_panel.visible = vis
 
+## Matches C# EmitJoystickAxisFor: clamp pointer to follow rect, then axis from home (see OmniButton.Joystick.cs).
 func emit_axis_for(pointer_global: Vector2) -> void:
 	if not _o._vj_active:
 		return
 	var clamp_rect := _o._get_follow_clamp_rect()
-	var clamped := pointer_global
+	var clamped := Vector2(
+		clampf(pointer_global.x, clamp_rect.position.x, clamp_rect.position.x + clamp_rect.size.x),
+		clampf(pointer_global.y, clamp_rect.position.y, clamp_rect.position.y + clamp_rect.size.y)
+	)
+	var delta := clamped - _o._vj_home_global
 	var use_circle := (_o.ClampShape == _o.JoystickClampShape.Circle)
+	var axis: Vector2
 	if use_circle:
 		var radius: float = float(_o.JoystickRadiusPx) if _o.JoystickRadiusPx > 0 else compute_auto_joystick_radius(_o._vj_home_global, clamp_rect)
-		var delta := pointer_global - _o._vj_home_global
 		var len := delta.length()
-		if len > radius and len > 0.0:
-			clamped = _o._vj_home_global + delta / len * radius
+		if len < 1e-4 or radius < 1e-4:
+			axis = Vector2.ZERO
+		else:
+			axis = delta / radius
+			if axis.length() > 1.0:
+				axis = axis.normalized()
 	else:
 		var half_ext := (_o.JoystickRectSizePx / 2.0) if _o.JoystickRectSizePx != Vector2.ZERO else compute_auto_joystick_half_extents(_o._vj_home_global, clamp_rect)
-		clamped.x = clampf(clamped.x, _o._vj_home_global.x - half_ext.x, _o._vj_home_global.x + half_ext.x)
-		clamped.y = clampf(clamped.y, _o._vj_home_global.y - half_ext.y, _o._vj_home_global.y + half_ext.y)
-	var axis := clamped - _o._vj_home_global
-	if use_circle:
-		var radius2: float = float(_o.JoystickRadiusPx) if _o.JoystickRadiusPx > 0 else compute_auto_joystick_radius(_o._vj_home_global, clamp_rect)
-		if radius2 > 0.0:
-			axis /= radius2
-	else:
-		var half_ext2 := (_o.JoystickRectSizePx / 2.0) if _o.JoystickRectSizePx != Vector2.ZERO else compute_auto_joystick_half_extents(_o._vj_home_global, clamp_rect)
-		if half_ext2.x > 0.0: axis.x /= half_ext2.x
-		if half_ext2.y > 0.0: axis.y /= half_ext2.y
+		var hx := maxf(1e-4, half_ext.x)
+		var hy := maxf(1e-4, half_ext.y)
+		axis = Vector2(clampf(delta.x / hx, -1.0, 1.0), clampf(delta.y / hy, -1.0, 1.0))
 	if axis.length() < _o.JoystickDeadzone:
-		_o.emit_signal("joystick_axis", Vector2.ZERO)
-		return
+		axis = Vector2.ZERO
 	_o.emit_signal("joystick_axis", axis)
 
 func compute_auto_joystick_radius(home_center_global: Vector2, clamp_rect: Rect2) -> float:
@@ -165,7 +165,7 @@ func stop_virtual_joystick() -> void:
 	if _o.JoystickResetOnRelease:
 		_o.global_position = _o._vj_home_global - _o.size * 0.5
 	_o._vj_active = false
-	_o._state.reset_press_state(true, false)
+	_o._state.reset_press_state(true, true)
 	_o._invalidate_visual_state()
 	_o.mouse_filter = _o._vj_saved_mouse_filter
 	_o._enable_top_level(false)

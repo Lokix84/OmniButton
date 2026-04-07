@@ -71,6 +71,7 @@ Tip: Use OmniButton.SignalName.* for refactor-safe signal names.
 - EnableHoverScale — Enable hover zoom.
 - HoverScale — Target scale (e.g., 1.15).
 - HoverLerpSpeed — Interpolation speed.
+- When enabled, hover scale lerps the managed panel, background `TextureRect` (if any), icon, labels, and overlay together (pivot-centered).
 
 ### Actions
 - ActionMaskBits — Flags that determine which actions emit: Pressed, Released, Hover, Toggle, Hold, Swipe, Log, Warning, Error.
@@ -78,9 +79,10 @@ Tip: Use OmniButton.SignalName.* for refactor-safe signal names.
 - Optional callables invoked when assigned: PressedAction, ReleasedAction, HoverInAction, HoverOutAction, ToggledAction, HoldAction, SwipeAction, LogAction, WarningAction, ErrorAction.
 - InteractionMode — Momentary | ToggleOnPress | ToggleOnRelease.
 
-### Input / Follow / Virtual Joystick
-- BoundsSource, HitSlop
-- FollowMode — None | FollowBoth | VirtualJoystick
+### Input bounds / drag & virtual joystick
+- BoundsSource — optional control whose global rect is used for hit tests instead of the OmniButton’s own rect
+- HitSlop — grow that rect on each side (pixels)
+- FollowMode — None | FollowBoth | VirtualJoystick (while pressed: stationary, draggable, or joystick)
 - ClampShape — Circle | Rectangle
 - JoystickRadiusPx, JoystickRectSizePx, JoystickDeadzone, JoystickSnapToInput
 - JoystickHideWhenInactive, JoystickResetOnRelease
@@ -118,6 +120,15 @@ Tip: Use OmniButton.SignalName.* for refactor-safe signal names.
 - **Cooldowns:** Any triggerable cooldown automatically clears pressed visuals, can optionally suspend hover scale, and emits debugger logs when starting or finishing. You can hide the overlay during hold build-up for “charge + cooldown” combos.
 - **Typewriter text:** `StartTypewriter()` respects BBCode, word mode, and CPS, and can defer effect tags. Skip/Stop log when they emit `TypewriterCompleted` so you can tell if a script cancelled unexpectedly.
 - **Runtime/editor parity:** Editor live refresh mirrors runtime by polling exported properties, rebuilding managed children, and running the autosizer immediately.
+- **Processing / idle:** At runtime, `_Process` disables itself when nothing needs per-frame work (no pending child/layout refresh, refit frames, typewriter, cooldown delay or active cooldown, hold build-up while pressed, and hover scale is off). While `EnableHoverScale` is true, processing stays enabled so hover lerp can run. Idle shutdown never calls `SetProcess(false)` in the editor, so tool-mode polling keeps working.
+- **Mouse + touch together:** With `ProjectSettings` → `input_devices/pointing/emulate_mouse_from_touch` enabled, Godot can deliver both `InputEventScreenTouch` and `InputEventMouseButton` for one physical touch. OmniButton records which modality **first** starts a press (`PointerGestureSource`: mouse vs native touch) and ignores the other until `ResetPressState` clears the session, so you do not get double press/release.
+- **Multi-touch drags:** `InputEventScreenDrag` is only applied when `Index` matches the finger that started a native touch press (`_activePointerTouchIndex`). Mouse-driven sessions (`Index` not tracked) accept all drags.
+- **Cooldown vs. in-flight press:** While cooldown is active, **new** presses are ignored, but `GuiInput` still runs so an existing press can receive motion, `ScreenDrag`, and release (avoids stuck state if cooldown starts mid-hold).
+- **Unhandled cleanup:** Off-control release handling calls `Viewport.SetInputAsHandled()` after resetting a stuck interaction so the event is less likely to propagate to other listeners.
+- **Hover clamp after layout moves:** `NotificationTransformChanged` refreshes `HoverTargetForViewport` and keeps processing when hover scaling is enabled, so parent transforms/layout changes can update the clamped hover scale without relying only on resize.
+- **Typewriter + `Text` / `LabelType`:** Assigning `Text` or `LabelType` while the typewriter is active updates backing state and queues a visual refresh but skips `SetupChildren` / full rebuild so partial typewriter output is not wiped.
+- **Keyboard / gamepad:** When the control has **focus** (`FocusMode` not `None`) and `ui_accept` fires, OmniButton performs a one-shot click (press + release in one step). Joystick and follow-drag modes skip keyboard activation. `FinishTypewriterOnPress` + `ui_accept` skips the typewriter first.
+- **Focus outline:** Under **Accessibility → Keyboard focus**, `ShowKeyboardFocusOutline` draws a border in `_Draw()` while the control has focus (color/width exported). `FocusEntered` / `FocusExited` call `QueueRedraw` when the outline is enabled.
 
 ## Migration notes
 - Prefer LabelType + Text over LabelText/RichLabelText. Legacy properties remain for compatibility but route to the new API.

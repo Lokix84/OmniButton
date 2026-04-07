@@ -56,9 +56,11 @@ func process_runtime(delta: float) -> void:
 				any = _o._lerp_scale_to(_o._rich_label, target, t) or any
 				any = _o._lerp_scale_to(_o._overlay, target, t) or any
 				var hold_build := _o.EnableHoldBuildUp and _o._is_pressed and not _o._is_holding
-				if not any and not _o._is_hovering and not (_o._cooldown_active and _o.EnableCooldown) and not hold_build:
-					_o.set_process(false)
-					_o._enable_top_level(false)
+				# Match C# ProcessHoverScaling: do not stop hover top_level while still hovering (avoids top_level toggling + spurious mouse_exited).
+				if not any and not _o._hover_scale_animation_pending() and not _o._is_hovering and not (_o._cooldown_active and _o.EnableCooldown) and not hold_build and not _o._tw_active:
+					if not Engine.is_editor_hint():
+						_o.set_process(false)
+						_o._enable_top_level(false)
 		else:
 			var t2 := min(1.0, delta * _o.HoverLerpSpeed)
 			var any2 := false
@@ -69,9 +71,10 @@ func process_runtime(delta: float) -> void:
 			any2 = _o._lerp_scale_to(_o._rich_label, Vector2.ONE, t2) or any2
 			any2 = _o._lerp_scale_to(_o._overlay, Vector2.ONE, t2) or any2
 			var hold_build2 := _o.EnableHoldBuildUp and _o._is_pressed and not _o._is_holding
-			if not any2 and not (_o._cooldown_active and _o.EnableCooldown) and not hold_build2:
-				_o.set_process(false)
-				_o._enable_top_level(false)
+			if not any2 and not (_o._cooldown_active and _o.EnableCooldown) and not hold_build2 and not _o._tw_active:
+				if not Engine.is_editor_hint():
+					_o.set_process(false)
+					_o._enable_top_level(false)
 
 	# Hide cooldown during buildup
 	if _o.HideCooldownDuringHoldBuildUp and is_instance_valid(_o._cooldown):

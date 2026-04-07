@@ -36,7 +36,7 @@ public partial class OmniButton : Control
 
         // Ensure visuals exist
         SetupChildren();
-        // Pre-fit for final text so we don't re-fit during reveal
+        // Initial font size from full final string (MeasureParagraph); per-step refit runs in SetTypewriterVisibleText when autosize is on.
         PrefitForText(content);
 
         if (_twBBCodeAware)
@@ -150,6 +150,12 @@ public partial class OmniButton : Control
             _richLabel.Text = current;
         if (!_twActive)
             _text = current;
+        else if (EnableTextAutoSize && FixedFontSize <= 0)
+        {
+            // Backing _text unchanged while typing — invalidate cache and fit to current visible string (GD parity).
+            _fitCacheSig = string.Empty;
+            FitLabelText();
+        }
     }
 
     private System.Collections.Generic.List<string> TokenizeWords(string s)
@@ -173,31 +179,31 @@ public partial class OmniButton : Control
     {
         var avail = CalculateAvailableArea();
         if (avail.X <= 1.0f || avail.Y <= 1.0f) return;
-        if (_richLabel != null && !string.IsNullOrEmpty(_richLabelText))
+        if (_labelType == LabelTypeEnum.RichTextLabel && _richLabel != null && IsInstanceValid(_richLabel))
         {
             var rtl = _richLabel;
-            if (rtl == null || !IsInstanceValid(rtl)) return;
             var fnt = LabelFont ?? ThemeDB.FallbackFont;
             if (fnt == null) return;
             string plain = StripKnownBBCode(content);
             bool wrapEnabled = LabelAutowrap != TextServer.AutowrapMode.Off;
             float wrap = wrapEnabled ? avail.X : -1f;
-            int size = FindBestFontSize(fnt, plain, avail, wrap, wrapEnabled);
-            ApplyRichLabelFontOverrides(rtl, fnt, size);
-            _richCurrentFontSize = size;
-            _lastFitFontSize = size;
+            int best = FindBestFontSize(fnt, plain, avail, wrap, wrapEnabled);
+            best = GrowFontSize(fnt, plain, avail, wrap, wrapEnabled, best);
+            ApplyRichLabelFontOverrides(rtl, fnt, best);
+            _richCurrentFontSize = best;
+            _lastFitFontSize = best;
         }
-        else if (_label != null)
+        else if (_labelType == LabelTypeEnum.Label && _label != null && IsInstanceValid(_label))
         {
             var label = _label;
-            if (label == null || !IsInstanceValid(label)) return;
             var fnt = GetRobustFont(label);
             if (fnt == null) return;
             bool wrapEnabled = LabelAutowrap != TextServer.AutowrapMode.Off;
             float wrap = wrapEnabled ? avail.X : -1f;
-            int size = FindBestFontSize(fnt, content, avail, wrap, wrapEnabled);
-            ApplyFontSettings(label, fnt, size);
-            _lastFitFontSize = size;
+            int best = FindBestFontSize(fnt, content, avail, wrap, wrapEnabled);
+            best = GrowFontSize(fnt, content, avail, wrap, wrapEnabled, best);
+            ApplyFontSettings(label, fnt, best);
+            _lastFitFontSize = best;
         }
     }
 

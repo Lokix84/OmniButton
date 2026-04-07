@@ -10,6 +10,13 @@ using System;
 /// virtual joystick mode. It is editor-friendly and primarily driven by exported properties
 /// and signals, so it drops into many UI patterns with minimal code.
 /// </summary>
+/// <remarks>
+/// <b>Child nodes</b> (e.g. Font Awesome, extra icons): add as <b>direct children of OmniButton</b> (siblings of internal <c>_Managed</c>), not inside <c>_Managed</c>.
+/// Do <b>not</b> use these reserved names (they are removed/rebuilt on refresh):
+/// <c>Panel</c>, <c>Background</c>, <c>Icon</c>, <c>Label</c>, <c>RichLabel</c>, <c>Overlay</c>, <c>HoldFill</c>, <c>Cooldown</c>, <c>DefaultThumb</c>, <c>JoystickArea</c>.
+/// Use <see cref="ManagedDrawOnTop"/> to control whether built-in visuals draw above or below your nodes.
+/// For decorative overlays, set <c>MouseFilter = Ignore</c> (or <c>Pass</c>) so the button still receives <c>_GuiInput</c> unless you intentionally want the child to steal input.
+/// </remarks>
 public partial class OmniButton : Control
 {
     #region Signals
@@ -31,7 +38,25 @@ public partial class OmniButton : Control
     #endregion
     #region Debugging
     public enum DebuggerLogMode { Off = 0, Basic = 1 }
-    [Export(PropertyHint.Enum, "Off,Basic")] public DebuggerLogMode DebuggerLog { get; set; } = DebuggerLogMode.Off;
+    #endregion
+    #region Preset(Exported Properties)
+    public enum Preset { None = 0, Basic = 1, Toggle = 2, Hold = 3, Swipe = 4, Draggable = 5, VirtualJoystick = 6, Custom = 99 }
+    private bool _suppressPresetApply = false;
+    private Preset _preset = Preset.None;
+    [ExportCategory("Essentials")]
+    [ExportGroup("Presets")]
+    [Export]
+    public Preset PresetSelection
+    {
+        get => _preset;
+        set
+        {
+            if (_preset == value) return;
+            _preset = value;
+            if (_preset == Preset.Custom || _preset == Preset.None) return;
+            ApplyPreset(_preset);
+        }
+    }
     #endregion
     #region State(Exported Properties)
     [ExportGroup("State")]
@@ -123,26 +148,47 @@ public partial class OmniButton : Control
         }
     }
     #endregion
-    #region Preset(Exported Properties)
-    public enum Preset { None = 0, Basic = 1, Toggle = 2, Hold = 3, Swipe = 4, Draggable = 5, VirtualJoystick = 6, Custom = 99 }
-    private bool _suppressPresetApply = false;
-    private Preset _preset = Preset.None;
-    [ExportGroup("Presets")]
+    #region Accessibility (Exported Properties)
+    [ExportCategory("Accessibility")]
+    [ExportGroup("Keyboard focus")]
     [Export]
-    public Preset PresetSelection
+    public bool ShowKeyboardFocusOutline
     {
-        get => _preset;
+        get => _showKeyboardFocusOutline;
         set
         {
-            if (_preset == value) return;
-            _preset = value;
-            if (_preset == Preset.Custom || _preset == Preset.None) return;
-            ApplyPreset(_preset);
+            if (_showKeyboardFocusOutline == value) return;
+            _showKeyboardFocusOutline = value;
+            QueueRedraw();
         }
     }
+    private bool _showKeyboardFocusOutline;
+    [Export]
+    public Color KeyboardFocusOutlineColor
+    {
+        get => _keyboardFocusOutlineColor;
+        set
+        {
+            _keyboardFocusOutlineColor = value;
+            QueueRedraw();
+        }
+    }
+    private Color _keyboardFocusOutlineColor = new Color(0.6f, 0.85f, 1f, 0.95f);
+    [Export(PropertyHint.Range, "1,8,1")]
+    public int KeyboardFocusOutlineWidth
+    {
+        get => _keyboardFocusOutlineWidth;
+        set
+        {
+            _keyboardFocusOutlineWidth = Mathf.Clamp(value, 1, 8);
+            QueueRedraw();
+        }
+    }
+    private int _keyboardFocusOutlineWidth = 2;
     #endregion
     #region Display Properties(Exported Properties)
-    [ExportGroup("Content Display")]
+    [ExportCategory("Appearance")]
+    [ExportGroup("Background")]
     [Export]
     public BackgroundMode BackgroundType
     {
@@ -151,22 +197,6 @@ public partial class OmniButton : Control
     }
     public enum BackgroundMode { None = 0, UsePanel = 1, UseTexture = 2 }
     private BackgroundMode _backgroundMode = BackgroundMode.None;
-
-    /// <summary>
-    /// Optional icon texture displayed inside the button
-    /// </summary>
-    [Export]
-    public Texture2D? IconTexture
-    {
-        get => _iconTexture;
-        set
-        {
-            _iconTexture = value;
-            SetupChildren();
-            InvalidateVisualState();
-            FitLabelText();
-        }
-    }
     private Texture2D? _iconTexture;
     private void InvalidateAutosizeState()
     {
@@ -181,79 +211,14 @@ public partial class OmniButton : Control
             GD.Print($"[OmniButton:{Name}] {message}");
     }
 
-    // Label type + unified Text
+    // Label type + unified Text (backing fields; text exports follow Background and Icon groups for correct inspector nesting)
     public enum LabelTypeEnum { Label = 0, RichTextLabel = 1 }
     private LabelTypeEnum _labelType = LabelTypeEnum.Label;
-    [Export]
-    public LabelTypeEnum LabelType
-    {
-        get => _labelType;
-        set
-        {
-            _labelType = value;
-            // Mirror into legacy fields for internal use
-            if (_labelType == LabelTypeEnum.Label) { _labelText = _text; _richLabelText = string.Empty; }
-            else { _richLabelText = _text; _labelText = string.Empty; }
-            SetupChildren();
-            InvalidateVisualState();
-            FitLabelText();
-        }
-    }
     private string _text = string.Empty;
-    [Export(PropertyHint.MultilineText)]
-    public string Text
-    {
-        get => _text;
-        set
-        {
-            _text = value ?? string.Empty;
-            if (_labelType == LabelTypeEnum.Label) { _labelText = _text; _richLabelText = string.Empty; }
-            else { _richLabelText = _text; _labelText = string.Empty; }
-            SetupChildren();
-            InvalidateVisualState();
-            FitLabelText();
-        }
-    }
-    // Legacy entry points for scenes that still reference LabelText / RichLabelText.
-    [Export(PropertyHint.MultilineText)]
-    public string LabelText
-    {
-        get => _labelType == LabelTypeEnum.Label ? _text : string.Empty;
-        set
-        {
-            _labelType = LabelTypeEnum.Label;
-            Text = value ?? string.Empty;
-        }
-    }
-    [Export(PropertyHint.MultilineText)]
-    public string RichLabelText
-    {
-        get => _labelType == LabelTypeEnum.RichTextLabel ? _text : string.Empty;
-        set
-        {
-            _labelType = LabelTypeEnum.RichTextLabel;
-            Text = value ?? string.Empty;
-        }
-    }
-    // Text to progressively type (when using StartTypewriter overload)
-    [Export(PropertyHint.MultilineText)]
-    public string TextToType { get; set; } = string.Empty;
-
     private string _labelText = string.Empty;
     private string _richLabelText = string.Empty;
-    // Selection overlay appears when Selected is true; color via SelectedColor.
-    /// <summary>
-    /// Overlay color used when the selection overlay is visible (Selected == true).
-    /// </summary>
-    [Export]
-    public Color SelectedColor
-    {
-        get => _selectedColor;
-        set { _selectedColor = value; RefreshEditorVisual(); }
-    }
-    private Color _selectedColor = new Color(1, 1, 1, 0.3f);
     #region Panel(Exported Properties)
-    [ExportSubgroup("Background Settings")]
+    [ExportSubgroup("Panel & Texture")]
     [Export] public string PanelThemeVariation { get => _panelThemeVariation; set { _panelThemeVariation = value; ApplyPanelStyling(); RefreshEditorVisual(); } }
     private string _panelThemeVariation = "";
     [Export] public StyleBox? PanelStyleBox { get => _panelStyleBox; set { _panelStyleBox = value; ApplyPanelStyling(); RefreshEditorVisual(); } }
@@ -285,7 +250,22 @@ public partial class OmniButton : Control
     [Export] public Color BackgroundModulate { get; set; } = Colors.White;
     #endregion
     #region Icon(Exported Properties)
-    [ExportSubgroup("Icon Settings")]
+    [ExportGroup("Icon")]
+    /// <summary>
+    /// Optional icon texture displayed inside the button
+    /// </summary>
+    [Export]
+    public Texture2D? IconTexture
+    {
+        get => _iconTexture;
+        set
+        {
+            _iconTexture = value;
+            SetupChildren();
+            InvalidateVisualState();
+            FitLabelText();
+        }
+    }
     [Export] public TextureRect.ExpandModeEnum IconExpandMode { get => _iconExpand; set { _iconExpand = value; RefreshEditorVisual(); } }
     private TextureRect.ExpandModeEnum _iconExpand = TextureRect.ExpandModeEnum.FitWidthProportional;
     [Export] public TextureRect.StretchModeEnum IconStretchMode { get => _iconStretch; set { _iconStretch = value; RefreshEditorVisual(); } }
@@ -299,8 +279,73 @@ public partial class OmniButton : Control
     /// </summary>
     [Export] public Color IconModulate { get; set; } = Colors.White;
     #endregion
+    [ExportGroup("Text")]
+    [Export]
+    public LabelTypeEnum LabelType
+    {
+        get => _labelType;
+        set
+        {
+            _labelType = value;
+            // Mirror into legacy fields for internal use
+            if (_labelType == LabelTypeEnum.Label) { _labelText = _text; _richLabelText = string.Empty; }
+            else { _richLabelText = _text; _labelText = string.Empty; }
+            if (_twActive)
+            {
+                RequestRefresh(false, false, false);
+                return;
+            }
+            SetupChildren();
+            InvalidateVisualState();
+            ScheduleFitLabel();
+        }
+    }
+    [Export(PropertyHint.MultilineText)]
+    public string Text
+    {
+        get => _text;
+        set
+        {
+            _text = value ?? string.Empty;
+            if (_labelType == LabelTypeEnum.Label) { _labelText = _text; _richLabelText = string.Empty; }
+            else { _richLabelText = _text; _labelText = string.Empty; }
+            if (_twActive)
+            {
+                RequestRefresh(false, false, false);
+                return;
+            }
+            SetupChildren();
+            InvalidateVisualState();
+            ScheduleFitLabel();
+        }
+    }
+    [ExportSubgroup("Legacy Scenes")]
+    [Export(PropertyHint.MultilineText)]
+    public string LabelText
+    {
+        get => _labelType == LabelTypeEnum.Label ? _text : string.Empty;
+        set
+        {
+            _labelType = LabelTypeEnum.Label;
+            Text = value ?? string.Empty;
+        }
+    }
+    [Export(PropertyHint.MultilineText)]
+    public string RichLabelText
+    {
+        get => _labelType == LabelTypeEnum.RichTextLabel ? _text : string.Empty;
+        set
+        {
+            _labelType = LabelTypeEnum.RichTextLabel;
+            Text = value ?? string.Empty;
+        }
+    }
+    [Export(PropertyHint.MultilineText)]
+    public string TextToType { get; set; } = string.Empty;
+
     #region Label(Exported Properties)
-    [ExportSubgroup("Label Settings")]
+    [ExportGroup("Label")]
+    [ExportSubgroup("Typography")]
     /// <summary>
     /// Optional font resource applied to Label/RichText
     /// </summary>
@@ -315,27 +360,6 @@ public partial class OmniButton : Control
     /// Modulate color for Label/RichText
     /// </summary>
     [Export] public Color TextModulate { get; set; } = Colors.White;
-    [Export] public Vector2 TextFitPadding { get; set; } = new Vector2(12, 4);
-    /// <summary>
-    /// Minimum font size used by autosize
-    /// </summary>
-    [Export(PropertyHint.Range, "6,300,1")]
-    public int MinFontSize { get => _minFontSize; set { _minFontSize = value; FitLabelText(); } }
-    private int _minFontSize = 6;
-    /// <summary>
-    /// Maximum font size used by autosize
-    /// </summary>
-    [Export(PropertyHint.Range, "6,300,1")]
-    public int MaxFontSize { get => _maxFontSize; set { _maxFontSize = value; FitLabelText(); } }
-    private int _maxFontSize = 100;
-    /// <summary>
-    /// When > 0 forces this fixed size and bypasses autosize
-    /// </summary>
-    [Export(PropertyHint.Range, "0,300,1")] public int FixedFontSize { get; set; } = 0;
-    /// <summary>
-    /// Enable dynamic auto-sizing of Label/RichText within control bounds
-    /// </summary>
-    [Export] public bool EnableTextAutoSize { get; set; } = true;
     /// <summary>
     /// Horizontal alignment for Label/RichText text
     /// </summary>
@@ -346,6 +370,34 @@ public partial class OmniButton : Control
     /// </summary>
     [Export] public VerticalAlignment LabelVerticalAlignment { get => _labelVAlign; set { _labelVAlign = value; RefreshEditorVisual(); } }
     private VerticalAlignment _labelVAlign = VerticalAlignment.Center;
+    /// <summary>
+    /// Autowrap mode for Label/RichText; affects autosize
+    /// </summary>
+    [Export] public TextServer.AutowrapMode LabelAutowrap { get => _labelAutowrap; set { _labelAutowrap = value; InvalidateAutosizeState(); RefreshEditorVisual(); } }
+    private TextServer.AutowrapMode _labelAutowrap = TextServer.AutowrapMode.Off;
+    [ExportSubgroup("Sizing & Fit")]
+    [Export] public Vector2 TextFitPadding { get; set; } = new Vector2(12, 4);
+    /// <summary>
+    /// Minimum font size used by autosize
+    /// </summary>
+    [Export(PropertyHint.Range, "6,300,1")]
+    public int MinFontSize { get => _minFontSize; set { _minFontSize = value; ScheduleFitLabel(); } }
+    private int _minFontSize = 6;
+    /// <summary>
+    /// Maximum font size used by autosize (autosize binary search cost scales with log2(Max−Min); keep range tight for UI perf)
+    /// </summary>
+    [Export(PropertyHint.Range, "6,300,1")]
+    public int MaxFontSize { get => _maxFontSize; set { _maxFontSize = value; ScheduleFitLabel(); } }
+    private int _maxFontSize = 100;
+    /// <summary>
+    /// When > 0 forces this fixed size and bypasses autosize
+    /// </summary>
+    [Export(PropertyHint.Range, "0,300,1")] public int FixedFontSize { get; set; } = 0;
+    /// <summary>
+    /// Enable dynamic auto-sizing of Label/RichText within control bounds
+    /// </summary>
+    [Export] public bool EnableTextAutoSize { get => _enableTextAutoSize; set { _enableTextAutoSize = value; ScheduleFitLabel(); } }
+    private bool _enableTextAutoSize = true;
     /// <summary>
     /// Universal text padding (pixels). X applies to left and right, Y to top and bottom.
     /// This is a base inset applied to both Label and RichTextLabel.
@@ -361,15 +413,11 @@ public partial class OmniButton : Control
     [Export(PropertyHint.Range, "0,4096,1")] public float LabelAdditionalPaddingRight { get => _labelPadRight; set { _labelPadRight = value; RefreshEditorVisual(); } }
     [Export(PropertyHint.Range, "0,4096,1")] public float LabelAdditionalPaddingBottom { get => _labelPadBottom; set { _labelPadBottom = value; RefreshEditorVisual(); } }
     private float _labelPadLeft = 0f, _labelPadTop = 0f, _labelPadRight = 0f, _labelPadBottom = 0f;
-    /// <summary>
-    /// Autowrap mode for Label/RichText; affects autosize
-    /// </summary>
-    [Export] public TextServer.AutowrapMode LabelAutowrap { get => _labelAutowrap; set { _labelAutowrap = value; InvalidateAutosizeState(); RefreshEditorVisual(); } }
-    private TextServer.AutowrapMode _labelAutowrap = TextServer.AutowrapMode.Off;
 
     // ===== BBCode-aware typing support =====
     private struct BBToken { public bool IsTag; public string Content; public BBToken(bool t, string c) { IsTag = t; Content = c; } }
     private bool _twBBCodeAware = false;
+    [ExportGroup("Typewriter")]
     [Export] public bool SuspendHoverDuringTypewriter { get; set; } = true;
     [Export] public bool DelayEffectTagsDuringTypewriter { get; set; } = true;
     private bool _twDelayEffects => DelayEffectTagsDuringTypewriter;
@@ -386,8 +434,9 @@ public partial class OmniButton : Control
     /// Combine to invert on press, toggle, hover, or while holding.
     /// </summary>
     [Flags] public enum InvertDisplayModes { None = 0, Press = 1, Toggle = 2, Hover = 4, Hold = 8 }
-    [ExportSubgroup("Invert Display")]
     private InvertDisplayModes _invertModes = InvertDisplayModes.None;
+    [ExportGroup("Visual Effects")]
+    [ExportSubgroup("Invert Display")]
     [Export]
     public InvertDisplayModes InvertModes
     {
@@ -433,6 +482,17 @@ public partial class OmniButton : Control
     }
     private float _hoverLerpSpeed = 25.0f;
     #endregion
+    private Color _selectedColor = new Color(1, 1, 1, 0.3f);
+    /// <summary>
+    /// Overlay color used when the selection overlay is visible (Selected == true).
+    /// </summary>
+    [ExportGroup("Selection")]
+    [Export]
+    public Color SelectedColor
+    {
+        get => _selectedColor;
+        set { _selectedColor = value; RefreshEditorVisual(); }
+    }
     #endregion
     #region Actions(Exported Properties)
     // Behavior
@@ -455,6 +515,7 @@ public partial class OmniButton : Control
     /// (Pressed/Released/Hover/Toggle/Hold/Swipe/Log/Warning/Error), the corresponding bit is
     /// auto-enabled for convenience. If you later disable a bit manually, it will remain off.
     /// </summary>
+    [ExportCategory("Behavior")]
     [ExportGroup("Actions")]
     // Export as bits to avoid editor issues with [Flags] enums
     [Export(PropertyHint.Flags, "Pressed,Released,Hover,Toggle,Hold,Swipe,Log,Warning,Error")] public int ActionMaskBits { get; set; } = 0;
@@ -504,20 +565,118 @@ public partial class OmniButton : Control
     [Export]
     public InteractionModeEnum InteractionMode { get => _interactionMode; set { _interactionMode = value; MarkPresetCustom(); } }
     #endregion
-    #region Input(Exported Properties)
-    [ExportGroup("Input")]
+    #region Cooldown(Exported Properties)
+    public enum CooldownDirection
+    {
+        BottomToTop = 0,
+        TopToBottom = 1,
+        LeftToRight = 2,
+        RightToLeft = 3
+    }
+    [ExportGroup("Cooldown")]
+    private bool _enableCooldown = false;
     /// <summary>
-    /// Optional external Control whose rect defines input bounds
+    /// Enable cooldown fill overlay and timing
     /// </summary>
+    [Export]
+    public bool EnableCooldown
+    {
+        get => _enableCooldown;
+        set
+        {
+            _enableCooldown = value;
+            MarkPresetCustom();
+            if (!_enableCooldown)
+            {
+                CooldownTrigger = CooldownTriggerEnum.None;
+                CooldownStartDelay = 0.0f;
+                CooldownDuration = 1.0f;
+                CooldownStartFilled = false;
+                CooldownColor = new Color(0, 0, 0, 0.4f);
+                CooldownFillDirection = CooldownDirection.BottomToTop;
+                InvertOnCooldown = false;
+                CooldownInvertDuration = 0.0f;
+                SuspendHoverScaleDuringCooldown = false;
+                AllowHoldDuringCooldown = false;
+                HideCooldownDuringHoldBuildUp = true;
+                _cooldownActive = false;
+                _cooldownTimeLeft = 0.0;
+                _cooldownDelayPending = false;
+                _cooldownDelayLeft = 0.0;
+                _cooldownElapsed = 0.0;
+                if (_cooldown != null && IsInstanceValid(_cooldown))
+                {
+                    _cooldown.Visible = false;
+                    _cooldown.Size = Vector2.Zero;
+                    _cooldown.Position = Vector2.Zero;
+                }
+            }
+        }
+    }
+    public enum CooldownTriggerEnum { None = 0, OnPress = 1, OnRelease = 2, OnPressAndRelease = 3 }
+    private CooldownTriggerEnum _cooldownTrigger = CooldownTriggerEnum.None;
+    [Export]
+    public CooldownTriggerEnum CooldownTrigger
+    {
+        get => _cooldownTrigger;
+        set { _cooldownTrigger = value; SafeNotifyPropertyListChanged(); }
+    }
+    /// <summary>
+    /// Optional delay before cooldown begins, allowing pressed visuals to show.
+    /// </summary>
+    [Export(PropertyHint.Range, "0.0,10.0,0.01")] public float CooldownStartDelay { get; set; } = 0.0f;
+    /// <summary>
+    /// Duration of cooldown in seconds
+    /// </summary>
+    [Export(PropertyHint.Range, "0.05,60.0,0.05")] public float CooldownDuration { get; set; } = 1.0f;
+    /// <summary>
+    /// Start with overlay fully filled and empty over time
+    /// </summary>
+    [Export] public bool CooldownStartFilled { get; set; } = false;
+    /// <summary>
+    /// Color used for cooldown overlay
+    /// </summary>
+    [Export] public Color CooldownColor { get; set; } = new Color(0, 0, 0, 0.4f);
+    /// <summary>
+    /// Direction the cooldown overlay fills/empties
+    /// </summary>
+    [Export] public CooldownDirection CooldownFillDirection { get; set; } = CooldownDirection.BottomToTop;
+    /// <summary>
+    /// Invert visuals while cooldown is active.
+    /// </summary>
+    [Export] public bool InvertOnCooldown { get; set; } = false;
+    /// <summary>
+    /// How long to keep cooldown invert active. 0 = infinite.
+    /// </summary>
+    [Export(PropertyHint.Range, "0.0,10.0,0.01")] public float CooldownInvertDuration { get; set; } = 0.0f;
+    /// <summary>
+    /// Temporarily disable hover scaling during active cooldown
+    /// </summary>
+    [Export] public bool SuspendHoverScaleDuringCooldown { get; set; } = false;
+    /// <summary>
+    /// Allow hold actions while cooldown is active
+    /// </summary>
+    [Export] public bool AllowHoldDuringCooldown { get; set; } = false;
+    /// <summary>
+    /// Hide cooldown overlay while hold build-up is visible
+    /// </summary>
+    [Export] public bool HideCooldownDuringHoldBuildUp { get; set; } = true;
+    #endregion
+    #region Input(Exported Properties)
+    /// <summary>
+    /// If set, hit tests (press, hover-inside, swipe bounds) use this control’s global rect instead of this OmniButton’s.
+    /// Use for a larger invisible hit target, matching a parent panel, or aligning with another widget’s shape.
+    /// </summary>
+    [ExportCategory("Input & Motion")]
+    [ExportGroup("Input bounds")]
     [Export] public Control? BoundsSource { get; set; }
     /// <summary>
-    /// Extra inset/outset for hit detection (pixels)
+    /// Expands the hit rectangle in pixels on each side (X = left/right, Y = top/bottom) after resolving bounds from this control or <see cref="BoundsSource"/>.
     /// </summary>
     [Export] public Vector2 HitSlop { get; set; } = Vector2.Zero;
     /// <summary>
-    /// Determines how the button reacts to pointer drags while pressed.
-    /// None keeps the control stationary; FollowBoth uses legacy rectangular follow;
-    /// VirtualJoystick emits axes and optionally snaps the visual to input.
+    /// While the pointer is held: None = control stays put; FollowBoth = moves with the pointer (draggable);
+    /// VirtualJoystick = axis signals and optional thumb follow (see virtual joystick settings).
     /// </summary>
     public enum FollowModeEnum
     {
@@ -527,10 +686,10 @@ public partial class OmniButton : Control
     }
     #endregion
     #region Follow(Exported Properties)
-    [ExportGroup("Follow Input")]
+    [ExportGroup("Drag & virtual joystick")]
     private FollowModeEnum _followMode = FollowModeEnum.None;
     /// <summary>
-    /// Follow pointer while pressed or act as a virtual joystick
+    /// How the control behaves while pressed: stationary, draggable with the pointer, or virtual joystick mode.
     /// </summary>
     [Export]
     public FollowModeEnum FollowMode
@@ -664,106 +823,6 @@ public partial class OmniButton : Control
     #endregion
     [ExportSubgroup("Legacy Flags (Compat)")]
     [Export] public bool ClampToBounds { get; set; } = true;
-    #region Cooldown(Exported Properties)
-    public enum CooldownDirection
-    {
-        BottomToTop = 0,
-        TopToBottom = 1,
-        LeftToRight = 2,
-        RightToLeft = 3
-    }
-    [ExportGroup("Cooldown")]
-    private bool _enableCooldown = false;
-    /// <summary>
-    /// Enable cooldown fill overlay and timing
-    /// </summary>
-    [Export]
-    public bool EnableCooldown
-    {
-        get => _enableCooldown;
-        set
-        {
-            _enableCooldown = value;
-            MarkPresetCustom();
-            if (!_enableCooldown)
-            {
-                CooldownTrigger = CooldownTriggerEnum.None;
-                CooldownStartDelay = 0.0f;
-                CooldownDuration = 1.0f;
-                CooldownStartFilled = false;
-                CooldownColor = new Color(0, 0, 0, 0.4f);
-                CooldownFillDirection = CooldownDirection.BottomToTop;
-                InvertOnCooldown = false;
-                CooldownInvertDuration = 0.0f;
-                SuspendHoverScaleDuringCooldown = false;
-                AllowHoldDuringCooldown = false;
-                HideCooldownDuringHoldBuildUp = true;
-                _cooldownActive = false;
-                _cooldownTimeLeft = 0.0;
-                _cooldownDelayPending = false;
-                _cooldownDelayLeft = 0.0;
-                _cooldownElapsed = 0.0;
-                if (_cooldown != null && IsInstanceValid(_cooldown))
-                {
-                    _cooldown.Visible = false;
-                    _cooldown.Size = Vector2.Zero;
-                    _cooldown.Position = Vector2.Zero;
-                }
-            }
-        }
-    }
-    public enum CooldownTriggerEnum { None = 0, OnPress = 1, OnRelease = 2, OnPressAndRelease = 3 }
-    private CooldownTriggerEnum _cooldownTrigger = CooldownTriggerEnum.None;
-    [Export]
-    public CooldownTriggerEnum CooldownTrigger
-    {
-        get => _cooldownTrigger;
-        set { _cooldownTrigger = value; SafeNotifyPropertyListChanged(); }
-    }
-    /// <summary>
-    /// Optional delay before cooldown begins, allowing pressed visuals to show.
-    /// </summary>
-    [Export(PropertyHint.Range, "0.0,10.0,0.01")] public float CooldownStartDelay { get; set; } = 0.0f;
-    /// <summary>
-    /// Duration of cooldown in seconds
-    /// </summary>
-    [Export(PropertyHint.Range, "0.05,60.0,0.05")] public float CooldownDuration { get; set; } = 1.0f;
-    /// <summary>
-    /// Start with overlay fully filled and empty over time
-    /// </summary>
-    [Export] public bool CooldownStartFilled { get; set; } = false;
-    /// <summary>
-    /// Color used for cooldown overlay
-    /// </summary>
-    [Export] public Color CooldownColor { get; set; } = new Color(0, 0, 0, 0.4f);
-    /// <summary>
-    /// Direction the cooldown overlay fills/empties
-    /// </summary>
-    [Export] public CooldownDirection CooldownFillDirection { get; set; } = CooldownDirection.BottomToTop;
-    /// <summary>
-    /// Invert visuals while cooldown is active.
-    /// </summary>
-    [Export] public bool InvertOnCooldown { get; set; } = false;
-    /// <summary>
-    /// How long to keep cooldown invert active. 0 = infinite.
-    /// </summary>
-    [Export(PropertyHint.Range, "0.0,10.0,0.01")] public float CooldownInvertDuration { get; set; } = 0.0f;
-    /// <summary>
-    /// Temporarily disable hover scaling during active cooldown
-    /// </summary>
-    [Export] public bool SuspendHoverScaleDuringCooldown { get; set; } = false;
-    /// <summary>
-    /// Allow hold actions while cooldown is active
-    /// </summary>
-    [Export] public bool AllowHoldDuringCooldown { get; set; } = false;
-    /// <summary>
-    /// Hide cooldown overlay while hold build-up is visible
-    /// </summary>
-    [Export] public bool HideCooldownDuringHoldBuildUp { get; set; } = true;
-    #endregion
-    #region Theme Variations(Exported Properties)
-    [ExportGroup("Theme Variations")]
-    #endregion
     #region Private State
     private Panel? _panel;
     private TextureRect? _background;
@@ -781,6 +840,12 @@ public partial class OmniButton : Control
     private float _hoverTargetScale = 1.0f;
     private Vector2 _originalScale = Vector2.One;
     private static readonly string[] OwnSignals = { "Pressed", "Toggled", "Released", "Log", "Warning", "Error", "Hold", "Swipe", "SwipeEnded", "HoverIn", "HoverOut" };
+    private static readonly System.Collections.Generic.HashSet<string> ManagedChildNamesForPurge = new(System.StringComparer.Ordinal)
+    {
+        "Panel", "Background", "Icon", "Label", "RichLabel",
+        "Overlay", "HoldFill", "Cooldown", "DefaultThumb", "JoystickArea"
+    };
+    private readonly System.Collections.Generic.List<Node> _setupChildrenPurgeScratch = new(16);
     private bool _isPressed = false;
     private bool _isHovering = false;
     private bool _isToggled = false;
@@ -792,6 +857,11 @@ public partial class OmniButton : Control
     private Vector2 _swipeStart = Vector2.Zero;
     private Vector2 _swipeOrigin = Vector2.Zero;
     private bool _touchSwipeEligible = false;
+    /// <summary>Which modality owns the current press so emulated mouse + native touch do not both fire.</summary>
+    private enum PointerGestureSource { None, Mouse, NativeTouch }
+    private PointerGestureSource _pointerGestureSource;
+    /// <summary>-1 = mouse session; &gt;= 0 = finger index that started the current native touch press on this control.</summary>
+    private int _activePointerTouchIndex = -1;
     private Panel? _vjAreaPanel;
     private ActionMaskFlags _autoActionOnce = ActionMaskFlags.None;
     private void MarkPresetCustom()
@@ -900,7 +970,7 @@ public partial class OmniButton : Control
         public int MinFontSize { get => _o.MinFontSize; set { _o.MinFontSize = value; _o.FitLabelText(); } }
         public int MaxFontSize { get => _o.MaxFontSize; set { _o.MaxFontSize = value; _o.FitLabelText(); } }
         public int FixedFontSize { get => _o.FixedFontSize; set { _o.FixedFontSize = value; _o.RequestRefresh(false, false, true); } }
-        public bool AutoSize { get => _o.EnableTextAutoSize; set { _o.EnableTextAutoSize = value; _o.FitLabelText(); } }
+        public bool AutoSize { get => _o.EnableTextAutoSize; set { _o.EnableTextAutoSize = value; } }
         public HorizontalAlignment HAlign { get => _o.LabelHorizontalAlignment; set { _o.LabelHorizontalAlignment = value; _o.RequestRefresh(false, false, false); } }
         public VerticalAlignment VAlign { get => _o.LabelVerticalAlignment; set { _o.LabelVerticalAlignment = value; _o.RequestRefresh(false, false, false); } }
         public Vector2 Padding { get => _o.LabelPadding; set { _o.LabelPadding = value; _o.RequestRefresh(false, false, true); } }
@@ -1004,6 +1074,7 @@ public partial class OmniButton : Control
             SetProcess(true);
         }
     }
+    [ExportCategory("Composition")]
     [Export]
     public bool ManagedDrawOnTop
     {
@@ -1011,6 +1082,8 @@ public partial class OmniButton : Control
         set { _managedDrawOnTop = value; PositionManagedRoot(); }
     }
     private bool _managedDrawOnTop = true;
+    [ExportCategory("Debug")]
+    [Export(PropertyHint.Enum, "Off,Basic")] public DebuggerLogMode DebuggerLog { get; set; } = DebuggerLogMode.Off;
     private void EnsureManagedRoot()
     {
         if (_managedRoot != null && IsInstanceValid(_managedRoot)) return;
@@ -1033,30 +1106,97 @@ public partial class OmniButton : Control
         _managedRoot!.AddChild(node);
     }
 
+    /// <summary>Reparents a legacy <c>Overlay</c> that was a direct child of OmniButton onto <c>_Managed</c> (one-time migration).</summary>
+    private void EnsureOverlayUnderManagedRoot()
+    {
+        if (_overlay == null || !IsInstanceValid(_overlay)) return;
+        if (_overlay.GetParent() == _managedRoot) return;
+        if (_overlay.GetParent() != this) return;
+        EnsureManagedRoot();
+        RemoveChild(_overlay);
+        _managedRoot!.AddChild(_overlay);
+        EnsureFullRect(_overlay);
+        _overlay.MouseFilter = MouseFilterEnum.Pass;
+    }
+
+    /// <summary>Creates a control under <c>_Managed</c> (same layer as Panel/Icon/Label). Do not use for user decorations.</summary>
+    private T CreateManagedChildAtPosition<T>(string name, int position) where T : Control, new()
+    {
+        EnsureManagedRoot();
+        var node = new T
+        {
+            Name = name,
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        _managedRoot!.AddChild(node);
+        var count = _managedRoot.GetChildCount();
+        var dest = Mathf.Clamp(position, 0, Mathf.Max(0, count - 1));
+        _managedRoot.MoveChild(node, dest);
+        node.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        node.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        node.SizeFlagsVertical = SizeFlags.ExpandFill;
+        return node;
+    }
+
     #region Godot Lifecycle
     public override void _EnterTree() => Initialize();
     public override void _ExitTree() => Cleanup();
     public override void _Ready() => Setup();
     public override void _Process(double delta)
     {
-        // Editor: throttle polling for inspector changes
         if (Engine.IsEditorHint())
-        {
             EditorPollTick(delta);
+
+        if (_pendingChildrenRefresh || _pendingPanelStyling || _pendingVisualRefresh || _pendingFitLabel)
+        {
+            if (_pendingChildrenRefresh)
+            {
+                SetupChildren();
+                _pendingChildrenRefresh = false;
+            }
+            if (_pendingPanelStyling)
+            {
+                ApplyPanelStyling();
+                _pendingPanelStyling = false;
+            }
+            if (_pendingVisualRefresh)
+            {
+                ApplyVisualState();
+                _pendingVisualRefresh = false;
+            }
+            if (_pendingFitLabel)
+            {
+                FitLabelText();
+                _pendingFitLabel = false;
+            }
         }
-        // Coalesce pending refresh work
-        if (_pendingChildrenRefresh || _pendingPanelStyling || _pendingVisualRefresh || _pendingFitLabel) { if (_pendingChildrenRefresh) { SetupChildren(); _pendingChildrenRefresh = false; } if (_pendingPanelStyling) { ApplyPanelStyling(); _pendingPanelStyling = false; } if (_pendingVisualRefresh) { ApplyVisualState(); _pendingVisualRefresh = false; } if (_pendingFitLabel) { FitLabelText(); _pendingFitLabel = false; } }
-        // Runtime: force a few refit attempts while layout settles.
+
         if (!Engine.IsEditorHint() && _runtimeRefitFrames > 0)
         {
             _runtimeRefitFrames--;
             _fitCacheSig = string.Empty;
             FitLabelText();
         }
+
         ProcessHoverScaling(delta);
-        // Typewriter progression
+
         if (_twActive)
             ProcessTypewriter(delta);
+
+        TryStopProcessWhenFullyIdle();
+    }
+
+    /// <summary>Runtime only: stop <see cref="_Process"/> when no subsystem still needs per-frame ticks.</summary>
+    private void TryStopProcessWhenFullyIdle()
+    {
+        if (Engine.IsEditorHint()) return;
+        if (_pendingChildrenRefresh || _pendingPanelStyling || _pendingVisualRefresh || _pendingFitLabel) return;
+        if (_runtimeRefitFrames > 0) return;
+        if (_twActive || _cooldownDelayPending) return;
+        if (EnableCooldown && _cooldownActive) return;
+        if (_isPressed && (!EnableCooldown || !_cooldownActive || AllowHoldDuringCooldown || EnableHoldBuildUp)) return;
+        if (HoverScaleAnimationPending()) return;
+        SetProcess(false);
     }
     public override Array<Dictionary> _GetPropertyList() => BuildPropertyList();
 
@@ -1101,6 +1241,15 @@ public partial class OmniButton : Control
                     _isHovering = false;
                     InvalidateVisualState();
                 }
+                break;
+            case (int)NotificationTransformChanged:
+                if (_isHovering && EnableHoverScale)
+                {
+                    UpdateHoverPivotOffsets();
+                    _hoverTargetScale = HoverTargetForViewport();
+                    SetProcess(true);
+                }
+                FitLabelText();
                 break;
             case (int)NotificationPredelete:
                 Cleanup();
@@ -1181,10 +1330,14 @@ public partial class OmniButton : Control
         _overlay = null;
         _cooldown = null;
         _holdFill = null;
-        if (_panel != null && IsInstanceValid(_panel) && _panel.GetParent() == this)
+        if (_panel != null && IsInstanceValid(_panel))
         {
-            RemoveChild(_panel);
-            _panel.QueueFree();
+            var pp = _panel.GetParent();
+            if (pp == this || pp == _managedRoot)
+            {
+                pp.RemoveChild(_panel);
+                _panel.QueueFree();
+            }
         }
         _panel = null;
         if (_defaultThumb != null && IsInstanceValid(_defaultThumb) && _defaultThumb.GetParent() == this)
@@ -1295,21 +1448,16 @@ public partial class OmniButton : Control
         try
         {
             EnsureManagedRoot();
-            var managedNames = new System.Collections.Generic.HashSet<string>(new[]
-            {
-                "Panel", "Background", "Icon", "Label", "RichLabel",
-                "Overlay", "HoldFill", "Cooldown", "DefaultThumb", "JoystickArea"
-            });
             void PurgeChildren(Node parent)
             {
                 if (parent == null || !IsInstanceValid(parent)) return;
-                var toRemove = new System.Collections.Generic.List<Node>();
+                _setupChildrenPurgeScratch.Clear();
                 foreach (var child in parent.GetChildren())
                 {
-                    if (child is Node n && n.Name != null && managedNames.Contains(n.Name))
-                        toRemove.Add(n);
+                    if (child is Node n && n.Name != null && ManagedChildNamesForPurge.Contains(n.Name))
+                        _setupChildrenPurgeScratch.Add(n);
                 }
-                foreach (var n in toRemove)
+                foreach (var n in _setupChildrenPurgeScratch)
                 {
                     var p = n.GetParent();
                     p?.RemoveChild(n);
@@ -1320,7 +1468,13 @@ public partial class OmniButton : Control
             if (_managedRoot != null && IsInstanceValid(_managedRoot))
                 PurgeChildren(_managedRoot);
         }
-        catch { /* best-effort cleanup only */ }
+        catch (System.Exception ex)
+        {
+            if (Engine.IsEditorHint())
+                GD.PushError($"OmniButton '{Name}': SetupChildren purge failed: {ex.Message}");
+            if (DebuggerLog != DebuggerLogMode.Off)
+                GD.PrintErr($"[OmniButton:{Name}] SetupChildren purge: {ex}");
+        }
         // Free only managed children; leave user-added nodes intact
         void FreeNode(Node? n)
         {
@@ -1444,9 +1598,9 @@ public partial class OmniButton : Control
     }
     private void UpdateOverlay()
     {
+        EnsureOverlayUnderManagedRoot();
         bool needOverlay = _isSelected;
-        // Recreate if missing, invalid, or not parented to this control
-        bool overlayAlive = _overlay != null && IsInstanceValid(_overlay) && (_overlay.GetParent() == this || _overlay.GetParent() == _managedRoot);
+        bool overlayAlive = _overlay != null && IsInstanceValid(_overlay) && _overlay.GetParent() == _managedRoot;
         if (needOverlay && !overlayAlive)
         {
             _overlay = new ColorRect { Name = "Overlay", Color = SelectedColor };
@@ -1467,7 +1621,7 @@ public partial class OmniButton : Control
     {
         if (_holdFill == null || !IsInstanceValid(_holdFill))
         {
-            _holdFill = new ColorRect { Name = "HoldFill", Color = HoldFillColor };
+            _holdFill = new ColorRect { Name = "HoldFill", Color = HoldFillColor, ZIndex = 6 };
             _holdFill.MouseFilter = MouseFilterEnum.Pass;
             ManagedAddChild(_holdFill);
             // Use manual sizing/positioning; do NOT anchor full-rect
@@ -1509,6 +1663,17 @@ public partial class OmniButton : Control
     #endregion
     #region Label Font Sizing
     private string _fitCacheSig = string.Empty;
+
+    /// <summary>Cache key must follow the string actually drawn (typewriter updates the label, not <see cref="_text"/>).</summary>
+    private string TextForFitSignature()
+    {
+        if (_richLabel != null && IsInstanceValid(_richLabel))
+            return _richLabel.Text ?? string.Empty;
+        if (_label != null && IsInstanceValid(_label))
+            return _label.Text ?? string.Empty;
+        return _text ?? string.Empty;
+    }
+
     private void ConfigureLabel()
     {
         if (_label == null) return;
@@ -1520,11 +1685,24 @@ public partial class OmniButton : Control
         if (LabelFont != null)
             _label.AddThemeFontOverride("font", LabelFont);
     }
+    /// <summary>Runtime: queue autosize for the next frame (coalesces with ApplyVisualState). Editor: fit immediately.</summary>
+    private void ScheduleFitLabel()
+    {
+        if (Engine.IsEditorHint())
+            FitLabelText();
+        else
+        {
+            _pendingFitLabel = true;
+            SetProcess(true);
+        }
+    }
+
     internal void FitLabelText()
     {
-        var __sig = $"{_text}|{Size}|{_labelPadding}|{_labelPadLeft},{_labelPadTop},{_labelPadRight},{_labelPadBottom}|{_labelAutowrap}|{FixedFontSize}|{_labelType}";
+        var sigText = TextForFitSignature();
+        var __sig = $"{sigText}|{Size}|{_labelPadding}|{_labelPadLeft},{_labelPadTop},{_labelPadRight},{_labelPadBottom}|{_labelAutowrap}|{FixedFontSize}|{_labelType}";
         if (_fitCacheSig == __sig) return;
-        DebugLog($"Autosize begin size={Size} type={LabelType} wrap={LabelAutowrap} text='{_text}'");
+        DebugLog($"Autosize begin size={Size} type={LabelType} wrap={LabelAutowrap} text='{sigText}'");
         // Fixed font size takes precedence regardless of auto-size
         if (FixedFontSize > 0)
         {
@@ -1543,7 +1721,7 @@ public partial class OmniButton : Control
         if (!EnableTextAutoSize) return;
         if (_fittingLabel) return;
         bool didFit = false;
-        if (_richLabel != null && IsInstanceValid(_richLabel) && !string.IsNullOrEmpty(_richLabelText))
+        if (_richLabel != null && IsInstanceValid(_richLabel) && !string.IsNullOrEmpty(_richLabel.Text))
         {
             didFit = FitRichTextLabel();
         }
@@ -1657,7 +1835,7 @@ public partial class OmniButton : Control
         {
             bool wrapEnabled = LabelAutowrap != TextServer.AutowrapMode.Off;
             var avail = CalculateAvailableArea();
-            DebugLog($"Autosize rich start avail={avail} wrapEnabled={wrapEnabled} text='{_richLabelText.Replace("\n", "\\n")}'");
+            DebugLog($"Autosize rich start avail={avail} wrapEnabled={wrapEnabled} text='{(_richLabel!.Text ?? string.Empty).Replace("\n", "\\n")}'");
             if (avail.X <= 1.0f || avail.Y <= 1.0f)
             {
                 CallDeferred(nameof(FitRichTextLabel));
@@ -1667,7 +1845,7 @@ public partial class OmniButton : Control
             if (fnt == null) return false;
             var rtl = _richLabel;
             if (rtl == null || !IsInstanceValid(rtl)) return false;
-            string plain = StripKnownBBCode(_richLabelText);
+            string plain = StripKnownBBCode(rtl.Text ?? string.Empty);
             float wrap = (LabelAutowrap != TextServer.AutowrapMode.Off) ? avail.X : -1f;
             // Fast-path: try current cached size first; if overflow, decrement a few steps
             int seed = _richCurrentFontSize > 0 ? _richCurrentFontSize : _lastFitFontSize;
@@ -1712,12 +1890,14 @@ public partial class OmniButton : Control
             int guard = 0;
             while (best > MinFontSize && guard < 32)
             {
-                var overH = rtl.GetContentHeight() > avail.Y;
+                var overH = RichHeightExceedsAvail(avail.Y, fnt, plain, wrap, best);
                 var sz = MeasureParagraph(fnt, plain, wrap, best);
                 var overW = !FitsWithin(sz, avail, wrapEnabled) && sz.X > avail.X;
                 if (!overH && !overW) break;
                 best--;
                 ApplyRichLabelFontOverrides(rtl, fnt, best);
+                rtl.UpdateMinimumSize();
+                rtl.QueueRedraw();
                 _richCurrentFontSize = best;
                 guard++;
             }
@@ -1740,7 +1920,7 @@ public partial class OmniButton : Control
         if (avail.X <= 1.0f || avail.Y <= 1.0f) return;
         var fnt = LabelFont ?? ThemeDB.FallbackFont;
         if (fnt == null) return;
-        string plain = StripKnownBBCode(_richLabelText ?? string.Empty);
+        string plain = StripKnownBBCode(_richLabel.Text ?? string.Empty);
         bool wrapEnabled = LabelAutowrap != TextServer.AutowrapMode.Off;
         float wrap = wrapEnabled ? avail.X : -1f;
         int size = _richCurrentFontSize > 0 ? _richCurrentFontSize : MinFontSize;
@@ -1750,7 +1930,7 @@ public partial class OmniButton : Control
         _richLabel.QueueRedraw();
         while (size > MinFontSize && guard < 64)
         {
-            bool overH = _richLabel.GetContentHeight() > avail.Y;
+            bool overH = RichHeightExceedsAvail(avail.Y, fnt, plain, wrap, size);
             var measured = MeasureParagraph(fnt, plain, wrap, size);
             bool overW = !FitsWithin(measured, avail, wrapEnabled);
             if (!overH && !overW) break;
@@ -1762,12 +1942,25 @@ public partial class OmniButton : Control
             guard++;
         }
         // If still overflowing (layout not settled), retry next frame with a cap on passes
-        bool stillOver = _richLabel.GetContentHeight() > avail.Y || !FitsWithin(MeasureParagraph(fnt, plain, wrap, size), avail, wrapEnabled);
+        bool stillOver = RichHeightExceedsAvail(avail.Y, fnt, plain, wrap, size) || !FitsWithin(MeasureParagraph(fnt, plain, wrap, size), avail, wrapEnabled);
         if (stillOver && _richVerifyPasses < 8)
         {
             _richVerifyPasses++;
             CallDeferred(nameof(VerifyRichTextFit));
         }
+        else
+        {
+            _lastFitFontSize = _richCurrentFontSize;
+        }
+    }
+
+    /// <summary>Prefer RichTextLabel layout height when ready; otherwise TextParagraph (same frame as fit).</summary>
+    private bool RichHeightExceedsAvail(float availY, Font font, string plain, float wrapWidth, int sizePx)
+    {
+        if (_richLabel == null || !IsInstanceValid(_richLabel)) return false;
+        float gh = _richLabel.GetContentHeight();
+        if (gh > 0.5f) return gh > availY;
+        return MeasureParagraph(font, plain, wrapWidth, sizePx).Y > availY;
     }
 
     private void ApplyRichLabelFontSizeOnly(int fontSize)
@@ -1823,7 +2016,9 @@ public partial class OmniButton : Control
         paragraph.Width = wrapWidth > 0f ? wrapWidth : 0f;
         paragraph.AddString(text ?? string.Empty, font, fontSize, default, default);
         var size = paragraph.GetSize();
-        DebugLog($"Autosize measure wrapWidth={wrapWidth} fontSize={fontSize} size={size} text='{text?.Replace("\n", "\\n")}'");
+        // Hot path: do not build the debug string unless Basic logging is on (matches DebugLog gate).
+        if (!Engine.IsEditorHint() && DebuggerLog != DebuggerLogMode.Off)
+            DebugLog($"Autosize measure wrapWidth={wrapWidth} fontSize={fontSize} size={size} text='{text?.Replace("\n", "\\n")}'");
         return size;
     }
 
@@ -1901,7 +2096,7 @@ public partial class OmniButton : Control
     {
         if (BackgroundType != BackgroundMode.UsePanel)
         {
-            var panel = GetNodeOrNull<Panel>("Panel");
+            var panel = FindManagedPanelOrLegacy();
             if (panel != null)
             {
                 panel.RemoveThemeStyleboxOverride("panel");
@@ -2030,7 +2225,7 @@ public partial class OmniButton : Control
     {
         if (_cooldown == null || !IsInstanceValid(_cooldown))
         {
-            _cooldown = new ColorRect { Name = "Cooldown", Color = CooldownColor };
+            _cooldown = new ColorRect { Name = "Cooldown", Color = CooldownColor, ZIndex = 5 };
             _cooldown.MouseFilter = MouseFilterEnum.Pass;
             ManagedAddChild(_cooldown);
         }
@@ -2163,30 +2358,59 @@ public partial class OmniButton : Control
         }
     }
     #endregion
+    /// <summary>Resolves Panel for styling whether it lives under <c>_Managed</c> or legacy direct child.</summary>
+    private Panel? FindManagedPanelOrLegacy()
+    {
+        if (_managedRoot != null && IsInstanceValid(_managedRoot))
+        {
+            var p = _managedRoot.GetNodeOrNull<Panel>("Panel");
+            if (p != null) return p;
+        }
+        var legacy = GetNodeOrNull<Panel>("Panel");
+        if (legacy != null) return legacy;
+        if (_panel != null && IsInstanceValid(_panel)) return _panel;
+        return null;
+    }
+
     private Panel GetOrCreatePanel()
     {
-        var panel = GetNodeOrNull<Panel>("Panel");
-        if (panel == null)
+        EnsureManagedRoot();
+
+        if (_panel != null && IsInstanceValid(_panel))
         {
-            // Panel always goes at position 0
-            panel = CreateChildNodeAtPosition<Panel>("Panel", 0);
-            ConfigurePanel(panel);
+            if (_panel.GetParent() == _managedRoot)
+                return _panel;
+            if (_panel.GetParent() == this)
+            {
+                RemoveChild(_panel);
+                _managedRoot!.AddChild(_panel);
+                _managedRoot.MoveChild(_panel, 0);
+                ConfigurePanel(_panel);
+                return _panel;
+            }
         }
-        return panel;
-    }
-    private T CreateChildNodeAtPosition<T>(string name, int position) where T : Control, new()
-    {
-        var node = new T
+
+        var onManaged = _managedRoot!.GetNodeOrNull<Panel>("Panel");
+        if (onManaged != null)
         {
-            Name = name,
-            MouseFilter = MouseFilterEnum.Ignore
-        };
-        AddChild(node);
-        MoveChild(node, position);
-        node.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        node.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        node.SizeFlagsVertical = SizeFlags.ExpandFill;
-        return node;
+            _panel = onManaged;
+            return _panel;
+        }
+
+        var onSelf = GetNodeOrNull<Panel>("Panel");
+        if (onSelf != null)
+        {
+            onSelf.GetParent()?.RemoveChild(onSelf);
+            _managedRoot.AddChild(onSelf);
+            _managedRoot.MoveChild(onSelf, 0);
+            _panel = onSelf;
+            ConfigurePanel(_panel);
+            return _panel;
+        }
+
+        _panel = CreateManagedChildAtPosition<Panel>("Panel", 0);
+        ConfigurePanel(_panel);
+        return _panel;
     }
     private void ConfigurePanel(Panel panel)
     {
@@ -2222,6 +2446,7 @@ public partial class OmniButton : Control
     {
         PivotOffset = Size / 2.0f;
         if (_panel != null && IsInstanceValid(_panel)) _panel.PivotOffset = _panel.Size / 2.0f;
+        if (_background != null && IsInstanceValid(_background)) _background.PivotOffset = _background.Size / 2.0f;
         if (_icon != null && IsInstanceValid(_icon)) _icon.PivotOffset = _icon.Size / 2.0f;
         if (_label != null && IsInstanceValid(_label)) _label.PivotOffset = _label.Size / 2.0f;
         if (_overlay != null && IsInstanceValid(_overlay)) _overlay.PivotOffset = _overlay.Size / 2.0f;
@@ -2263,7 +2488,7 @@ public partial class OmniButton : Control
     }
     private Rect2 GetFollowClampRect()
     {
-        if (BoundsSource != null)
+        if (BoundsSource != null && IsInstanceValid(BoundsSource))
             return BoundsSource.GetGlobalRect();
         if (GetParent() is Control p)
             return p.GetGlobalRect();

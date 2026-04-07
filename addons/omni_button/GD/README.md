@@ -71,6 +71,7 @@ Tip: Use OmniButton.SignalName.* for refactor-safe signal names.
 - EnableHoverScale — Enable hover zoom.
 - HoverScale — Target scale (e.g., 1.15).
 - HoverLerpSpeed — Interpolation speed.
+- When enabled, hover scale lerps the managed panel, background `TextureRect` (if any), icon, labels, and overlay together (pivot-centered).
 
 ### Actions
 - ActionMaskBits — Flags that determine which actions emit: Pressed, Released, Hover, Toggle, Hold, Swipe, Log, Warning, Error.
@@ -118,6 +119,14 @@ Tip: Use OmniButton.SignalName.* for refactor-safe signal names.
 - **Cooldowns:** Any triggerable cooldown automatically clears pressed visuals, can optionally suspend hover scale, and emits debugger logs when starting or finishing. You can hide the overlay during hold build-up for “charge + cooldown” combos.
 - **Typewriter text:** `StartTypewriter()` respects BBCode, word mode, and CPS, and can defer effect tags. Skip/Stop log when they emit `TypewriterCompleted` so you can tell if a script cancelled unexpectedly.
 - **Runtime/editor parity:** Editor live refresh mirrors runtime by polling exported properties, rebuilding managed children, and running the autosizer immediately.
+- **Processing / idle:** At runtime, `_process` calls `set_process(false)` when nothing needs per-frame work (no pending refresh, refit frames, typewriter, cooldown delay or active cooldown, hold build-up while pressed, and hover scale is off). While `EnableHoverScale` is true, processing stays on for hover lerp. Idle shutdown skips `set_process(false)` in the editor (`Engine.is_editor_hint()`), so `@tool` polling keeps working.
+- **Mouse + touch together:** With `ProjectSettings` → `input_devices/pointing/emulate_mouse_from_touch` on, one touch can produce both screen-touch and mouse-button events. `PointerGestureSource` records which input **first** started the press; the other is ignored until the session ends, avoiding double press/release.
+- **Multi-touch drags:** `InputEventScreenDrag` is honored only when `index` matches `_active_touch_index` for a native touch press; mouse sessions accept all drags.
+- **Cooldown vs. in-flight press:** While cooldown is active, new presses are blocked, but `_gui_input` still runs if `_is_pressed` so drag/release can finish.
+- **Unhandled cleanup:** After off-control reset, `get_viewport().set_input_as_handled()` is called.
+- **Hover after transform:** `NOTIFICATION_TRANSFORM_CHANGED` updates hover target scale and enables processing when hover scaling is on.
+- **Typewriter + text:** `Text` / `LabelText` / `RichLabelText` / `LabelType` avoid rebuilding managed labels while `_tw_active`; `_set_label_text()` no-ops during typewriter.
+- **Keyboard:** With `focus_mode` not `FOCUS_NONE` and focus, `ui_accept` runs a one-shot click or skips typewriter when `FinishTypewriterOnPress` is on. Joystick/follow modes skip keyboard activation.
 
 ## Migration notes
 - Prefer LabelType + Text over LabelText/RichLabelText. Legacy properties remain for compatibility but route to the new API.
