@@ -15,9 +15,9 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="OmniButton"
-run/main_scene="uid://d3ukhudxpvpvd"
-config/features=PackedStringArray("4.6", "C#")
-config/icon="uid://qmauyj7sntg6"
+run/main_scene="res://addons/omni_button/test/GodotTest.tscn"
+config/features=PackedStringArray("4.7")
+config/icon="res://addons/omni_button/OmniButtonGDV1.png"
 
 [display]
 
@@ -29,7 +29,7 @@ project/assembly_name="OmniButton"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/omni_button/CS/plugin.cfg", "res://addons/omni_button/GD/plugin.cfg")
+enabled=PackedStringArray("res://addons/omni_button/plugin.cfg")
 
 [rendering]
 

@@ -30,7 +30,7 @@ var _selected_buttons: Array = []
 var _used_button: Omni_Button
 
 func _ready() -> void:
-	# Order mirrors CSharpTest._Ready: touch areas, gamepad + joysticks, wiring, selection, logger, typewriter.
+	# Set up touch areas, gamepad + joysticks, signal wiring, selection, logger, and typewriter.
 	_move_area = get_node_or_null("TouchArea/Move")
 	_look_area = get_node_or_null("TouchArea/Look")
 	if is_instance_valid(_move_area):
@@ -41,7 +41,13 @@ func _ready() -> void:
 	_gamepad = get_node_or_null("Gamepad")
 	_center = get_node_or_null("Gamepad/Center")
 	if is_instance_valid(_center):
-		OmniButtonPresets.apply_virtual_joystick(_center)
+		_center.FollowMode = Omni_Button.FollowModeEnum.VirtualJoystick
+		_center.ClampShape = Omni_Button.JoystickClampShape.Circle
+		_center.JoystickDeadzone = 0.15
+		_center.JoystickSnapToInput = true
+		_center.JoystickResetOnRelease = true
+		_center.EnableJoystickArea = true
+		_center.JoystickAreaPersistent = false
 	if is_instance_valid(_center) and is_instance_valid(_gamepad):
 		_center.BoundsSource = _gamepad
 		_center.EnableJoystickArea = true
@@ -54,7 +60,13 @@ func _ready() -> void:
 	_lookjoystick = get_node_or_null("LookJoystick")
 	_lookcenter = get_node_or_null("LookJoystick/Center")
 	if is_instance_valid(_lookcenter):
-		OmniButtonPresets.apply_virtual_joystick(_lookcenter)
+		_lookcenter.FollowMode = Omni_Button.FollowModeEnum.VirtualJoystick
+		_lookcenter.ClampShape = Omni_Button.JoystickClampShape.Circle
+		_lookcenter.JoystickDeadzone = 0.15
+		_lookcenter.JoystickSnapToInput = true
+		_lookcenter.JoystickResetOnRelease = true
+		_lookcenter.EnableJoystickArea = true
+		_lookcenter.JoystickAreaPersistent = false
 	if is_instance_valid(_lookcenter) and is_instance_valid(_lookjoystick):
 		_lookcenter.BoundsSource = _lookjoystick
 		_lookcenter.JoystickHideWhenInactive = true
