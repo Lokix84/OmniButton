@@ -27,6 +27,8 @@ signal hover_in
 signal hover_out
 signal toggled(pressed: bool)
 signal typewriter_completed
+## Emitted for each character the typewriter reveals (not for characters skipped past).
+signal typewriter_char_revealed(index: int, character: String)
 signal hold
 signal swipe(direction: Vector2)
 signal swipe_ended

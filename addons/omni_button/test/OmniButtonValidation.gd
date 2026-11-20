@@ -223,6 +223,87 @@ func _run() -> void:
 	await create_timer(1.0).timeout
 	_check(not button._tw_active, "long typewriter finishes after revealing the full text")
 
+	# Per-character signal.
+	var revealed: Array = []
+	var on_char := func(index: int, character: String): revealed.append([index, character])
+	button.typewriter_char_revealed.connect(on_char)
+	button.start_typewriter("Hi!", 1000.0)
+	await create_timer(0.1).timeout
+	_check(revealed == [[0, "H"], [1, "i"], [2, "!"]], "typewriter_char_revealed emits each character once, in order")
+	revealed.clear()
+	button.start_typewriter("Skip me", 2.0)
+	await create_timer(0.1).timeout
+	button.skip_typewriter()
+	await process_frame
+	_check(revealed.size() <= 1, "skipping does not emit the characters it skipped past")
+	button.typewriter_char_revealed.disconnect(on_char)
+
+	# [pause] holds the reveal and never reaches the label.
+	button.start_typewriter("A[pause=0.4]B", 1000.0)
+	_check(button._label.text == "AB", "timing tags are removed before the text reaches the label")
+	await create_timer(0.15).timeout
+	_check(button._tw_active and button._label.visible_characters == 1, "[pause] holds the reveal after the preceding character")
+	await create_timer(0.5).timeout
+	_check(not button._tw_active and button.Text == "AB", "reveal continues after [pause] and commits clean text")
+
+	# [speed] changes the rate from its position, [/speed] returns to the start speed.
+	button.start_typewriter("[speed=1000]ABCDEF[/speed]GH", 1.0)
+	await create_timer(0.2).timeout
+	_check(button._label.visible_characters >= 6 and button._label.visible_characters < 8, "[speed] reveals fast until [/speed] returns to the start speed")
+	button.skip_typewriter()
+	_check(button.Text == "ABCDEFGH", "skipping commits the text without timing tags")
+
+	# Skipping during a pause finishes immediately.
+	button.start_typewriter("Wait[pause=5] here", 1000.0)
+	await create_timer(0.1).timeout
+	button.skip_typewriter()
+	_check(not button._tw_active and button.Text == "Wait here", "skipping during [pause] completes the reveal")
+
+	# BBCode mode: timing positions ignore formatting tags.
+	button.RichLabelUseBBCode = true
+	button.start_typewriter("[b]Hi[/b][pause=0.4] there", 1000.0, false, true)
+	_check(button._rich_label != null and not button._rich_label.text.contains("pause"), "timing tags are removed from rich text")
+	await create_timer(0.15).timeout
+	_check(button._tw_active and button._rich_label.visible_characters == 2, "[pause] position skips BBCode tags")
+	button.skip_typewriter()
+	button.LabelType = button.LabelKind.Label
+
+	# Containers: OmniButton reports no minimum size of its own, so containers need custom_minimum_size.
+	var box := VBoxContainer.new()
+	box.size = Vector2(200, 300)
+	root.add_child(box)
+	var boxed = OmniButtonScript.new()
+	boxed.custom_minimum_size = Vector2(0, 40)
+	boxed.Text = "Option"
+	box.add_child(boxed)
+	await process_frame
+	await process_frame
+	_check(boxed.size.y >= 40.0 and boxed.size.x >= 199.0, "OmniButton in a VBoxContainer takes its custom minimum height and the full width")
+	_check(boxed._label != null and boxed._label.size.y > 0.0, "label is laid out inside a container-sized button")
+
+	# Focus: keyboard/gamepad activation and focus styling.
+	var focus_style := StyleBoxFlat.new()
+	boxed.BackgroundType = boxed.BackgroundMode.UsePanel
+	boxed.PanelFocusStyleBox = focus_style
+	boxed.focus_mode = Control.FOCUS_ALL
+	boxed.EnablePressedActions = true
+	var focus_presses := [0]
+	boxed.pressed.connect(func(): focus_presses[0] += 1)
+	boxed.grab_focus()
+	await process_frame
+	_check(boxed.has_focus() and OmniButtonVisuals._active_panel_style(boxed) == focus_style, "focused button uses PanelFocusStyleBox")
+	var accept := InputEventAction.new()
+	accept.action = &"ui_accept"
+	accept.pressed = true
+	boxed._unhandled_input(accept)
+	_check(focus_presses[0] == 1, "focused button activates on ui_accept")
+	var accept_up := InputEventAction.new()
+	accept_up.action = &"ui_accept"
+	accept_up.pressed = false
+	boxed._unhandled_input(accept_up)
+	box.queue_free()
+	await process_frame
+
 	button.LabelType = button.LabelKind.RichTextLabel
 	button.TextToType = "[b]Rich[/b] text"
 	_check(button.RichLabelUseBBCode, "BBCode is enabled by default for rich labels")

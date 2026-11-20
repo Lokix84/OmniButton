@@ -24,6 +24,7 @@ Contents
 - JoystickStarted, JoystickAxis(Vector2 axis), JoystickEnded — Virtual joystick lifecycle and axes.
 - Log(string), Warning(string), Error(string) — Optional logging signals.
 - TypewriterCompleted — Raised when typewriter text finishes (also fires when SkipTypewriter() is called).
+- TypewriterCharRevealed(int index, string character) — Raised for each character the typewriter reveals, in order (useful for typing sounds). Characters passed over by a skip are not reported.
 
 Connect signals with the standard GDScript syntax, for example `button.pressed.connect(_on_pressed)`.
 
@@ -124,6 +125,12 @@ Feature settings appear only while their feature is on, so unused features don't
 ### Typewriter
 - TextToType, DelayEffectTagsDuringTypewriter, SuspendHoverDuringTypewriter, FinishTypewriterOnPress
 - StartTypewriter(cps, byWord, preserveBBCodeTags), SkipTypewriter(), StopTypewriter(). Setting `preserveBBCodeTags` to true selects RichTextLabel when needed; set `RichLabelUseBBCode` to true to render markup.
+- Inline timing tags, understood only by the typewriter and removed before the text reaches the label (they work with and without BBCode):
+  - `[pause=0.5]` — wait 0.5 seconds once the reveal reaches this point. Skipping during a pause finishes the reveal immediately.
+  - `[speed=12]` — reveal 12 characters (or words, in word mode) per second from here.
+  - `[/speed]` — return to the speed passed to `start_typewriter`.
+  - Example: `start_typewriter("Wait...[pause=0.8] [speed=8]really?[/speed] Fine.", 40.0)`.
+  - Setting `Text` directly (without the typewriter) does not interpret these tags.
 
 ## Accessors
 - `label`, `icon`, `background`, `panel`, `overlay`, `cooldown`, and `charge_up` group related settings under short names. Each accessor and each of its properties is typed, so autocomplete and type checking work through them (`var d := button.cooldown.duration` is a `float`). An accessor is created the first time a script uses it.
@@ -155,6 +162,8 @@ Feature settings appear only while their feature is on, so unused features don't
 - **Unhandled cleanup:** After off-control reset, `get_viewport().set_input_as_handled()` is called.
 - **Hover target:** The hover scale is capped so the button stays inside the viewport. The cap is recalculated when the pointer enters and when the button is resized while hovered.
 - **Typewriter + text:** Changing text or label type during a typewriter keeps the generated label synchronized with the currently revealed text; visual refreshes preserve the partial output.
+- **Inside containers:** OmniButton does not report a minimum size from its text (its text autosizes to whatever size it is given), so set `custom_minimum_size` on buttons placed in a VBoxContainer/HBoxContainer, or they collapse to zero height.
+- **Focus:** buttons default to `focus_mode = FOCUS_NONE` like any Control. Set it to `FOCUS_ALL` for keyboard/gamepad navigation; a focused button uses `PanelFocusStyleBox` and activates on `ActivationAction`.
 - **Focused input actions:** `ActivationAction` names a Godot InputMap action (defaults to `ui_accept`). The focused button responds to mapped keyboard or gamepad press/release events; player remapping is handled through InputMap. When `FinishTypewriterOnPress` is on, the action first skips active typewriter text. Joystick/follow modes skip focused activation.
 
 ## Troubleshooting
