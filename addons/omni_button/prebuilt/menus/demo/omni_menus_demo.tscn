@@ -1,0 +1,82 @@
+[gd_scene format=3 uid="uid://bdsmxi0brsmw6"]
+
+[ext_resource type="PackedScene" uid="uid://d0hwaupyq5yf5" path="res://addons/omni_button/prebuilt/dialog/parts/omni_option_button.tscn" id="4_it2ps"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/menus/screens/omni_options_menu.tscn" id="options"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/menus/screens/omni_pause_menu.tscn" id="pause"]
+[ext_resource type="Script" uid="uid://ct3ucm5qyg8y6" path="res://addons/omni_button/prebuilt/menus/demo/omni_menus_demo.gd" id="script"]
+[ext_resource type="Texture2D" uid="uid://csk05570s33ho" path="res://addons/omni_button/prebuilt/buttons/icons/Icon-Sword1.png" id="sword"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/menus/screens/omni_title_menu.tscn" id="title"]
+
+[node name="OmniMenusDemo" type="Control" unique_id=101229520]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("script")
+
+[node name="Game" type="ColorRect" parent="." unique_id=2079877653]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.13, 0.22, 0.2, 1)
+
+[node name="Hint" type="Label" parent="Game" unique_id=936212593]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 24.0
+offset_bottom = 80.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 22
+text = "Playing. Press Esc (or Start on a controller) to pause.
+The sword stops while the game is paused."
+horizontal_alignment = 1
+
+[node name="Sword" type="TextureRect" parent="Game" unique_id=248876859]
+unique_name_in_owner = true
+texture_filter = 1
+layout_mode = 0
+offset_left = 200.0
+offset_top = 300.0
+offset_right = 264.0
+offset_bottom = 364.0
+texture = ExtResource("sword")
+expand_mode = 1
+
+[node name="Options" parent="." unique_id=1622641869 instance=ExtResource("options")]
+unique_name_in_owner = true
+title = "Options"
+control_width = 260.0
+option_button_scene = ExtResource("4_it2ps")
+
+[node name="Pause" parent="." unique_id=1332661520 node_paths=PackedStringArray("options_menu") instance=ExtResource("pause")]
+unique_name_in_owner = true
+open_on_pause = true
+pause_action = &"ui_cancel"
+pause_button = 6
+title_scene = ""
+confirm_quit = true
+quit_question = "Quit to the title screen?
+Unsaved progress will be lost."
+show_quit_game = false
+options_menu = NodePath("../Options")
+style_items = true
+options_scene = ""
+
+[node name="Title" parent="." unique_id=1724348118 node_paths=PackedStringArray("options_menu") instance=ExtResource("title")]
+unique_name_in_owner = true
+can_continue = false
+show_quit = true
+close_on_start = true
+options_menu = NodePath("../Options")
+style_items = true
+options_scene = ""
+title = "OmniButton Menus"
+start_open = false

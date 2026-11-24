@@ -1,0 +1,89 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/dialog/core/overlay/omni_overlay.tscn" id="base"]
+[ext_resource type="Script" path="res://addons/omni_button/prebuilt/menus/core/omni_pause_menu.gd" id="script"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/dialog/parts/omni_option_button.tscn" id="option"]
+[ext_resource type="Script" path="res://addons/omni_button/prebuilt/menus/core/omni_menu_bands.gd" id="bands"]
+[ext_resource type="Script" path="res://addons/omni_button/prebuilt/menus/core/omni_menu_stylizer.gd" id="stylizer"]
+[ext_resource type="Script" path="res://addons/omni_button/prebuilt/menus/core/omni_staircase_container.gd" id="stairs"]
+
+[sub_resource type="StyleBoxEmpty" id="empty"]
+
+[node name="OmniPauseMenu" instance=ExtResource("base")]
+layer = 15
+pause_tree = true
+backdrop_color = Color(0, 0, 0, 0.3)
+script = ExtResource("script")
+animation_duration = 0.3
+style_items = false
+options_scene = "res://addons/omni_button/prebuilt/menus/screens/omni_options_menu_stylized.tscn"
+title = "Paused"
+
+[node name="Bands" type="Control" parent="Root" index="1"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("bands")
+shape = 1
+
+[node name="Panel" parent="Root"]
+custom_minimum_size = Vector2(0, 0)
+anchors_preset = 15
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+theme_override_styles/panel = SubResource("empty")
+
+[node name="Content" parent="Root/Panel"]
+theme_override_constants/margin_left = 64
+theme_override_constants/margin_top = 56
+theme_override_constants/margin_right = 64
+theme_override_constants/margin_bottom = 64
+
+[node name="Layout" type="VBoxContainer" parent="Root/Panel/Content"]
+layout_mode = 2
+theme_override_constants/separation = 36
+
+[node name="Title" type="Label" parent="Root/Panel/Content/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Paused"
+
+[node name="Items" type="Container" parent="Root/Panel/Content/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
+script = ExtResource("stairs")
+separation = 4.0
+step = -14.0
+
+[node name="Resume" parent="Root/Panel/Content/Layout/Items" instance=ExtResource("option")]
+layout_mode = 2
+Text = "Resume"
+
+[node name="Options" parent="Root/Panel/Content/Layout/Items" instance=ExtResource("option")]
+layout_mode = 2
+Text = "Options"
+
+[node name="QuitToTitle" parent="Root/Panel/Content/Layout/Items" instance=ExtResource("option")]
+layout_mode = 2
+Text = "Quit to title"
+
+[node name="QuitGame" parent="Root/Panel/Content/Layout/Items" instance=ExtResource("option")]
+layout_mode = 2
+Text = "Quit game"
+
+[node name="Stylizer" type="Node" parent="." node_paths=PackedStringArray("bands", "title_label")]
+script = ExtResource("stylizer")
+bands = NodePath("../Root/Bands")
+title_label = NodePath("../Root/Panel/Content/Layout/Title")
+title_size = 80

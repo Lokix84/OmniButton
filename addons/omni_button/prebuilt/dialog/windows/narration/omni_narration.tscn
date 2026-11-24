@@ -1,0 +1,112 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/dialog/core/overlay/omni_overlay.tscn" id="1_base"]
+[ext_resource type="Script" path="res://addons/omni_button/prebuilt/dialog/windows/narration/omni_narration.gd" id="2_narration"]
+[ext_resource type="Script" path="res://addons/omni_button/omni_button.gd" id="3_omni"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/dialog/parts/omni_option_button.tscn" id="9_skip"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_none"]
+
+[node name="OmniNarration" instance=ExtResource("1_base")]
+layer = 11
+script = ExtResource("2_narration")
+backdrop_color = Color(0, 0, 0, 1)
+close_on_cancel = false
+characters_per_second = 30.0
+animation_duration = 0.4
+
+[node name="Background" type="TextureRect" parent="Root" index="1"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Shade" type="ColorRect" parent="Root" index="2"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.45)
+
+[node name="Panel" parent="Root"]
+custom_minimum_size = Vector2(0, 0)
+anchors_preset = 15
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 80.0
+offset_top = 60.0
+offset_right = -80.0
+offset_bottom = -60.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_none")
+
+[node name="Layout" type="VBoxContainer" parent="Root/Panel/Content"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Body" type="Control" parent="Root/Panel/Content/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+focus_mode = 2
+script = ExtResource("3_omni")
+EnablePressedActions = true
+LabelType = 1
+LabelAutowrap = 3
+FixedFontSize = 30
+FinishTypewriterOnPress = false
+
+[node name="ContinueIndicator" type="Label" parent="Root/Panel/Content/Layout/Body"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -28.0
+offset_top = -30.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+theme_type_variation = &"OmniDialogIndicator"
+text = "▼"
+horizontal_alignment = 2
+
+[node name="Options" type="VBoxContainer" parent="Root/Panel/Content/Layout"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 8
+
+[node name="SkipButton" parent="Root" instance=ExtResource("9_skip")]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(220, 40)
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -260.0
+offset_top = 20.0
+offset_right = -40.0
+offset_bottom = 60.0
+grow_horizontal = 0
+focus_mode = 0
+Text = "Hold to skip ▶▶"

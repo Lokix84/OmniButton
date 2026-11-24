@@ -1,0 +1,50 @@
+[gd_scene format=3 uid="uid://b6y4qwln1gd6g"]
+
+[ext_resource type="Script" uid="uid://dw4mvkaj30lb5" path="res://addons/omni_button/omni_button.gd" id="button"]
+[ext_resource type="Script" uid="uid://c01vs1qm5y3k8" path="res://addons/omni_button/prebuilt/buttons/core/omni_joystick.gd" id="joystick"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/joystick_ring.tres" id="ring"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/round_normal.tres" id="round_normal"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/round_pressed.tres" id="round_pressed"]
+
+[node name="OmniJoystick" type="Control" unique_id=1135942259]
+custom_minimum_size = Vector2(160, 160)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 160.0
+offset_bottom = 160.0
+script = ExtResource("joystick")
+
+[node name="Base" type="Panel" parent="." unique_id=1472860695]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = ExtResource("ring")
+
+[node name="Thumb" type="Control" parent="Base" unique_id=562866140]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -32.0
+offset_top = -32.0
+offset_right = 32.0
+offset_bottom = 32.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("button")
+BackgroundType = 1
+LabelType = 2
+FollowMode = 4
+JoystickDeadzone = 0.15
+EnableDefaultThumb = true
+PanelStyleBox = ExtResource("round_normal")
+PanelPressedStyleBox = ExtResource("round_pressed")
+expand_mode = 3
+ManagedDrawOnTop = true
+metadata/_custom_type_script = "uid://dw4mvkaj30lb5"

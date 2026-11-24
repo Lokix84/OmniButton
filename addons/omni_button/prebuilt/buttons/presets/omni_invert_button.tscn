@@ -1,0 +1,32 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://addons/omni_button/omni_button.gd" id="script"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/retro_normal.tres" id="normal"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/retro_focus.tres" id="focus"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/button_disabled.tres" id="disabled"]
+
+[node name="OmniInvertButton" type="Control"]
+custom_minimum_size = Vector2(200, 56)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 200.0
+offset_bottom = 56.0
+pivot_offset = Vector2(100.0, 28.0)
+focus_mode = 2
+mouse_default_cursor_shape = 2
+script = ExtResource("script")
+EnablePressedActions = true
+InvertModes = 1
+BackgroundType = 1
+Text = "Flash"
+LabelUppercase = true
+LabelTextColor = Color(1, 1, 1, 1)
+MinFontSize = 12
+MaxFontSize = 24
+PanelStyleBox = ExtResource("normal")
+PanelFocusStyleBox = ExtResource("focus")
+PanelDisabledStyleBox = ExtResource("disabled")
+EnableDefaultThumb = true
+expand_mode = 3
+ManagedDrawOnTop = true
+metadata/_custom_type_script = "uid://dw4mvkaj30lb5"

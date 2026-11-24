@@ -1,0 +1,27 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://addons/omni_button/omni_button.gd" id="button"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/round_normal.tres" id="round_normal"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/round_pressed.tres" id="round_pressed"]
+
+[node name="OmniActionButton" type="Control"]
+custom_minimum_size = Vector2(110, 110)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 110.0
+offset_bottom = 110.0
+pivot_offset = Vector2(55, 55)
+script = ExtResource("button")
+EnablePressedActions = true
+EnableReleasedActions = true
+BackgroundType = 1
+Text = "A"
+LabelTextColor = Color(0.94, 0.95, 0.97, 1)
+MinFontSize = 12
+MaxFontSize = 40
+PanelStyleBox = ExtResource("round_normal")
+PanelPressedStyleBox = ExtResource("round_pressed")
+EnableDefaultThumb = true
+expand_mode = 3
+ManagedDrawOnTop = true
+metadata/_custom_type_script = "uid://dw4mvkaj30lb5"

@@ -1,0 +1,37 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://addons/omni_button/omni_button.gd" id="script"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/button_normal.tres" id="normal"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/button_hover.tres" id="hover"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/button_pressed.tres" id="pressed"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/button_focus.tres" id="focus"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/button_disabled.tres" id="disabled"]
+[ext_resource type="Texture2D" path="res://addons/omni_button/prebuilt/buttons/icons/settings.svg" id="icon"]
+
+[node name="OmniIconButton" type="Control"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 64.0
+offset_bottom = 64.0
+pivot_offset = Vector2(32.0, 32.0)
+tooltip_text = "Settings"
+focus_mode = 2
+mouse_default_cursor_shape = 2
+script = ExtResource("script")
+EnablePressedActions = true
+HoverScale = 1.1
+LabelType = 2
+IconTexture = ExtResource("icon")
+IconExpandMode = 1
+IconStretchMode = 5
+BackgroundType = 1
+PanelStyleBox = ExtResource("normal")
+PanelHoverStyleBox = ExtResource("hover")
+PanelPressedStyleBox = ExtResource("pressed")
+PanelDisabledStyleBox = ExtResource("disabled")
+PanelFocusStyleBox = ExtResource("focus")
+EnableDefaultThumb = true
+expand_mode = 3
+ManagedDrawOnTop = true
+metadata/_custom_type_script = "uid://dw4mvkaj30lb5"

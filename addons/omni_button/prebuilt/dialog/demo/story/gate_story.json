@@ -1,0 +1,190 @@
+{
+	"opening": [
+		{
+			"type": "narrate",
+			"text": "The city of Vell.",
+			"background": "res://addons/omni_button/OmniButtonGDV1.png"
+		},
+		{
+			"type": "narrate",
+			"text": "Three days after the fire,[pause=0.4] the gates opened again."
+		},
+		{
+			"type": "event",
+			"name": "flash"
+		},
+		{
+			"type": "toast",
+			"text": "Chapter 1: The Gate"
+		}
+	],
+	"gate": [
+		{
+			"type": "say",
+			"name": "Gate Guard",
+			"portrait": "res://addons/omni_button/prebuilt/dialog/demo/icons/Icon-Sword1.png",
+			"text": "Halt! Who goes there?",
+			"event": {
+				"name": "shake"
+			}
+		},
+		{
+			"type": "say",
+			"name": "Mira",
+			"portrait": "res://addons/omni_button/prebuilt/dialog/demo/icons/Icon-Potion6.png",
+			"side": "right",
+			"text": "Easy...[pause=0.4] we're [b]friends[/b]."
+		},
+		{
+			"type": "say",
+			"name": "Gate Guard",
+			"portrait": "res://addons/omni_button/prebuilt/dialog/demo/icons/Icon-Sword1.png",
+			"text": "Ah, the merchant again. [color=gold]Welcome back.[/color]",
+			"if": {
+				"business": "trade"
+			}
+		},
+		{
+			"type": "say",
+			"name": "Gate Guard",
+			"portrait": "res://addons/omni_button/prebuilt/dialog/demo/icons/Icon-Sword1.png",
+			"text": "State your business.",
+			"if": {
+				"business": null
+			},
+			"choices": {
+				"id": "business",
+				"options": [
+					{
+						"text": "I'm here to trade.",
+						"value": "trade",
+						"set": {
+							"guard_trust": 1
+						}
+					},
+					{
+						"text": "Just passing through.",
+						"value": "passing",
+						"next": "gate_passing"
+					},
+					{
+						"text": "Slip him 10 gold.",
+						"value": "bribe",
+						"if": {
+							"has_gold": true
+						},
+						"event": {
+							"name": "give_item",
+							"args": [
+								"-10 gold"
+							]
+						}
+					}
+				]
+			}
+		},
+		{
+			"type": "confirm",
+			"id": "follow_guard",
+			"title": "The guard waves you on",
+			"text": "Follow him to the market?",
+			"yes": "Follow",
+			"no": "Wait here",
+			"on_no": "gate_wait"
+		},
+		{
+			"type": "goto",
+			"next": "market"
+		}
+	],
+	"gate_passing": [
+		{
+			"type": "say",
+			"name": "Gate Guard",
+			"portrait": "res://addons/omni_button/prebuilt/dialog/demo/icons/Icon-Sword1.png",
+			"text": "Then keep moving."
+		},
+		{
+			"type": "say",
+			"name": "Mira",
+			"portrait": "res://addons/omni_button/prebuilt/dialog/demo/icons/Icon-Potion6.png",
+			"side": "right",
+			"text": "Friendly, isn't he?"
+		},
+		{
+			"type": "end"
+		}
+	],
+	"gate_wait": [
+		{
+			"type": "say",
+			"name": "Mira",
+			"portrait": "res://addons/omni_button/prebuilt/dialog/demo/icons/Icon-Potion6.png",
+			"side": "right",
+			"text": "We'll find our own way, then."
+		},
+		{
+			"type": "end"
+		}
+	],
+	"market": [
+		{
+			"type": "wait",
+			"seconds": 0.3
+		},
+		{
+			"type": "narrate",
+			"text": "The market is loud, bright[pause=0.3] and smells of spice."
+		},
+		{
+			"type": "say",
+			"name": "Merchant",
+			"portrait": "res://addons/omni_button/prebuilt/dialog/demo/icons/Icon-Potion6.png",
+			"text": "A fellow trader! Take this, for luck.",
+			"if": {
+				"business": "trade"
+			},
+			"set": {
+				"has_gold": true
+			},
+			"event": {
+				"name": "give_item",
+				"args": [
+					"+10 gold"
+				]
+			}
+		},
+		{
+			"type": "say",
+			"name": "Merchant",
+			"portrait": "res://addons/omni_button/prebuilt/dialog/demo/icons/Icon-Potion6.png",
+			"text": "Buying or browsing?",
+			"if_not": {
+				"business": "trade"
+			}
+		},
+		{
+			"type": "choice",
+			"title": "Market",
+			"text": "Where to next?",
+			"choices": {
+				"id": "market_stop",
+				"options": [
+					{
+						"text": "The inn",
+						"value": "inn"
+					},
+					{
+						"text": "The docks",
+						"value": "docks"
+					}
+				]
+			}
+		},
+		{
+			"type": "alert",
+			"title": "End of the demo",
+			"text": "Your answers are listed in the demo. Play [b]At the gate[/b] again: the guard remembers what you said."
+		}
+	]
+}

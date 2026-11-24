@@ -1,0 +1,57 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/dialog/core/overlay/omni_overlay.tscn" id="base"]
+[ext_resource type="Script" path="res://addons/omni_button/prebuilt/menus/core/omni_options_menu.gd" id="script"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/dialog/parts/omni_option_button.tscn" id="option"]
+[ext_resource type="Script" path="res://addons/omni_button/prebuilt/buttons/core/omni_tab_bar.gd" id="tabbar"]
+
+[node name="OmniOptionsMenu" instance=ExtResource("base")]
+layer = 16
+script = ExtResource("script")
+open_animation = 2
+backdrop_color = Color(0, 0, 0, 0.6)
+
+[node name="Panel" parent="Root" index="1"]
+custom_minimum_size = Vector2(680, 0)
+
+[node name="Layout" type="VBoxContainer" parent="Root/Panel/Content"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="Root/Panel/Content/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"OmniDialogTitle"
+text = "Options"
+horizontal_alignment = 1
+
+[node name="Tabs" type="HBoxContainer" parent="Root/Panel/Content/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6
+alignment = 1
+script = ExtResource("tabbar")
+
+[node name="Pages" type="MarginContainer" parent="Root/Panel/Content/Layout"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+
+[node name="Footer" type="HBoxContainer" parent="Root/Panel/Content/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 2
+
+[node name="Reset" parent="Root/Panel/Content/Layout/Footer" instance=ExtResource("option")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 44)
+layout_mode = 2
+size_flags_horizontal = 0
+Text = "Reset to defaults"
+
+[node name="Back" parent="Root/Panel/Content/Layout/Footer" instance=ExtResource("option")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 44)
+layout_mode = 2
+size_flags_horizontal = 0
+Text = "Back"

@@ -1,2 +1,14 @@
 # Normalize EOL for all files that Git considers text files.
 * text=auto eol=lf
+
+# Left out of GitHub downloads and Asset Library packages (git archive): development-only files.
+# They stay in the repository.
+# dev/ folders: tests, benchmark, snapshot and the API doc generator.
+/addons/omni_button/dev/** export-ignore
+/addons/omni_button/prebuilt/dialog/dev/** export-ignore
+/addons/omni_button/prebuilt/buttons/dev/** export-ignore
+/addons/omni_button/prebuilt/cursor/dev/** export-ignore
+/addons/omni_button/prebuilt/menus/dev/** export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/.editorconfig export-ignore

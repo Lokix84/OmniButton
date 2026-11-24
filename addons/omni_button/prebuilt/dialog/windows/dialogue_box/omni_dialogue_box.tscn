@@ -1,0 +1,146 @@
+[gd_scene format=3 uid="uid://bh44hl2mnx3dw"]
+
+[ext_resource type="PackedScene" uid="uid://dugea80vvie6v" path="res://addons/omni_button/prebuilt/dialog/core/overlay/omni_overlay.tscn" id="1_base"]
+[ext_resource type="Script" uid="uid://oyow0um6uy0q" path="res://addons/omni_button/prebuilt/dialog/windows/dialogue_box/omni_dialogue_box.gd" id="2_box"]
+[ext_resource type="PackedScene" uid="uid://d0hwaupyq5yf5" path="res://addons/omni_button/prebuilt/dialog/parts/omni_option_button.tscn" id="3_cw4rd"]
+[ext_resource type="Script" uid="uid://dw4mvkaj30lb5" path="res://addons/omni_button/omni_button.gd" id="3_omni"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/dialog/parts/omni_option_button.tscn" id="9_skip"]
+
+[node name="OmniDialogueBox" unique_id=1186515330 instance=ExtResource("1_base")]
+script = ExtResource("2_box")
+characters_per_second = 40.0
+auto_advance_delay = 0.0
+advance_action = &"ui_accept"
+typing_sound = null
+typing_sound_every = 2
+typing_pitch_variation = 0.05
+typing_sound_bus = &"Master"
+option_button_scene = ExtResource("3_cw4rd")
+show_backdrop = false
+close_on_cancel = false
+open_animation = 3
+close_animation = 3
+
+[node name="Root" parent="." index="0" unique_id=297016464]
+
+[node name="Backdrop" parent="Root" index="0" unique_id=784500028]
+visible = false
+mouse_filter = 2
+
+[node name="Panel" parent="Root" index="1" unique_id=82675835]
+custom_minimum_size = Vector2(0, 190)
+anchors_preset = 12
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 40.0
+offset_top = -24.0
+offset_right = -40.0
+offset_bottom = -24.0
+grow_vertical = 0
+
+[node name="Row" type="HBoxContainer" parent="Root/Panel/Content" parent_id_path=PackedInt32Array(399272763) index="0" unique_id=1858856482]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="PortraitLeft" type="TextureRect" parent="Root/Panel/Content/Row" index="0" unique_id=1507260965]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(128, 128)
+layout_mode = 2
+size_flags_vertical = 0
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TextColumn" type="VBoxContainer" parent="Root/Panel/Content/Row" index="1" unique_id=1394334024]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="Name" type="Label" parent="Root/Panel/Content/Row/TextColumn" index="0" unique_id=443265033]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"OmniDialogName"
+text = "Name"
+
+[node name="Body" type="Control" parent="Root/Panel/Content/Row/TextColumn" index="1" unique_id=145634501]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_vertical = 3
+focus_mode = 2
+script = ExtResource("3_omni")
+EnablePressedActions = true
+LabelType = 1
+EnableDefaultThumb = true
+LabelTextColor = Color(0.94, 0.95, 0.97, 1)
+LabelHorizontalAlignment = 0
+LabelVerticalAlignment = 0
+LabelAutowrap = 3
+FixedFontSize = 22
+FinishTypewriterOnPress = false
+expand_mode = 3
+ManagedDrawOnTop = true
+
+[node name="ContinueIndicator" type="Label" parent="Root/Panel/Content/Row/TextColumn/Body" index="0" unique_id=191742519]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -24.0
+offset_top = -26.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_type_variation = &"OmniDialogIndicator"
+text = "▼"
+horizontal_alignment = 2
+
+[node name="OptionsColumn" type="ScrollContainer" parent="Root/Panel/Content/Row" index="2" unique_id=1241516234]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.7
+follow_focus = true
+horizontal_scroll_mode = 0
+
+[node name="Options" type="VBoxContainer" parent="Root/Panel/Content/Row/OptionsColumn" index="0" unique_id=1423101394]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="PortraitRight" type="TextureRect" parent="Root/Panel/Content/Row" index="3" unique_id=1290624660]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(128, 128)
+layout_mode = 2
+size_flags_vertical = 0
+expand_mode = 1
+stretch_mode = 5
+
+[node name="SkipButton" parent="Root" instance=ExtResource("9_skip")]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(220, 40)
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -260.0
+offset_top = -262.0
+offset_right = -40.0
+offset_bottom = -222.0
+grow_horizontal = 0
+grow_vertical = 0
+focus_mode = 0
+Text = "Hold to skip ▶▶"

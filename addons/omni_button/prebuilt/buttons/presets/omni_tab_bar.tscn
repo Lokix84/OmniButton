@@ -1,0 +1,22 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://addons/omni_button/prebuilt/buttons/core/omni_tab_bar.gd" id="script"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/buttons/presets/omni_tab_button.tscn" id="tab"]
+
+[node name="OmniTabBar" type="HBoxContainer"]
+offset_right = 432.0
+offset_bottom = 42.0
+theme_override_constants/separation = 6
+script = ExtResource("script")
+
+[node name="Tab1" parent="." instance=ExtResource("tab")]
+layout_mode = 2
+Text = "Tab 1"
+
+[node name="Tab2" parent="." instance=ExtResource("tab")]
+layout_mode = 2
+Text = "Tab 2"
+
+[node name="Tab3" parent="." instance=ExtResource("tab")]
+layout_mode = 2
+Text = "Tab 3"

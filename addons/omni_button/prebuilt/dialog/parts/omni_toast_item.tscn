@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://addons/omni_button/omni_button.gd" id="1_omni"]
+
+[node name="OmniToastItem" type="Control"]
+custom_minimum_size = Vector2(360, 52)
+layout_mode = 3
+anchors_preset = 0
+size_flags_horizontal = 4
+script = ExtResource("1_omni")
+EnablePressedActions = true
+BackgroundType = 1
+LabelType = 0
+Text = "Toast message"
+MinFontSize = 10
+MaxFontSize = 18
+LabelPadding = Vector2(14, 6)
+LabelAutowrap = 3
+PanelThemeVariation = "OmniDialogToast"

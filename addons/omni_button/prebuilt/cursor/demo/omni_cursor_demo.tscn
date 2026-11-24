@@ -1,0 +1,236 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://addons/omni_button/prebuilt/cursor/demo/omni_cursor_demo.gd" id="script"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/cursor/omni_virtual_cursor.tscn" id="cursor"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/buttons/presets/omni_menu_button.tscn" id="menu"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/buttons/presets/omni_item_button.tscn" id="item"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/buttons/presets/omni_toggle_button.tscn" id="toggle"]
+[ext_resource type="Texture2D" path="res://addons/omni_button/prebuilt/buttons/icons/Icon-Sword1.png" id="sword_icon"]
+
+[sub_resource type="StyleBoxFlat" id="card"]
+content_margin_left = 16.0
+content_margin_top = 14.0
+content_margin_right = 16.0
+content_margin_bottom = 14.0
+bg_color = Color(0.11, 0.12, 0.16, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[node name="OmniCursorDemo" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.07, 0.08, 0.1, 1)
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 0
+offset_right = 1152.0
+offset_bottom = 648.0
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 18
+
+[node name="Page" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Margin/Page"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "OmniVirtualCursor"
+
+[node name="Subtitle" type="Label" parent="Margin/Page"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.74, 0.82, 1)
+theme_override_font_sizes/font_size = 16
+text = "A controller cursor for menus. Drop prebuilt/cursor/omni_virtual_cursor.tscn into a menu scene."
+
+[node name="ControllerCards" type="PanelContainer" parent="Margin/Page"]
+unique_name_in_owner = true
+size_flags_vertical = 3
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("card")
+
+[node name="VBox" type="VBoxContainer" parent="Margin/Page/ControllerCards"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Name" type="Label" parent="Margin/Page/ControllerCards/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.35, 1)
+theme_override_font_sizes/font_size = 17
+text = "Try it"
+
+[node name="Desc" type="Label" parent="Margin/Page/ControllerCards/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
+custom_minimum_size = Vector2(300, 0)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+text = "Plug in a controller and move the left stick: a ring appears and hovers whatever is under it. A clicks (hold it to hold), the right stick scrolls, and the ring sticks to buttons. The d-pad goes back to normal focus navigation; the mouse hides the ring. The menu is ordinary Controls: OmniButtons, a Godot slider and Godot buttons."
+
+[node name="Menu" type="HBoxContainer" parent="Margin/Page/ControllerCards/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="Main" type="VBoxContainer" parent="Margin/Page/ControllerCards/VBox/Menu"]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="Play" parent="Margin/Page/ControllerCards/VBox/Menu/Main" instance=ExtResource("menu")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 52)
+layout_mode = 2
+Text = "Play"
+
+[node name="Loadout" parent="Margin/Page/ControllerCards/VBox/Menu/Main" instance=ExtResource("menu")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 52)
+layout_mode = 2
+Text = "Loadout"
+
+[node name="Options" parent="Margin/Page/ControllerCards/VBox/Menu/Main" instance=ExtResource("menu")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 52)
+layout_mode = 2
+Text = "Options"
+
+[node name="Back" parent="Margin/Page/ControllerCards/VBox/Menu/Main" instance=ExtResource("menu")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 52)
+layout_mode = 2
+Text = "Back"
+
+[node name="Gear" type="GridContainer" parent="Margin/Page/ControllerCards/VBox/Menu"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 2
+
+[node name="Gear1" parent="Margin/Page/ControllerCards/VBox/Menu/Gear" instance=ExtResource("item")]
+layout_mode = 2
+Text = "Slot 1"
+
+[node name="Gear2" parent="Margin/Page/ControllerCards/VBox/Menu/Gear" instance=ExtResource("item")]
+layout_mode = 2
+Text = "Slot 2"
+IconTexture = ExtResource("sword_icon")
+
+[node name="Gear3" parent="Margin/Page/ControllerCards/VBox/Menu/Gear" instance=ExtResource("item")]
+layout_mode = 2
+Text = "Slot 3"
+
+[node name="Gear4" parent="Margin/Page/ControllerCards/VBox/Menu/Gear" instance=ExtResource("item")]
+layout_mode = 2
+Text = "Slot 4"
+IconTexture = ExtResource("sword_icon")
+
+[node name="Side" type="VBoxContainer" parent="Margin/Page/ControllerCards/VBox/Menu"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="Snap" parent="Margin/Page/ControllerCards/VBox/Menu/Side" instance=ExtResource("toggle")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+Text = "Snap: On"
+MaxFontSize = 18
+
+[node name="VolumeLabel" type="Label" parent="Margin/Page/ControllerCards/VBox/Menu/Side"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+text = "Volume (a Godot HSlider)"
+
+[node name="Volume" type="HSlider" parent="Margin/Page/ControllerCards/VBox/Menu/Side"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+value = 60.0
+
+[node name="List" type="ScrollContainer" parent="Margin/Page/ControllerCards/VBox/Menu/Side"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Items" type="VBoxContainer" parent="Margin/Page/ControllerCards/VBox/Menu/Side/List"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Row1" type="Button" parent="Margin/Page/ControllerCards/VBox/Menu/Side/List/Items"]
+layout_mode = 2
+text = "Scroll me with the right stick (1)"
+
+[node name="Row2" type="Button" parent="Margin/Page/ControllerCards/VBox/Menu/Side/List/Items"]
+layout_mode = 2
+text = "Scroll me with the right stick (2)"
+
+[node name="Row3" type="Button" parent="Margin/Page/ControllerCards/VBox/Menu/Side/List/Items"]
+layout_mode = 2
+text = "Scroll me with the right stick (3)"
+
+[node name="Row4" type="Button" parent="Margin/Page/ControllerCards/VBox/Menu/Side/List/Items"]
+layout_mode = 2
+text = "Scroll me with the right stick (4)"
+
+[node name="Row5" type="Button" parent="Margin/Page/ControllerCards/VBox/Menu/Side/List/Items"]
+layout_mode = 2
+text = "Scroll me with the right stick (5)"
+
+[node name="Row6" type="Button" parent="Margin/Page/ControllerCards/VBox/Menu/Side/List/Items"]
+layout_mode = 2
+text = "Scroll me with the right stick (6)"
+
+[node name="Row7" type="Button" parent="Margin/Page/ControllerCards/VBox/Menu/Side/List/Items"]
+layout_mode = 2
+text = "Scroll me with the right stick (7)"
+
+[node name="Row8" type="Button" parent="Margin/Page/ControllerCards/VBox/Menu/Side/List/Items"]
+layout_mode = 2
+text = "Scroll me with the right stick (8)"
+
+[node name="Row9" type="Button" parent="Margin/Page/ControllerCards/VBox/Menu/Side/List/Items"]
+layout_mode = 2
+text = "Scroll me with the right stick (9)"
+
+[node name="Row10" type="Button" parent="Margin/Page/ControllerCards/VBox/Menu/Side/List/Items"]
+layout_mode = 2
+text = "Scroll me with the right stick (10)"
+
+[node name="Row11" type="Button" parent="Margin/Page/ControllerCards/VBox/Menu/Side/List/Items"]
+layout_mode = 2
+text = "Scroll me with the right stick (11)"
+
+[node name="Row12" type="Button" parent="Margin/Page/ControllerCards/VBox/Menu/Side/List/Items"]
+layout_mode = 2
+text = "Scroll me with the right stick (12)"
+
+[node name="CursorState" type="Label" parent="Margin/Page/ControllerCards/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.86, 0.92, 1)
+theme_override_font_sizes/font_size = 15
+text = "Cursor: waiting for a stick"
+
+[node name="Cursor" parent="." instance=ExtResource("cursor")]
+unique_name_in_owner = true

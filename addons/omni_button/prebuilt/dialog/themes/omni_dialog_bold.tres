@@ -1,0 +1,132 @@
+[gd_resource type="Resource" script_class="OmniDialogTheme" format=3 uid="uid://cr6gdbx067xhc"]
+
+[ext_resource type="Script" uid="uid://rd3ifrgtrpb" path="res://addons/omni_button/prebuilt/dialog/core/omni_dialog_theme.gd" id="1_theme"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_option_disabled"]
+bg_color = Color(0.09, 0.09, 0.1, 1)
+skew = Vector2(0.2, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.25, 0.25, 0.27, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_option_focus"]
+bg_color = Color(0.16, 0.03, 0.05, 1)
+skew = Vector2(0.2, 0)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 1, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_option_hover"]
+bg_color = Color(0.28, 0.04, 0.06, 1)
+skew = Vector2(0.2, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.9, 0.11, 0.15, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_option_normal"]
+bg_color = Color(0.05, 0.05, 0.06, 1)
+skew = Vector2(0.2, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.55, 0.1, 0.13, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_option_pressed"]
+bg_color = Color(0.9, 0.11, 0.15, 1)
+skew = Vector2(0.2, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider_fill"]
+content_margin_top = 3.0
+content_margin_bottom = 3.0
+bg_color = Color(0.9, 0.11, 0.15, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider_fill_highlight"]
+content_margin_top = 3.0
+content_margin_bottom = 3.0
+bg_color = Color(1, 0.35, 0.35, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider"]
+content_margin_top = 3.0
+content_margin_bottom = 3.0
+bg_color = Color(0.22, 0.22, 0.24, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_toast"]
+content_margin_left = 20.0
+content_margin_top = 10.0
+content_margin_right = 20.0
+content_margin_bottom = 10.0
+bg_color = Color(0.05, 0.05, 0.06, 0.96)
+skew = Vector2(0.15, 0)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.9, 0.11, 0.15, 1)
+shadow_color = Color(0.9, 0.11, 0.15, 0.5)
+shadow_size = 1
+shadow_offset = Vector2(5, 5)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+content_margin_left = 22.0
+content_margin_top = 18.0
+content_margin_right = 22.0
+content_margin_bottom = 18.0
+bg_color = Color(0.04, 0.04, 0.05, 0.97)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.9, 0.11, 0.15, 1)
+shadow_color = Color(0.9, 0.11, 0.15, 0.55)
+shadow_size = 1
+shadow_offset = Vector2(8, 8)
+
+[sub_resource type="Theme" id="Theme_main"]
+default_font_size = 20
+HBoxContainer/constants/separation = 10
+HSlider/styles/grabber_area = SubResource("StyleBoxFlat_slider_fill")
+HSlider/styles/grabber_area_highlight = SubResource("StyleBoxFlat_slider_fill_highlight")
+HSlider/styles/slider = SubResource("StyleBoxFlat_slider")
+Label/colors/font_color = Color(1, 1, 1, 1)
+OmniDialogIndicator/base_type = &"Label"
+OmniDialogIndicator/colors/font_color = Color(0.9, 0.11, 0.15, 1)
+OmniDialogIndicator/font_sizes/font_size = 18
+OmniDialogName/base_type = &"Label"
+OmniDialogName/colors/font_color = Color(1, 0.25, 0.28, 1)
+OmniDialogName/font_sizes/font_size = 22
+OmniDialogTitle/base_type = &"Label"
+OmniDialogTitle/font_sizes/font_size = 26
+OmniDialogToast/base_type = &"PanelContainer"
+OmniDialogToast/styles/panel = SubResource("StyleBoxFlat_toast")
+OmniMenuTitle/base_type = &"Label"
+OmniMenuTitle/colors/font_color = Color(1, 1, 1, 1)
+OmniMenuTitle/font_sizes/font_size = 44
+PanelContainer/styles/panel = SubResource("StyleBoxFlat_panel")
+VBoxContainer/constants/separation = 10
+
+[resource]
+script = ExtResource("1_theme")
+theme = SubResource("Theme_main")
+option_normal = SubResource("StyleBoxFlat_option_normal")
+option_hover = SubResource("StyleBoxFlat_option_hover")
+option_pressed = SubResource("StyleBoxFlat_option_pressed")
+option_focus = SubResource("StyleBoxFlat_option_focus")
+option_disabled = SubResource("StyleBoxFlat_option_disabled")
+option_text_color = Color(1, 1, 1, 1)
+text_color = Color(1, 1, 1, 1)
+accent_color = Color(0.9, 0.11, 0.15, 1)
+menu_background_color = Color(0.04, 0.04, 0.05, 1)
+menu_band_color = Color(0.72, 0.07, 0.1, 1)
+menu_text_color = Color(1, 1, 1, 1)

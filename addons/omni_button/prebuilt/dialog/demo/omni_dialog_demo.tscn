@@ -1,0 +1,413 @@
+[gd_scene format=3 uid="uid://jftw2u6ronu2"]
+
+[ext_resource type="Script" uid="uid://dx4vc58sfx1ky" path="res://addons/omni_button/prebuilt/dialog/demo/omni_dialog_demo.gd" id="1_demo"]
+[ext_resource type="PackedScene" uid="uid://d0hwaupyq5yf5" path="res://addons/omni_button/prebuilt/dialog/parts/omni_option_button.tscn" id="2_option"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/dialog/windows/popup/omni_popup.tscn" id="3_popup"]
+[ext_resource type="PackedScene" uid="uid://dhl58f4jdscui" path="res://addons/omni_button/prebuilt/dialog/windows/toast/omni_toast.tscn" id="4_toast"]
+[ext_resource type="PackedScene" uid="uid://bh44hl2mnx3dw" path="res://addons/omni_button/prebuilt/dialog/windows/dialogue_box/omni_dialogue_box.tscn" id="5_box"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/dialog/windows/narration/omni_narration.tscn" id="6_narration"]
+[ext_resource type="PackedScene" uid="uid://dugea80vvie6v" path="res://addons/omni_button/prebuilt/dialog/core/overlay/omni_overlay.tscn" id="7_overlay"]
+[ext_resource type="Texture2D" uid="uid://t1lx8vuylvyj" path="res://addons/omni_button/prebuilt/dialog/demo/icons/Icon-Sword1.png" id="8_icon"]
+
+[node name="OmniDialogDemo" type="Control" unique_id=1191171218]
+editor_description = "The OmniButton dialog demo. Run with F6: every button opens a window on demand, and the log shows the call and what it returned.
+
+The Windows button at the top switches between the OmniDialog autoload (code only) and the windows dropped into this scene (ScenePopup, SceneToast, SceneBox, SceneNarration; select one to see its Inspector settings). ShopPopup's question is written in its Inspector. OverlayA and OverlayB show the base overlay with your own content under Root/Panel/Content (click an eye icon to edit one; they always start closed when the game runs).
+
+To make a look: duplicate a .tres in themes/, drag it into this root's Your Look, run, and pick it with the Look button. Save edits in the editor and click back into the game: the look reloads."
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_demo")
+
+[node name="Background" type="ColorRect" parent="." unique_id=1124121308]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.16, 0.2, 0.26, 1)
+
+[node name="Margin" type="MarginContainer" parent="." unique_id=2128608537]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 20
+
+[node name="Page" type="VBoxContainer" parent="Margin" unique_id=103466366]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="TopBar" type="HBoxContainer" parent="Margin/Page" unique_id=1794196448]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Margin/Page/TopBar" unique_id=1259914250]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "OmniButton dialogs"
+
+[node name="WindowsButton" parent="Margin/Page/TopBar" unique_id=1713683670 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(290, 44)
+layout_mode = 2
+Text = "Windows: OmniDialog (code)"
+
+[node name="LookButton" parent="Margin/Page/TopBar" unique_id=1255552421 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(190, 44)
+layout_mode = 2
+Text = "Look: Modern"
+
+[node name="SpeedButton" parent="Margin/Page/TopBar" unique_id=616254601 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(210, 44)
+layout_mode = 2
+Text = "Text speed: Normal"
+
+[node name="Body" type="HBoxContainer" parent="Margin/Page" unique_id=1525609795]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 24
+
+[node name="Menu" type="ScrollContainer" parent="Margin/Page/Body" unique_id=1513072897]
+custom_minimum_size = Vector2(470, 0)
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="List" type="VBoxContainer" parent="Margin/Page/Body/Menu" unique_id=1445066184]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="PopupsHeading" type="Label" parent="Margin/Page/Body/Menu/List" unique_id=149099680]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Popups and toasts"
+
+[node name="PopupsGrid" type="GridContainer" parent="Margin/Page/Body/Menu/List" unique_id=1724535935]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="ToastButton" parent="Margin/Page/Body/Menu/List/PopupsGrid" unique_id=1380610598 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Toast"
+
+[node name="AlertButton" parent="Margin/Page/Body/Menu/List/PopupsGrid" unique_id=316714701 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Alert"
+
+[node name="ConfirmButton" parent="Margin/Page/Body/Menu/List/PopupsGrid" unique_id=336081090 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Confirm (yes / no)"
+
+[node name="ChooseButton" parent="Margin/Page/Body/Menu/List/PopupsGrid" unique_id=306873149 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Choice"
+
+[node name="ChainButton" parent="Margin/Page/Body/Menu/List/PopupsGrid" unique_id=1645681126 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Choice, then confirm"
+
+[node name="ShopButton" parent="Margin/Page/Body/Menu/List/PopupsGrid" unique_id=168840151 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Shop (Inspector)"
+
+[node name="DialogueHeading" type="Label" parent="Margin/Page/Body/Menu/List" unique_id=145747264]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Dialogue and narration"
+
+[node name="DialogueGrid" type="GridContainer" parent="Margin/Page/Body/Menu/List" unique_id=1645542185]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="ConversationButton" parent="Margin/Page/Body/Menu/List/DialogueGrid" unique_id=1233324926 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Conversation"
+
+[node name="AskButton" parent="Margin/Page/Body/Menu/List/DialogueGrid" unique_id=126253591 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Ask a question"
+
+[node name="LongAskButton" parent="Margin/Page/Body/Menu/List/DialogueGrid" unique_id=1691705714 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Ask with long answers"
+
+[node name="NarrationButton" parent="Margin/Page/Body/Menu/List/DialogueGrid" unique_id=1632858883 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Narration"
+
+[node name="MixedButton" parent="Margin/Page/Body/Menu/List/DialogueGrid" unique_id=411516845 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Mixed scene"
+
+[node name="StoryHeading" type="Label" parent="Margin/Page/Body/Menu/List" unique_id=1222014712]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Story file (gate_story.json)"
+
+[node name="StoryGrid" type="GridContainer" parent="Margin/Page/Body/Menu/List" unique_id=845779558]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="OpeningButton" parent="Margin/Page/Body/Menu/List/StoryGrid" unique_id=405733 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Play \"opening\""
+
+[node name="GateButton" parent="Margin/Page/Body/Menu/List/StoryGrid" unique_id=1387961519 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Play \"gate\""
+
+[node name="MarketButton" parent="Margin/Page/Body/Menu/List/StoryGrid" unique_id=1421013082 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Play \"market\""
+
+[node name="ResetButton" parent="Margin/Page/Body/Menu/List/StoryGrid" unique_id=543686241 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Clear answers"
+
+[node name="CheckFileButton" parent="Margin/Page/Body/Menu/List/StoryGrid" unique_id=1115611712 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Check the file"
+
+[node name="OverlayHeading" type="Label" parent="Margin/Page/Body/Menu/List" unique_id=343176345]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Base overlay (build your own window)"
+
+[node name="OverlayGrid" type="GridContainer" parent="Margin/Page/Body/Menu/List" unique_id=238790599]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="OpenOverlayButton" parent="Margin/Page/Body/Menu/List/OverlayGrid" unique_id=1579113039 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Open overlay"
+
+[node name="AnimationButton" parent="Margin/Page/Body/Menu/List/OverlayGrid" unique_id=1025564510 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Animation: Fade"
+
+[node name="PauseButton" parent="Margin/Page/Body/Menu/List/OverlayGrid" unique_id=1265958622 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Pauses game: Off"
+
+[node name="BackdropButton" parent="Margin/Page/Body/Menu/List/OverlayGrid" unique_id=1117367304 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Click outside closes: Off"
+
+[node name="Side" type="VBoxContainer" parent="Margin/Page/Body" unique_id=1639243743]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="InfoRow" type="HBoxContainer" parent="Margin/Page/Body/Side" unique_id=308293316]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Info" type="Label" parent="Margin/Page/Body/Side/InfoRow" unique_id=1603755403]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Calls go to the OmniDialog autoload."
+autowrap_mode = 3
+
+[node name="Spinner" type="TextureRect" parent="Margin/Page/Body/Side/InfoRow" unique_id=318817374]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+size_flags_vertical = 0
+mouse_filter = 2
+texture = ExtResource("8_icon")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LogTitle" type="Label" parent="Margin/Page/Body/Side" unique_id=143881868]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "What happened"
+
+[node name="LogPanel" type="PanelContainer" parent="Margin/Page/Body/Side" unique_id=1919717445]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Log" type="Label" parent="Margin/Page/Body/Side/LogPanel" unique_id=1633492268]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_vertical = 1
+theme_override_font_sizes/font_size = 16
+text = "Press a button on the left."
+autowrap_mode = 3
+
+[node name="Hint" type="Label" parent="Margin/Page/Body/Side" unique_id=463117381]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+text = "Enter / click: next line. Esc: cancel a popup or close an overlay. Hold the skip button (or End) to fast-forward a story."
+autowrap_mode = 3
+
+[node name="Flash" type="ColorRect" parent="." unique_id=1485679986]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 0)
+
+[node name="ScenePopup" parent="." unique_id=409196750 instance=ExtResource("3_popup")]
+visible = false
+title = ""
+message = ""
+buttons = PackedStringArray("OK")
+default_button = 0
+type_message = true
+message_speed = 60.0
+allow_cancel = true
+cancel_index = -1
+max_buttons_in_row = 3
+option_button_scene = ExtResource("2_option")
+
+[node name="SceneToast" parent="." unique_id=1072443553 instance=ExtResource("4_toast")]
+layer = 21
+visible = false
+default_duration = 4.0
+max_visible = 3
+
+[node name="SceneBox" parent="." unique_id=314529106 instance=ExtResource("5_box")]
+visible = false
+characters_per_second = 20.0
+show_skip_button = true
+skip_hold_time = 0.8
+skip_action = &""
+
+[node name="SceneNarration" parent="." unique_id=596164006 instance=ExtResource("6_narration")]
+visible = false
+characters_per_second = 18.0
+auto_advance_delay = 0.0
+advance_action = &"ui_accept"
+typing_sound = null
+typing_sound_every = 2
+typing_pitch_variation = 0.05
+typing_sound_bus = &"Master"
+show_skip_button = true
+skip_hold_time = 0.8
+skip_action = &""
+option_button_scene = ExtResource("2_option")
+animation_duration = 0.8
+
+[node name="ShopPopup" parent="." unique_id=1864320271 instance=ExtResource("3_popup")]
+visible = false
+title = "Shop"
+message = "Buy a [b]potion[/b] for [color=gold]50 gold[/color]?"
+buttons = PackedStringArray("Buy", "Not now")
+default_button = 0
+type_message = false
+message_speed = 60.0
+allow_cancel = true
+cancel_index = 1
+max_buttons_in_row = 2
+option_button_scene = ExtResource("2_option")
+
+[node name="OverlayA" parent="." unique_id=504347064 instance=ExtResource("7_overlay")]
+visible = false
+
+[node name="AContent" type="VBoxContainer" parent="OverlayA/Root/Panel/Content" parent_id_path=PackedInt32Array(504347064, 399272763) index="0" unique_id=328878899]
+layout_mode = 2
+
+[node name="ATitle" type="Label" parent="OverlayA/Root/Panel/Content/AContent" unique_id=1039970855]
+layout_mode = 2
+text = "Base overlay"
+
+[node name="ABody" type="Label" parent="OverlayA/Root/Panel/Content/AContent" unique_id=897731723]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "The OmniOverlay base scene with a few option buttons placed in its Content node. Open a second overlay on top, then press Esc."
+autowrap_mode = 3
+
+[node name="StackButton" parent="OverlayA/Root/Panel/Content/AContent" unique_id=788292368 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Open another on top"
+
+[node name="CloseAButton" parent="OverlayA/Root/Panel/Content/AContent" unique_id=2109828784 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Close"
+
+[node name="OverlayB" parent="." unique_id=1223757975 instance=ExtResource("7_overlay")]
+layer = 11
+visible = false
+open_animation = 2
+close_animation = 2
+backdrop_color = Color(0, 0, 0, 0.3)
+
+[node name="Backdrop" parent="OverlayB/Root" parent_id_path=PackedInt32Array(1223757975, 297016464) index="0" unique_id=784500028]
+color = Color(0, 0, 0, 0.3)
+
+[node name="BContent" type="VBoxContainer" parent="OverlayB/Root/Panel/Content" parent_id_path=PackedInt32Array(1223757975, 399272763) index="0" unique_id=489943130]
+layout_mode = 2
+
+[node name="BTitle" type="Label" parent="OverlayB/Root/Panel/Content/BContent" unique_id=1857598345]
+layout_mode = 2
+text = "Stacked overlay"
+
+[node name="BBody" type="Label" parent="OverlayB/Root/Panel/Content/BContent" unique_id=2101642405]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Only this overlay reacts to Esc now. Closing it gives focus back to the overlay underneath."
+autowrap_mode = 3
+
+[node name="CloseBButton" parent="OverlayB/Root/Panel/Content/BContent" unique_id=738077277 instance=ExtResource("2_option")]
+unique_name_in_owner = true
+layout_mode = 2
+Text = "Close"
+
+[editable path="OverlayA"]
+[editable path="OverlayB"]

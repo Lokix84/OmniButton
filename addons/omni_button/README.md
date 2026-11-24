@@ -4,6 +4,18 @@ Universal, highly configurable Control for Godot 4 (GDScript) that unifies press
 
 Minimum Godot: 4.x
 
+Ready-made buttons (menu, toggle, icon, item, hold-to-confirm, cooldown) touch controls (joystick, floating joystick, swipe pad, action button) and more (typewriter title, invert flash, tab bar) to drag into a scene are in `prebuilt/buttons/`; see [prebuilt/buttons/README.md](prebuilt/buttons/README.md).
+
+A companion for controller-first menus, a joystick-driven cursor ring that clicks whatever is under it, is in `prebuilt/cursor/`; see [prebuilt/cursor/README.md](prebuilt/cursor/README.md).
+
+Dialog windows (popups, toasts, dialogue box, narration) built on OmniButton ship in `prebuilt/dialog/`; see [prebuilt/dialog/README.md](prebuilt/dialog/README.md).
+
+A title screen, pause menu and options screen (with saved player settings) built on the dialog windows ship in `prebuilt/menus/`; see [prebuilt/menus/README.md](prebuilt/menus/README.md).
+
+Downloads from GitHub or the Asset Library leave out the `dev/` folders (`dev/` and each `prebuilt/*/dev/`: tests, benchmark, snapshot and the doc generator; see `.gitattributes` in the repository). They're only needed to develop the plugin.
+
+API reference: in the Godot editor press F1 (Search Help) and type a class name (`Omni_Button`, `OmniPopup`, `OmniDialogRunner`, ...), or Ctrl+click a name in the script editor. The same reference as Markdown is in [docs/api/README.md](docs/api/README.md) for the button, and [prebuilt/dialog/docs/api/README.md](prebuilt/dialog/docs/api/README.md) for the dialog windows.
+
 Contents
 - Signals
 - Exported Properties (by group)
@@ -14,17 +26,17 @@ Contents
 - Troubleshooting
 
 ## Signals
-- Pressed — Emitted on press when EnablePressedActions is on.
-- Released — Emitted on release when EnableReleasedActions is on.
-- Toggled(bool pressed) — Emitted when InteractionMode toggles on/off.
-- HoverIn, HoverOut — Emitted on pointer enter/exit when EnableHoverActions is on.
-- Hold — Emitted once after HoldDuration build-up completes when EnableHoldActions is on.
-- Swipe(Vector2 direction) — Emitted with a normalized direction during swipe when EnableSwipeActions is on.
-- SwipeEnded() — Emitted when a swipe session ends.
-- JoystickStarted, JoystickAxis(Vector2 axis), JoystickEnded — Virtual joystick lifecycle and axes.
-- Log(string), Warning(string), Error(string) — Optional logging signals.
-- TypewriterCompleted — Raised when typewriter text finishes (also fires when SkipTypewriter() is called).
-- TypewriterCharRevealed(int index, string character) — Raised for each character the typewriter reveals, in order (useful for typing sounds). Characters passed over by a skip are not reported.
+- `pressed` — emitted on press when EnablePressedActions is on.
+- `released` — emitted on release when EnableReleasedActions is on.
+- `toggled(pressed: bool)` — emitted when InteractionMode toggles on/off.
+- `hover_in`, `hover_out` — emitted on pointer enter/exit when EnableHoverActions is on.
+- `hold` — emitted once after the HoldDuration build-up completes when EnableHoldActions is on.
+- `swipe(direction: Vector2)` — emitted with a normalized direction during a swipe when EnableSwipeActions is on.
+- `swipe_ended` — emitted when a swipe session ends.
+- `joystick_started`, `joystick_axis(axis: Vector2)`, `joystick_ended` — virtual joystick lifecycle and axes.
+- `log(message)`, `warning(message)`, `error(message)` — optional logging signals.
+- `typewriter_completed` — emitted when typewriter text finishes (also when `skip_typewriter()` or `stop_typewriter()` ends it).
+- `typewriter_char_revealed(index: int, character: String)` — emitted for each character the typewriter reveals, in order (useful for typing sounds). Characters passed over by a skip are not reported.
 
 Connect signals with the standard GDScript syntax, for example `button.pressed.connect(_on_pressed)`.
 
@@ -32,9 +44,26 @@ Each event runs in this order: the signal is emitted (connected handlers run onc
 
 ## Code organization
 
+```
+omni_button/
+├── plugin.cfg, omni_button_plugin.gd   the editor plugin (registers the node, settings, autoload)
+├── omni_button.gd                       Omni_Button, the node you use
+├── core/                                what the button is made of (you don't need to open these)
+│   ├── omni_button_*.gd                 helper modules, described below
+│   └── shader/                          the invert-on-state shader
+├── demo/                                omni_button_demo.tscn, the button demo (project main scene)
+├── docs/api/                            the button's API reference
+├── prebuilt/buttons/                    ready-made buttons (presets), with their own README
+├── prebuilt/cursor/                     controller cursor for menus (a companion), with its own README
+├── prebuilt/dialog/                     the dialog system, with its own README
+├── prebuilt/menus/                      title, pause and options menus + player settings, with their own README
+└── dev/                                 tests and tools, left out of downloads
+```
+
 `omni_button.gd` is the scene-facing Control. It owns every exported property, all runtime state, and the public API. The file is split into foldable `#region` blocks: constants, signals and enums; one Settings region per Inspector category, in Inspector order, with each setting's private backing variable directly above it; runtime state grouped by feature; scripting accessors; lifecycle; public API; overridable hooks; and internal methods.
 
-The core modules below are stateless: they contain only static functions that take the button as their first argument, so a button allocates no helper objects for them. The button and other modules call these functions directly (for example `OmniButtonTiming.start_cooldown(button)`), rather than through wrapper methods on the button. A leading underscore marks a function that is used only inside its own file; functions without one are called from other files. The button keeps a method only when it is part of the public API, an engine callback, an overridable hook, or a `call_deferred` target, or when it adds a check, such as skipping work before `_ready`.
+Most modules in `core/` are stateless: they contain only static functions that take the button as their first argument, so a button allocates no helper objects for them. The button and other modules call these functions directly (for example `OmniButtonTiming.start_cooldown(button)`), rather than through wrapper methods on the button. A leading underscore marks a function that is used only inside its own file; functions without one are called from other files. The button keeps a method only when it is part of the public API, an engine callback, an overridable hook, or a `call_deferred` target, or when it adds a check, such as skipping work before `_ready`.
+- `omni_button_accessors.gd` — the `label`, `icon`, `background`, ... accessor classes (see **Accessors**).
 - `omni_button_text.gd` — creates and updates Label/RichTextLabel children, parses BBCode for helper behavior, and measures/fits text.
 - `omni_button_typewriter.gd` — tokenizes and reveals text over time, and holds the reveal state. Only `_tw_active` stays on the button, because `_process` checks it every frame.
 - `omni_button_state.gd` — owns selected/toggle/press/hover/hold state changes and press-session reset behavior.
@@ -72,9 +101,9 @@ Feature settings appear only while their feature is on, so unused features don't
 - Actions — individual checkboxes labeled Press, Release, Hover, Toggle, Hold, Swipe, Log, Warning, and Error. Their script property names retain the `Enable...Actions` names. Connecting a matching signal handler automatically enables its checkbox once.
 - BackgroundType — None | UsePanel | UseTexture. Selects which background child is active and which background Inspector section is shown.
 - LabelType — None | Label | RichTextLabel. None hides the Text, Label, RichTextLabel, and Extra categories and creates no label; setting non-empty Text in code selects Label automatically.
-- Disabled — Blocks input and visual reactions.
+- Disabled — Blocks input and visual reactions, switches to `PanelDisabledStyleBox`, and fades the text and icon by `DisabledModulate` (white turns the fade off).
 - Visual Effects — InvertModes, Hover → Scale and Lerp Speed, and SelectedColor. Scale is the size while hovered (1.2 = 120%); it defaults to 0, which turns hover scaling off.
-- Input & Motion — ActivationAction, then Hit Area (BoundsSource, HitSlop), then Drag & virtual joystick, where `FollowMode` is the single switch for drag and joystick behavior.
+- Input & Motion — ActivationAction, OutputAction (an InputMap action held down while the button is pressed, like `TouchScreenButton`'s action), then Hit Area (BoundsSource, HitSlop), then Drag & virtual joystick, where `FollowMode` is the single switch for drag and joystick behavior.
 - Actions is the first section in the built-in OmniButton Inspector category.
 
 ### Button
@@ -83,7 +112,7 @@ Feature settings appear only while their feature is on, so unused features don't
 - Hold Build-Up — Duration, Fill Color, Fill Direction. A duration greater than zero enables hold build-up; zero disables it.
 - Swipe — Threshold, Touch Init/Exit, Mouse Init/Exit.
 - Toggle Behavior — InteractionMode.
-- Cooldown — Trigger (None disables cooldown; OnPress, OnRelease, or OnPressAndRelease enables it), Start Delay, Duration, Start Filled, Color, Fill Direction, and hold/hover behavior.
+- Cooldown — Trigger (None disables cooldown; OnPress, OnRelease, or OnPressAndRelease enables it), Start Delay, Duration, Start Filled, Color, Fill Direction, and hold/hover behavior. With a `StyleBoxFlat` panel, the cooldown and hold fills follow its rounded corners.
 
 ### Text
 - Text content is followed by the plain-label options Uppercase, Clip, and Overrun in the base section.
@@ -124,7 +153,7 @@ Feature settings appear only while their feature is on, so unused features don't
 
 ### Typewriter
 - TextToType, DelayEffectTagsDuringTypewriter, SuspendHoverDuringTypewriter, FinishTypewriterOnPress
-- StartTypewriter(cps, byWord, preserveBBCodeTags), SkipTypewriter(), StopTypewriter(). Setting `preserveBBCodeTags` to true selects RichTextLabel when needed; set `RichLabelUseBBCode` to true to render markup.
+- `start_typewriter(final_text, cps, by_word, preserve_bbcode_tags)`, `skip_typewriter()`, `stop_typewriter()`. Setting `preserve_bbcode_tags` to true selects RichTextLabel when needed; set `RichLabelUseBBCode` to true to render markup.
 - Inline timing tags, understood only by the typewriter and removed before the text reaches the label (they work with and without BBCode):
   - `[pause=0.5]` — wait 0.5 seconds once the reveal reaches this point. Skipping during a pause finishes the reveal immediately.
   - `[speed=12]` — reveal 12 characters (or words, in word mode) per second from here.
@@ -148,12 +177,12 @@ Feature settings appear only while their feature is on, so unused features don't
 - **Actions auto-enable once:** When a handler is connected to a signal before the button is ready (in the editor, or in code before `add_child`), the matching action checkbox turns on. If you disable it later, it remains off. For handlers connected later in code, turn the checkbox on yourself.
 - **Per-button debugger:** Flip `DebuggerLog` to `Basic` for any instance to print a trace of autosize decisions, pressed/hover/toggle transitions, swipe + joystick events, hold/cooldown/typewriter lifecycle, and signal emissions. This is invaluable for diagnosing a single button without spamming other buttons.
 - **Text autosizing parity:** The autosizer now uses Godot’s TextParagraph pipeline and re-runs whenever wrap/padding/text changes. Cached font sizes are invalidated automatically and a secondary search “grows” the font back up when more room becomes available. If text still overflows, enable the debugger log to inspect measurements vs available space.
-- **Hold build-up:** When `HoldDuration` is greater than zero, OmniButton draws a hold fill and animates it according to `HoldFillDirection`. The `Hold` signal fires once the timer reaches `HoldDuration`.
+- **Hold build-up:** When `HoldDuration` is greater than zero, OmniButton draws a hold fill and animates it according to `HoldFillDirection`. The `hold` signal fires once the timer reaches `HoldDuration`.
 - **Cooldown:** `CooldownTrigger = None` disables cooldown. Choose OnPress, OnRelease, or OnPressAndRelease to enable it; no separate enable switch is needed.
 - **Swipe handling:** Swipes respect per-device init/exit settings, the Swipe action checkbox, thresholds, and `HitSlop`. Runtime logs show whether the action is disabled or the pointer left bounds.
 - **Follow / Virtual joystick:** `FollowMode` controls whether the button drags, stays put, or becomes a joystick. Joystick sessions clamp to circular/rectangular regions, emit axis values/started/ended signals, and optionally show a ring (`EnableJoystickArea`). The debugger logs start/stop events and clamp info.
 - **Cooldowns:** Any triggerable cooldown automatically clears pressed visuals, can optionally suspend hover scale, and emits debugger logs when starting or finishing. You can hide the overlay during hold build-up for “charge + cooldown” combos.
-- **Typewriter text:** `StartTypewriter()` respects BBCode, word mode, and CPS, and can defer effect tags. Skip/Stop log when they emit `TypewriterCompleted` so you can tell if a script cancelled unexpectedly.
+- **Typewriter text:** `start_typewriter()` respects BBCode, word mode, and CPS, and can defer effect tags. Skip/Stop log when they emit `typewriter_completed` so you can tell if a script cancelled unexpectedly.
 - **Runtime/editor parity:** In the editor, buttons refresh when an edit is made (the plugin listens for undo/redo history changes and scene switches) instead of polling every frame, and then run the same rebuild and autosize code as at runtime.
 - **Processing / idle:** At runtime, `_process` calls `set_process(false)` when nothing needs per-frame work (no pending refresh, refit frames, typewriter, cooldown delay or active cooldown, hold build-up while pressed, and hover scaling is off). Hover scaling keeps processing on only while the scale is still animating. Idle buttons do no per-frame work, and they also receive `_unhandled_input` only while focused with an activation action or in the middle of a gesture.
 - **Mouse + touch together:** With `ProjectSettings` → `input_devices/pointing/emulate_mouse_from_touch` on, one touch can produce both screen-touch and mouse-button events. `PointerGestureSource` records which input **first** started the press; the other is ignored until the session ends, avoiding double press/release.

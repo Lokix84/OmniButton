@@ -1,0 +1,783 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://addons/omni_button/prebuilt/buttons/demo/omni_button_presets_demo.gd" id="script"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/buttons/presets/omni_menu_button.tscn" id="menu"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/buttons/presets/omni_toggle_button.tscn" id="toggle"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/buttons/presets/omni_icon_button.tscn" id="icon"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/buttons/presets/omni_item_button.tscn" id="item"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/buttons/presets/omni_hold_button.tscn" id="hold"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/buttons/presets/omni_cooldown_button.tscn" id="cooldown"]
+[ext_resource type="Texture2D" path="res://addons/omni_button/prebuilt/buttons/icons/pause.svg" id="pause_icon"]
+[ext_resource type="Texture2D" path="res://addons/omni_button/prebuilt/buttons/icons/close.svg" id="close_icon"]
+[ext_resource type="Texture2D" path="res://addons/omni_button/prebuilt/buttons/icons/Icon-Sword1.png" id="sword_icon"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/buttons/presets/omni_joystick.tscn" id="stick"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/buttons/presets/omni_floating_joystick.tscn" id="float_stick"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/buttons/presets/omni_swipe_pad.tscn" id="swipe"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/buttons/presets/omni_action_button.tscn" id="action"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/buttons/presets/omni_typewriter_button.tscn" id="typewriter"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/buttons/presets/omni_invert_button.tscn" id="invert"]
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/buttons/presets/omni_tab_bar.tscn" id="tabbar"]
+
+[sub_resource type="StyleBoxFlat" id="card"]
+content_margin_left = 14.0
+content_margin_top = 12.0
+content_margin_right = 14.0
+content_margin_bottom = 12.0
+bg_color = Color(0.11, 0.12, 0.16, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="zone"]
+bg_color = Color(0.08, 0.09, 0.12, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.22, 0.25, 0.32, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="log"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.06, 0.07, 0.09, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="OmniButtonPresetsDemo" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.07, 0.08, 0.1, 1)
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 0
+offset_right = 1152.0
+offset_bottom = 648.0
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 18
+
+[node name="Page" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TopBar" type="HBoxContainer" parent="Margin/Page"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Margin/Page/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 26
+text = "OmniButton presets"
+
+[node name="Tabs" parent="Margin/Page/TopBar" instance=ExtResource("tabbar") node_paths=PackedStringArray("pages")]
+unique_name_in_owner = true
+layout_mode = 2
+pages = NodePath("../../Body/Pages")
+
+[node name="Tab1" parent="Margin/Page/TopBar/Tabs"]
+Text = "Buttons"
+
+[node name="Tab2" parent="Margin/Page/TopBar/Tabs"]
+Text = "Touch controls"
+custom_minimum_size = Vector2(160, 42)
+
+[node name="Tab3" parent="Margin/Page/TopBar/Tabs"]
+Text = "More"
+
+[node name="Subtitle" type="Label" parent="Margin/Page"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.74, 0.82, 1)
+theme_override_font_sizes/font_size = 16
+text = "Drag any scene from prebuilt/buttons/presets/ into your own scene, then change its text or icon."
+
+[node name="Body" type="HBoxContainer" parent="Margin/Page"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 20
+
+[node name="Pages" type="MarginContainer" parent="Margin/Page/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Cards" type="GridContainer" parent="Margin/Page/Body/Pages"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 14
+columns = 3
+
+[node name="MenuCard" type="PanelContainer" parent="Margin/Page/Body/Pages/Cards"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("card")
+
+[node name="VBox" type="VBoxContainer" parent="Margin/Page/Body/Pages/Cards/MenuCard"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Name" type="Label" parent="Margin/Page/Body/Pages/Cards/MenuCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.35, 1)
+theme_override_font_sizes/font_size = 17
+text = "omni_menu_button.tscn"
+
+[node name="Desc" type="Label" parent="Margin/Page/Body/Pages/Cards/MenuCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
+custom_minimum_size = Vector2(220, 0)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+text = "Grows on hover, gold border with keyboard / gamepad focus, blue while pressed. Signal: pressed."
+
+[node name="Row" type="VBoxContainer" parent="Margin/Page/Body/Pages/Cards/MenuCard/VBox"]
+layout_mode = 2
+size_flags_vertical = 6
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="Start" parent="Margin/Page/Body/Pages/Cards/MenuCard/VBox/Row" instance=ExtResource("menu")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+Text = "Start"
+
+[node name="Continue" parent="Margin/Page/Body/Pages/Cards/MenuCard/VBox/Row" instance=ExtResource("menu")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+Text = "Continue"
+Disabled = true
+
+[node name="ToggleCard" type="PanelContainer" parent="Margin/Page/Body/Pages/Cards"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("card")
+
+[node name="VBox" type="VBoxContainer" parent="Margin/Page/Body/Pages/Cards/ToggleCard"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Name" type="Label" parent="Margin/Page/Body/Pages/Cards/ToggleCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.35, 1)
+theme_override_font_sizes/font_size = 17
+text = "omni_toggle_button.tscn"
+
+[node name="Desc" type="Label" parent="Margin/Page/Body/Pages/Cards/ToggleCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
+custom_minimum_size = Vector2(220, 0)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+text = "Stays blue while on. Signal: toggled(on). Change its text in your handler."
+
+[node name="Row" type="VBoxContainer" parent="Margin/Page/Body/Pages/Cards/ToggleCard/VBox"]
+layout_mode = 2
+size_flags_vertical = 6
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="Music" parent="Margin/Page/Body/Pages/Cards/ToggleCard/VBox/Row" instance=ExtResource("toggle")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+Text = "Music: Off"
+
+[node name="Fullscreen" parent="Margin/Page/Body/Pages/Cards/ToggleCard/VBox/Row" instance=ExtResource("toggle")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+Text = "Fullscreen"
+
+[node name="IconCard" type="PanelContainer" parent="Margin/Page/Body/Pages/Cards"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("card")
+
+[node name="VBox" type="VBoxContainer" parent="Margin/Page/Body/Pages/Cards/IconCard"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Name" type="Label" parent="Margin/Page/Body/Pages/Cards/IconCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.35, 1)
+theme_override_font_sizes/font_size = 17
+text = "omni_icon_button.tscn"
+
+[node name="Desc" type="Label" parent="Margin/Page/Body/Pages/Cards/IconCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
+custom_minimum_size = Vector2(220, 0)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+text = "Icon only, square, with a tooltip. Set IconTexture to your icon. Signal: pressed."
+
+[node name="Row" type="HBoxContainer" parent="Margin/Page/Body/Pages/Cards/IconCard/VBox"]
+layout_mode = 2
+size_flags_vertical = 6
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="Settings" parent="Margin/Page/Body/Pages/Cards/IconCard/VBox/Row" instance=ExtResource("icon")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="Pause" parent="Margin/Page/Body/Pages/Cards/IconCard/VBox/Row" instance=ExtResource("icon")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+tooltip_text = "Pause"
+IconTexture = ExtResource("pause_icon")
+
+[node name="Close" parent="Margin/Page/Body/Pages/Cards/IconCard/VBox/Row" instance=ExtResource("icon")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+tooltip_text = "Close"
+IconTexture = ExtResource("close_icon")
+
+[node name="ItemCard" type="PanelContainer" parent="Margin/Page/Body/Pages/Cards"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("card")
+
+[node name="VBox" type="VBoxContainer" parent="Margin/Page/Body/Pages/Cards/ItemCard"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Name" type="Label" parent="Margin/Page/Body/Pages/Cards/ItemCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.35, 1)
+theme_override_font_sizes/font_size = 17
+text = "omni_item_button.tscn"
+
+[node name="Desc" type="Label" parent="Margin/Page/Body/Pages/Cards/ItemCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
+custom_minimum_size = Vector2(220, 0)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+text = "Icon with a caption along the bottom, for inventories and shops. Signal: pressed."
+
+[node name="Row" type="HBoxContainer" parent="Margin/Page/Body/Pages/Cards/ItemCard/VBox"]
+layout_mode = 2
+size_flags_vertical = 6
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="Potion" parent="Margin/Page/Body/Pages/Cards/ItemCard/VBox/Row" instance=ExtResource("item")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+Text = "Potion x3"
+
+[node name="Sword" parent="Margin/Page/Body/Pages/Cards/ItemCard/VBox/Row" instance=ExtResource("item")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+Text = "Sword"
+IconTexture = ExtResource("sword_icon")
+
+[node name="HoldCard" type="PanelContainer" parent="Margin/Page/Body/Pages/Cards"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("card")
+
+[node name="VBox" type="VBoxContainer" parent="Margin/Page/Body/Pages/Cards/HoldCard"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Name" type="Label" parent="Margin/Page/Body/Pages/Cards/HoldCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.35, 1)
+theme_override_font_sizes/font_size = 17
+text = "omni_hold_button.tscn"
+
+[node name="Desc" type="Label" parent="Margin/Page/Body/Pages/Cards/HoldCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
+custom_minimum_size = Vector2(220, 0)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+text = "Fills while held. Let go early and nothing happens. Signal: hold."
+
+[node name="Row" type="VBoxContainer" parent="Margin/Page/Body/Pages/Cards/HoldCard/VBox"]
+layout_mode = 2
+size_flags_vertical = 6
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="Quit" parent="Margin/Page/Body/Pages/Cards/HoldCard/VBox/Row" instance=ExtResource("hold")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+Text = "Hold to Quit"
+
+[node name="CooldownCard" type="PanelContainer" parent="Margin/Page/Body/Pages/Cards"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("card")
+
+[node name="VBox" type="VBoxContainer" parent="Margin/Page/Body/Pages/Cards/CooldownCard"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Name" type="Label" parent="Margin/Page/Body/Pages/Cards/CooldownCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.35, 1)
+theme_override_font_sizes/font_size = 17
+text = "omni_cooldown_button.tscn"
+
+[node name="Desc" type="Label" parent="Margin/Page/Body/Pages/Cards/CooldownCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
+custom_minimum_size = Vector2(220, 0)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+text = "Fires, then darkens and drains while it can't be used. Signal: pressed."
+
+[node name="Row" type="HBoxContainer" parent="Margin/Page/Body/Pages/Cards/CooldownCard/VBox"]
+layout_mode = 2
+size_flags_vertical = 6
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="Attack" parent="Margin/Page/Body/Pages/Cards/CooldownCard/VBox/Row" instance=ExtResource("cooldown")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="Dash" parent="Margin/Page/Body/Pages/Cards/CooldownCard/VBox/Row" instance=ExtResource("cooldown")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+CooldownDuration = 1.0
+
+[node name="TouchCards" type="GridContainer" parent="Margin/Page/Body/Pages"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 14
+columns = 2
+
+[node name="StickCard" type="PanelContainer" parent="Margin/Page/Body/Pages/TouchCards"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("card")
+
+[node name="VBox" type="VBoxContainer" parent="Margin/Page/Body/Pages/TouchCards/StickCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Name" type="Label" parent="Margin/Page/Body/Pages/TouchCards/StickCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.35, 1)
+theme_override_font_sizes/font_size = 17
+text = "omni_joystick.tscn"
+
+[node name="Desc" type="Label" parent="Margin/Page/Body/Pages/TouchCards/StickCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
+custom_minimum_size = Vector2(300, 0)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+text = "Touch the ring and drag. Read axis, connect axis_changed(axis), or set action_left / right / up / down."
+
+[node name="Row" type="HBoxContainer" parent="Margin/Page/Body/Pages/TouchCards/StickCard/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="Stick" parent="Margin/Page/Body/Pages/TouchCards/StickCard/VBox/Row" instance=ExtResource("stick")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(130, 130)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="StickAxis" type="Label" parent="Margin/Page/Body/Pages/TouchCards/StickCard/VBox/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.86, 0.92, 1)
+theme_override_font_sizes/font_size = 15
+text = "axis (0.00, 0.00)"
+
+[node name="FloatCard" type="PanelContainer" parent="Margin/Page/Body/Pages/TouchCards"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("card")
+
+[node name="VBox" type="VBoxContainer" parent="Margin/Page/Body/Pages/TouchCards/FloatCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Name" type="Label" parent="Margin/Page/Body/Pages/TouchCards/FloatCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.35, 1)
+theme_override_font_sizes/font_size = 17
+text = "omni_floating_joystick.tscn"
+
+[node name="Desc" type="Label" parent="Margin/Page/Body/Pages/TouchCards/FloatCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
+custom_minimum_size = Vector2(300, 0)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+text = "The ring appears wherever you touch inside the zone, and hides when you let go."
+
+[node name="Zone" type="PanelContainer" parent="Margin/Page/Body/Pages/TouchCards/FloatCard/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("zone")
+
+[node name="Hint" type="Label" parent="Margin/Page/Body/Pages/TouchCards/FloatCard/VBox/Zone"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.5, 0.6, 1)
+theme_override_font_sizes/font_size = 15
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "Touch or click anywhere in here"
+
+[node name="FloatStick" parent="Margin/Page/Body/Pages/TouchCards/FloatCard/VBox/Zone" instance=ExtResource("float_stick")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 0)
+layout_mode = 2
+
+[node name="SwipeCard" type="PanelContainer" parent="Margin/Page/Body/Pages/TouchCards"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("card")
+
+[node name="VBox" type="VBoxContainer" parent="Margin/Page/Body/Pages/TouchCards/SwipeCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Name" type="Label" parent="Margin/Page/Body/Pages/TouchCards/SwipeCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.35, 1)
+theme_override_font_sizes/font_size = 17
+text = "omni_swipe_pad.tscn"
+
+[node name="Desc" type="Label" parent="Margin/Page/Body/Pages/TouchCards/SwipeCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
+custom_minimum_size = Vector2(300, 0)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+text = "One swiped(direction) per swipe, snapped to left / right / up / down."
+
+[node name="Row" type="HBoxContainer" parent="Margin/Page/Body/Pages/TouchCards/SwipeCard/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="Swipe" parent="Margin/Page/Body/Pages/TouchCards/SwipeCard/VBox/Row" instance=ExtResource("swipe")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 120)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="SwipeResult" type="Label" parent="Margin/Page/Body/Pages/TouchCards/SwipeCard/VBox/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.86, 0.92, 1)
+theme_override_font_sizes/font_size = 15
+text = "Last swipe: none"
+
+[node name="ActionCard" type="PanelContainer" parent="Margin/Page/Body/Pages/TouchCards"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("card")
+
+[node name="VBox" type="VBoxContainer" parent="Margin/Page/Body/Pages/TouchCards/ActionCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Name" type="Label" parent="Margin/Page/Body/Pages/TouchCards/ActionCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.35, 1)
+theme_override_font_sizes/font_size = 17
+text = "omni_action_button.tscn"
+
+[node name="Desc" type="Label" parent="Margin/Page/Body/Pages/TouchCards/ActionCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
+custom_minimum_size = Vector2(300, 0)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+text = "Big and round for thumbs. A sets OutputAction = jump, so Input.is_action_pressed('jump') is true while held."
+
+[node name="Row" type="HBoxContainer" parent="Margin/Page/Body/Pages/TouchCards/ActionCard/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="ActionA" parent="Margin/Page/Body/Pages/TouchCards/ActionCard/VBox/Row" instance=ExtResource("action")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 96)
+layout_mode = 2
+size_flags_vertical = 4
+OutputAction = &"jump"
+
+[node name="ActionB" parent="Margin/Page/Body/Pages/TouchCards/ActionCard/VBox/Row" instance=ExtResource("action")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 96)
+layout_mode = 2
+size_flags_vertical = 4
+Text = "B"
+
+[node name="JumpState" type="Label" parent="Margin/Page/Body/Pages/TouchCards/ActionCard/VBox/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.86, 0.92, 1)
+theme_override_font_sizes/font_size = 15
+text = "jump: up"
+
+[node name="MoreCards" type="VBoxContainer" parent="Margin/Page/Body/Pages"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 14
+
+[node name="TopRow" type="HBoxContainer" parent="Margin/Page/Body/Pages/MoreCards"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 14
+
+[node name="TypeCard" type="PanelContainer" parent="Margin/Page/Body/Pages/MoreCards/TopRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("card")
+
+[node name="VBox" type="VBoxContainer" parent="Margin/Page/Body/Pages/MoreCards/TopRow/TypeCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Name" type="Label" parent="Margin/Page/Body/Pages/MoreCards/TopRow/TypeCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.35, 1)
+theme_override_font_sizes/font_size = 17
+text = "omni_typewriter_button.tscn"
+
+[node name="Desc" type="Label" parent="Margin/Page/Body/Pages/MoreCards/TopRow/TypeCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
+custom_minimum_size = Vector2(300, 0)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+text = "Types its text when the scene starts, then pulses. The first press only finishes the typing."
+
+[node name="Row" type="VBoxContainer" parent="Margin/Page/Body/Pages/MoreCards/TopRow/TypeCard/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="Title" parent="Margin/Page/Body/Pages/MoreCards/TopRow/TypeCard/VBox/Row" instance=ExtResource("typewriter")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 60)
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="Replay" parent="Margin/Page/Body/Pages/MoreCards/TopRow/TypeCard/VBox/Row" instance=ExtResource("menu")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 40)
+layout_mode = 2
+size_flags_horizontal = 4
+Text = "Replay"
+MaxFontSize = 18
+
+[node name="InvertCard" type="PanelContainer" parent="Margin/Page/Body/Pages/MoreCards/TopRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("card")
+
+[node name="VBox" type="VBoxContainer" parent="Margin/Page/Body/Pages/MoreCards/TopRow/InvertCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Name" type="Label" parent="Margin/Page/Body/Pages/MoreCards/TopRow/InvertCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.35, 1)
+theme_override_font_sizes/font_size = 17
+text = "omni_invert_button.tscn"
+
+[node name="Desc" type="Label" parent="Margin/Page/Body/Pages/MoreCards/TopRow/InvertCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
+custom_minimum_size = Vector2(300, 0)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+text = "Its colors flip while pressed: a retro flash with no extra art."
+
+[node name="Row" type="HBoxContainer" parent="Margin/Page/Body/Pages/MoreCards/TopRow/InvertCard/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="Flash" parent="Margin/Page/Body/Pages/MoreCards/TopRow/InvertCard/VBox/Row" instance=ExtResource("invert")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 56)
+layout_mode = 2
+size_flags_vertical = 4
+Text = "Fight"
+
+[node name="Flash2" parent="Margin/Page/Body/Pages/MoreCards/TopRow/InvertCard/VBox/Row" instance=ExtResource("invert")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 56)
+layout_mode = 2
+size_flags_vertical = 4
+Text = "Run"
+
+[node name="TabCard" type="PanelContainer" parent="Margin/Page/Body/Pages/MoreCards"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("card")
+
+[node name="VBox" type="VBoxContainer" parent="Margin/Page/Body/Pages/MoreCards/TabCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Name" type="Label" parent="Margin/Page/Body/Pages/MoreCards/TabCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.35, 1)
+theme_override_font_sizes/font_size = 17
+text = "omni_tab_bar.tscn"
+
+[node name="Desc" type="Label" parent="Margin/Page/Body/Pages/MoreCards/TabCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
+custom_minimum_size = Vector2(300, 0)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+text = "One tab on at a time. Set pages to a container and it shows the matching child, with no code. Signal: tab_changed(index). The page buttons at the top of this demo are one too."
+
+[node name="DemoTabs" parent="Margin/Page/Body/Pages/MoreCards/TabCard/VBox" instance=ExtResource("tabbar") node_paths=PackedStringArray("pages")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+pages = NodePath("../TabPages")
+
+[node name="Tab1" parent="Margin/Page/Body/Pages/MoreCards/TabCard/VBox/DemoTabs"]
+Text = "Items"
+
+[node name="Tab2" parent="Margin/Page/Body/Pages/MoreCards/TabCard/VBox/DemoTabs"]
+Text = "Skills"
+
+[node name="Tab3" parent="Margin/Page/Body/Pages/MoreCards/TabCard/VBox/DemoTabs"]
+Text = "Map"
+
+[node name="TabPages" type="PanelContainer" parent="Margin/Page/Body/Pages/MoreCards/TabCard/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("zone")
+
+[node name="ItemsPage" type="Label" parent="Margin/Page/Body/Pages/MoreCards/TabCard/VBox/TabPages"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.86, 0.92, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "Items: Potion x3, Sword, Shield"
+
+[node name="SkillsPage" type="Label" parent="Margin/Page/Body/Pages/MoreCards/TabCard/VBox/TabPages"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.86, 0.92, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "Skills: Dash, Fireball, Heal"
+
+[node name="MapPage" type="Label" parent="Margin/Page/Body/Pages/MoreCards/TabCard/VBox/TabPages"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.86, 0.92, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "Map: you are here"
+
+[node name="Side" type="VBoxContainer" parent="Margin/Page/Body"]
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="LogTitle" type="Label" parent="Margin/Page/Body/Side"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Signals"
+
+[node name="LogPanel" type="PanelContainer" parent="Margin/Page/Body/Side"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("log")
+
+[node name="Log" type="Label" parent="Margin/Page/Body/Side/LogPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 1
+theme_override_colors/font_color = Color(0.82, 0.86, 0.92, 1)
+theme_override_font_sizes/font_size = 16
+autowrap_mode = 3
+
+[editable path="Margin/Page/TopBar/Tabs"]
+
+[editable path="Margin/Page/Body/Pages/MoreCards/TabCard/VBox/DemoTabs"]

@@ -1,0 +1,30 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://addons/omni_button/prebuilt/cursor/core/omni_virtual_cursor.gd" id="script"]
+[ext_resource type="Shader" path="res://addons/omni_button/prebuilt/cursor/core/omni_cursor_ring.gdshader" id="ring"]
+
+[sub_resource type="ShaderMaterial" id="ring_material"]
+resource_local_to_scene = true
+shader = ExtResource("ring")
+shader_parameter/ring_color = Color(1, 1, 1, 0.9)
+shader_parameter/radius = 0.7
+shader_parameter/thickness = 0.46
+shader_parameter/sharpness = 1.2
+
+[node name="OmniVirtualCursor" type="CanvasLayer"]
+layer = 100
+script = ExtResource("script")
+
+[node name="Ring" type="ColorRect" parent="."]
+material = SubResource("ring_material")
+offset_right = 45.0
+offset_bottom = 45.0
+mouse_filter = 2
+
+[node name="Picture" type="TextureRect" parent="."]
+visible = false
+offset_right = 45.0
+offset_bottom = 45.0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5

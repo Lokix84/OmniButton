@@ -1,0 +1,31 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://addons/omni_button/prebuilt/buttons/core/omni_swipe_pad.gd" id="pad"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/button_normal.tres" id="normal"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/button_pressed.tres" id="pressed"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/button_disabled.tres" id="disabled"]
+
+[node name="OmniSwipePad" type="Control"]
+custom_minimum_size = Vector2(300, 160)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 300.0
+offset_bottom = 160.0
+script = ExtResource("pad")
+EnableSwipeActions = true
+BackgroundType = 1
+SwipeThreshold = 40.0
+TouchSwipeInit = 1
+TouchSwipeExit = 1
+MouseSwipeInit = 1
+MouseSwipeExit = 1
+Text = "Swipe here"
+LabelTextColor = Color(0.72, 0.76, 0.84, 1)
+MinFontSize = 12
+MaxFontSize = 20
+PanelStyleBox = ExtResource("normal")
+PanelPressedStyleBox = ExtResource("pressed")
+PanelDisabledStyleBox = ExtResource("disabled")
+EnableDefaultThumb = true
+expand_mode = 3
+ManagedDrawOnTop = true

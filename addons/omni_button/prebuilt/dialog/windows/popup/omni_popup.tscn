@@ -1,0 +1,46 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://addons/omni_button/prebuilt/dialog/core/overlay/omni_overlay.tscn" id="1_base"]
+[ext_resource type="Script" path="res://addons/omni_button/prebuilt/dialog/windows/popup/omni_popup.gd" id="2_popup"]
+[ext_resource type="Script" path="res://addons/omni_button/omni_button.gd" id="3_omni"]
+
+[node name="OmniPopup" instance=ExtResource("1_base")]
+layer = 12
+script = ExtResource("2_popup")
+open_animation = 2
+close_animation = 1
+
+[node name="Layout" type="VBoxContainer" parent="Root/Panel/Content"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="Root/Panel/Content/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"OmniDialogTitle"
+text = "Title"
+
+[node name="Message" type="Control" parent="Root/Panel/Content/Layout"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(400, 72)
+layout_mode = 2
+script = ExtResource("3_omni")
+LabelType = 1
+Text = "Message"
+LabelHorizontalAlignment = 0
+LabelVerticalAlignment = 0
+LabelAutowrap = 3
+TextFitPadding = Vector2(0, 0)
+MinFontSize = 12
+MaxFontSize = 20
+
+[node name="ButtonRow" type="HBoxContainer" parent="Root/Panel/Content/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ButtonColumn" type="VBoxContainer" parent="Root/Panel/Content/Layout"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8

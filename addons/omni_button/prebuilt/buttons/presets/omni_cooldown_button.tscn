@@ -1,0 +1,43 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://addons/omni_button/omni_button.gd" id="script"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/button_normal.tres" id="normal"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/button_hover.tres" id="hover"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/button_pressed.tres" id="pressed"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/button_focus.tres" id="focus"]
+[ext_resource type="StyleBox" path="res://addons/omni_button/prebuilt/buttons/styles/button_disabled.tres" id="disabled"]
+[ext_resource type="Texture2D" path="res://addons/omni_button/prebuilt/buttons/icons/Icon-Sword1.png" id="icon"]
+
+[node name="OmniCooldownButton" type="Control"]
+texture_filter = 1
+custom_minimum_size = Vector2(96, 96)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 96.0
+offset_bottom = 96.0
+pivot_offset = Vector2(48.0, 48.0)
+focus_mode = 2
+mouse_default_cursor_shape = 2
+script = ExtResource("script")
+EnablePressedActions = true
+HoverScale = 1.08
+CooldownTrigger = 1
+CooldownDuration = 3.0
+CooldownStartFilled = true
+CooldownColor = Color(0.02, 0.03, 0.06, 0.7)
+CooldownFillDirection = 1
+SuspendHoverScaleDuringCooldown = true
+LabelType = 2
+IconTexture = ExtResource("icon")
+IconExpandMode = 1
+IconStretchMode = 5
+BackgroundType = 1
+PanelStyleBox = ExtResource("normal")
+PanelHoverStyleBox = ExtResource("hover")
+PanelPressedStyleBox = ExtResource("pressed")
+PanelDisabledStyleBox = ExtResource("disabled")
+PanelFocusStyleBox = ExtResource("focus")
+EnableDefaultThumb = true
+expand_mode = 3
+ManagedDrawOnTop = true
+metadata/_custom_type_script = "uid://dw4mvkaj30lb5"

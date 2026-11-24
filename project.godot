@@ -15,9 +15,14 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="OmniButton"
-run/main_scene="res://addons/omni_button/test/GodotTest.tscn"
+run/main_scene="res://addons/omni_button/demo/omni_button_demo.tscn"
 config/features=PackedStringArray("4.7")
 config/icon="res://addons/omni_button/OmniButtonGDV1.png"
+
+[autoload]
+
+OmniDialog="*uid://bpsw21q5eeeqq"
+OmniMenus="*res://addons/omni_button/prebuilt/menus/core/omni_menus.gd"
 
 [display]
 
@@ -35,3 +40,5 @@ enabled=PackedStringArray("res://addons/omni_button/plugin.cfg")
 
 textures/canvas_textures/default_texture_filter=0
 textures/default_filters/use_nearest_mipmap_filter=true
+textures/decals/filter=0
+textures/light_projectors/filter=0

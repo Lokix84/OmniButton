@@ -1,0 +1,71 @@
+[gd_scene format=3 uid="uid://d0hwaupyq5yf5"]
+
+[ext_resource type="Script" uid="uid://dw4mvkaj30lb5" path="res://addons/omni_button/omni_button.gd" id="1_omni"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_normal"]
+bg_color = Color(0.17, 0.19, 0.24, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3, 0.34, 0.42, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hover"]
+bg_color = Color(0.23, 0.26, 0.33, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.5, 0.56, 0.68, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pressed"]
+bg_color = Color(0.27, 0.42, 0.68, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.55, 0.7, 0.95, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_focus"]
+bg_color = Color(0.2, 0.23, 0.3, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.55, 0.7, 0.95, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="OmniOptionButton" type="Control" unique_id=1240422414]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 3
+anchors_preset = 0
+size_flags_horizontal = 3
+focus_mode = 2
+script = ExtResource("1_omni")
+EnablePressedActions = true
+BackgroundType = 1
+EnableDefaultThumb = true
+Text = "Option"
+LabelTextColor = Color(0.94, 0.95, 0.97, 1)
+MaxFontSize = 22
+PanelStyleBox = SubResource("StyleBoxFlat_normal")
+PanelHoverStyleBox = SubResource("StyleBoxFlat_hover")
+PanelPressedStyleBox = SubResource("StyleBoxFlat_pressed")
+PanelFocusStyleBox = SubResource("StyleBoxFlat_focus")
+expand_mode = 3
+ManagedDrawOnTop = true
