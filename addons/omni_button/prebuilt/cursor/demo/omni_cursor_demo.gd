@@ -1,8 +1,8 @@
 extends Control
-## Tries out OmniVirtualCursor on a small menu. Open this scene, press F6, plug in a controller and
-## move the left stick. The menu is ordinary Controls; the cursor works with any of them.
+## try out OmniVirtualCursor on a small menu. open this scene, hit F6, plug in a controller and move
+## the left stick. the menu is just normal Controls, the cursor works with any of them.
 
-## Screen size this demo is laid out for; it scales to fit smaller or larger windows.
+## the screen size this demo is laid out for, it scales to fit smaller or bigger windows.
 const REFERENCE_SIZE := Vector2(1152, 648)
 
 func _ready() -> void:
@@ -13,7 +13,7 @@ func _ready() -> void:
 	for button_name in ["Play", "Loadout", "Options", "Back"]:
 		get_node("%" + button_name).pressed.connect(_show.bind("%s: pressed" % button_name))
 	%Snap.toggled.connect(_on_snap_toggled)
-	%Snap.IsToggled = true
+	%Snap.is_toggled = true
 	%Volume.value_changed.connect(func(v: float): _show("Volume: %d" % v))
 	%Cursor.shown.connect(_show.bind("Cursor shown (stick moved)"))
 	%Cursor.hidden.connect(_show.bind("Cursor hidden (mouse, touch or d-pad used)"))
@@ -22,13 +22,13 @@ func _ready() -> void:
 	_show_controllers()
 
 func _show(text: String) -> void:
-	# The cursor also reports "hidden" while the scene is being closed, after the label is gone.
+	# the cursor also says "hidden" while the scene is closing, after the label's already gone.
 	var label := get_node_or_null("%CursorState") as Label
 	if label != null:
 		label.text = text
 
-## Shows which controllers Godot can see, so a missing one is easy to spot (Steam controllers need
-## Steam Input; see the README).
+## shows which controllers godot can see so it's easy to spot a missing one (steam controllers need
+## steam input, see the README).
 func _show_controllers() -> void:
 	var names: PackedStringArray = []
 	for d in Input.get_connected_joypads():
@@ -39,12 +39,12 @@ func _show_controllers() -> void:
 		_show("Controllers: %s. Move the left stick." % ", ".join(names))
 
 func _on_snap_toggled(on: bool) -> void:
-	%Snap.Text = "Snap: On" if on else "Snap: Off"
+	%Snap.text = "Snap: On" if on else "Snap: Off"
 	%Cursor.snap_strength = 0.5 if on else 0.0
 
-## Godot's ui_accept has Enter and Space but no controller button, so after the d-pad moves focus,
-## A can't press the focused button. Adds A while the demo runs; in your game, add it under
-## Project Settings > Input Map.
+## godot's ui_accept has enter and space but no controller button, so after the d-pad moves focus
+## A can't press the focused button. this adds A while the demo runs. in your game add it under
+## project settings > input map.
 func _add_gamepad_accept() -> void:
 	for e in InputMap.action_get_events(&"ui_accept"):
 		if e is InputEventJoypadButton:
@@ -54,7 +54,7 @@ func _add_gamepad_accept() -> void:
 	a.device = -1
 	InputMap.action_add_event(&"ui_accept", a)
 
-## Scales the page so it fits any window, down to 320x180.
+## scales the page so it fits any window, down to 320x180.
 func _fit_to_screen() -> void:
 	var margin: Control = $Margin
 	var screen := get_viewport().get_visible_rect().size

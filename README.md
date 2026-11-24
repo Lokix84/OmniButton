@@ -1,14 +1,17 @@
 # OmniButton for Godot 4
 
-OmniButton is a GDScript `Control` plugin for configurable button and virtual-joystick behavior. It supports press/release/toggle, hover scaling, state effects, swipe, hold build-up, cooldowns, text and typewriter effects, and optional panel or texture backgrounds.
+OmniButton is a Godot 4 plugin, in GDScript, for game UI: one button node that handles mouse, touch, keyboard and gamepad, plus ready-made pieces built from it.
 
-It also ships a dialog system built from OmniButtons: popups (alert, confirm, choice), toasts, an RPG dialogue box and full-screen narration, usable from code through the optional `OmniDialog` autoload or as scenes dropped into your own. Conversations can be written in JSON files. See [the dialog README](addons/omni_button/prebuilt/dialog/README.md).
+| Part | What it gives you |
+|---|---|
+| **OmniButton** | Press, release, toggle, hover scaling, hold build-up, swipe, cooldowns, typewriter text and a virtual joystick, all set up in the Inspector. |
+| **Button presets** | Drag-and-drop buttons: menu, toggle, icon, item, hold-to-confirm, cooldown, joysticks, swipe pad, action button, typewriter title, tab bar. |
+| **Dialog windows** | Popups, toasts, an RPG dialogue box and narration, from one line of code (`await OmniDialog.say(...)`), with conversations in JSON files. |
+| **Menus** | Title screen, pause menu and options screen with saved player settings, in a panel style and a full-screen stylized style. |
+| **Controller cursor** | A joystick-driven ring that clicks whatever is under it, for controller-first menus. |
+| **Looks** | One file styles every dialog window and menu. Modern, Retro and Bold ship. |
 
-For a quick start, `prebuilt/buttons/` has ready-made buttons to drag into a scene: menu, toggle, icon, item, hold-to-confirm and cooldown buttons, touch controls (joystick, floating joystick, swipe pad, action button), a typewriter title, an invert-flash button and a tab bar. See [the presets README](addons/omni_button/prebuilt/buttons/README.md).
-
-`prebuilt/menus/` has a title screen, a pause menu and an options screen with saved player settings (volume, window mode, text speed, plus your own). See [the menus README](addons/omni_button/prebuilt/menus/README.md).
-
-A companion in `prebuilt/cursor/` adds a controller cursor for menus: a joystick-driven ring that clicks whatever is under it. See [the cursor README](addons/omni_button/prebuilt/cursor/README.md).
+**New here? Start with [Getting started](addons/omni_button/GETTING_STARTED.md):** install, a tour of the demos, a "which piece do I need" table, and a fifteen-minute walkthrough that builds a title screen, a level with a pause menu, dialogue, touch and controller input.
 
 ## Project layout
 
@@ -26,7 +29,7 @@ Copy `addons/omni_button` into your Godot project's `addons/` directory, then en
 
 ## Quick start
 
-Add an `Omni_Button` node from the **Create Node** dialog, connect its `pressed` signal, and enable the matching action checkbox in the Inspector.
+The [Getting started guide](addons/omni_button/GETTING_STARTED.md) covers every part. The smallest possible start: add an `OmniButton` node from the **Create Node** dialog, connect its `pressed` signal, and enable the matching action checkbox in the Inspector.
 
 ```gdscript
 extends Control
@@ -40,9 +43,17 @@ func _on_omni_button_pressed() -> void:
 
 For Inspector sections, signals, accessors, behavior details, and troubleshooting, see the [GDScript reference](addons/omni_button/README.md).
 
-## Demo
+## Demos
 
-Run the project or open `res://addons/omni_button/demo/omni_button_demo.tscn` to explore the button examples. For the ready-made buttons, open `res://addons/omni_button/prebuilt/buttons/demo/omni_button_presets_demo.tscn`, and for the dialog windows `res://addons/omni_button/prebuilt/dialog/demo/omni_dialog_demo.tscn`; press F6.
+Open one and press F6. Running the project (F5) opens the first.
+
+| Demo | Shows |
+|---|---|
+| `addons/omni_button/demo/omni_button_demo.tscn` | Every OmniButton feature |
+| `addons/omni_button/prebuilt/buttons/demo/omni_button_presets_demo.tscn` | All the presets, with the code each needs |
+| `addons/omni_button/prebuilt/dialog/demo/omni_dialog_demo.tscn` | Popups, toasts, dialogue, narration, a JSON story, the looks |
+| `addons/omni_button/prebuilt/menus/demo/omni_menus_demo.tscn` | A tiny game: title, pause, options, both menu styles |
+| `addons/omni_button/prebuilt/cursor/demo/omni_cursor_demo.tscn` | The controller cursor (plug in a controller) |
 
 ## Validation
 

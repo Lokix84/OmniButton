@@ -1,5 +1,7 @@
 # Menus
 
+*Part of OmniButton. New to the plugin? Start with [Getting started](../../GETTING_STARTED.md).*
+
 A title screen, a pause menu and an options screen, ready to drop into a game. They share the dialog windows' looks, so menus and dialogs always match, and the player's settings (volume, window mode, text speed) are saved and applied for you.
 
 To see them, open `demo/omni_menus_demo.tscn` and press F6: a tiny game with a title screen, play, Esc or the controller's Start button to pause, Options, and Quit to title.
@@ -66,7 +68,7 @@ They use the same scripts as the panel versions, so the signals, settings, input
 
 **Colors** come from the look's **Stylized Menus** group: `accent_color` (the selected-item shape and stripes), `accent_text_color`, `menu_background_color`, `menu_band_color`, `menu_text_color`, and `menu_font` (empty: the look's font, made bold and slanted). Modern (blue), Retro (gold, pixel font) and the high-contrast **Bold** look (red, black and white, with slanted buttons in dialogs too) all set them.
 
-**Tuning** is on the `Stylizer` node in each scene (`OmniMenuStylizer`): title and item size, how far the text leans (`slant`), item size, the sweep time, the delay between items, and the select pop. The bands are an `OmniMenuBands` node (`FULL` or `SPLIT` shape) and the item list an `OmniStaircaseContainer` (`step` sets the slant of the list). A menu's `animation_duration` of 0 turns all the motion off.
+**Tuning** is on the `Stylizer` node in each scene (`OmniMenuStylizer`): title and item size, how far the text leans (`slant`), the width and height of each item (`item_size_px`), the sweep time, the delay between items, and the select pop. The bands are an `OmniMenuBands` node (`FULL` or `SPLIT` shape) and the item list an `OmniStaircaseContainer` (`step` sets the slant of the list). A menu's `animation_duration` of 0 turns all the motion off.
 
 ## Settings
 
@@ -128,6 +130,5 @@ menus/
 ├── core/      OmniMenu (base), the three menus' scripts, OmniSettings, OmniMenus autoload,
 │             OmniMenuStylizer, OmniMenuBands, OmniStaircaseContainer (the stylized versions)
 ├── demo/      omni_menus_demo.tscn
-├── docs/      design notes and the API reference
 └── dev/       automated tests (left out of downloads)
 ```

@@ -62,19 +62,19 @@ text = "OmniButton dialogs"
 unique_name_in_owner = true
 custom_minimum_size = Vector2(290, 44)
 layout_mode = 2
-Text = "Windows: OmniDialog (code)"
+text = "Windows: OmniDialog (code)"
 
 [node name="LookButton" parent="Margin/Page/TopBar" unique_id=1255552421 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(190, 44)
 layout_mode = 2
-Text = "Look: Modern"
+text = "Look: Modern"
 
 [node name="SpeedButton" parent="Margin/Page/TopBar" unique_id=616254601 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(210, 44)
 layout_mode = 2
-Text = "Text speed: Normal"
+text = "Text speed: Normal"
 
 [node name="Body" type="HBoxContainer" parent="Margin/Page" unique_id=1525609795]
 layout_mode = 2
@@ -105,32 +105,32 @@ columns = 2
 [node name="ToastButton" parent="Margin/Page/Body/Menu/List/PopupsGrid" unique_id=1380610598 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Toast"
+text = "Toast"
 
 [node name="AlertButton" parent="Margin/Page/Body/Menu/List/PopupsGrid" unique_id=316714701 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Alert"
+text = "Alert"
 
 [node name="ConfirmButton" parent="Margin/Page/Body/Menu/List/PopupsGrid" unique_id=336081090 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Confirm (yes / no)"
+text = "Confirm (yes / no)"
 
 [node name="ChooseButton" parent="Margin/Page/Body/Menu/List/PopupsGrid" unique_id=306873149 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Choice"
+text = "Choice"
 
 [node name="ChainButton" parent="Margin/Page/Body/Menu/List/PopupsGrid" unique_id=1645681126 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Choice, then confirm"
+text = "Choice, then confirm"
 
 [node name="ShopButton" parent="Margin/Page/Body/Menu/List/PopupsGrid" unique_id=168840151 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Shop (Inspector)"
+text = "Shop (Inspector)"
 
 [node name="DialogueHeading" type="Label" parent="Margin/Page/Body/Menu/List" unique_id=145747264]
 layout_mode = 2
@@ -146,27 +146,27 @@ columns = 2
 [node name="ConversationButton" parent="Margin/Page/Body/Menu/List/DialogueGrid" unique_id=1233324926 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Conversation"
+text = "Conversation"
 
 [node name="AskButton" parent="Margin/Page/Body/Menu/List/DialogueGrid" unique_id=126253591 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Ask a question"
+text = "Ask a question"
 
 [node name="LongAskButton" parent="Margin/Page/Body/Menu/List/DialogueGrid" unique_id=1691705714 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Ask with long answers"
+text = "Ask with long answers"
 
 [node name="NarrationButton" parent="Margin/Page/Body/Menu/List/DialogueGrid" unique_id=1632858883 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Narration"
+text = "Narration"
 
 [node name="MixedButton" parent="Margin/Page/Body/Menu/List/DialogueGrid" unique_id=411516845 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Mixed scene"
+text = "Mixed scene"
 
 [node name="StoryHeading" type="Label" parent="Margin/Page/Body/Menu/List" unique_id=1222014712]
 layout_mode = 2
@@ -182,27 +182,27 @@ columns = 2
 [node name="OpeningButton" parent="Margin/Page/Body/Menu/List/StoryGrid" unique_id=405733 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Play \"opening\""
+text = "Play \"opening\""
 
 [node name="GateButton" parent="Margin/Page/Body/Menu/List/StoryGrid" unique_id=1387961519 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Play \"gate\""
+text = "Play \"gate\""
 
 [node name="MarketButton" parent="Margin/Page/Body/Menu/List/StoryGrid" unique_id=1421013082 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Play \"market\""
+text = "Play \"market\""
 
 [node name="ResetButton" parent="Margin/Page/Body/Menu/List/StoryGrid" unique_id=543686241 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Clear answers"
+text = "Clear answers"
 
 [node name="CheckFileButton" parent="Margin/Page/Body/Menu/List/StoryGrid" unique_id=1115611712 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Check the file"
+text = "Check the file"
 
 [node name="OverlayHeading" type="Label" parent="Margin/Page/Body/Menu/List" unique_id=343176345]
 layout_mode = 2
@@ -218,22 +218,22 @@ columns = 2
 [node name="OpenOverlayButton" parent="Margin/Page/Body/Menu/List/OverlayGrid" unique_id=1579113039 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Open overlay"
+text = "Open overlay"
 
 [node name="AnimationButton" parent="Margin/Page/Body/Menu/List/OverlayGrid" unique_id=1025564510 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Animation: Fade"
+text = "Animation: Fade"
 
 [node name="PauseButton" parent="Margin/Page/Body/Menu/List/OverlayGrid" unique_id=1265958622 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Pauses game: Off"
+text = "Pauses game: Off"
 
 [node name="BackdropButton" parent="Margin/Page/Body/Menu/List/OverlayGrid" unique_id=1117367304 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Click outside closes: Off"
+text = "Click outside closes: Off"
 
 [node name="Side" type="VBoxContainer" parent="Margin/Page/Body" unique_id=1639243743]
 layout_mode = 2
@@ -373,12 +373,12 @@ autowrap_mode = 3
 [node name="StackButton" parent="OverlayA/Root/Panel/Content/AContent" unique_id=788292368 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Open another on top"
+text = "Open another on top"
 
 [node name="CloseAButton" parent="OverlayA/Root/Panel/Content/AContent" unique_id=2109828784 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Close"
+text = "Close"
 
 [node name="OverlayB" parent="." unique_id=1223757975 instance=ExtResource("7_overlay")]
 layer = 11
@@ -407,7 +407,7 @@ autowrap_mode = 3
 [node name="CloseBButton" parent="OverlayB/Root/Panel/Content/BContent" unique_id=738077277 instance=ExtResource("2_option")]
 unique_name_in_owner = true
 layout_mode = 2
-Text = "Close"
+text = "Close"
 
 [editable path="OverlayA"]
 [editable path="OverlayB"]

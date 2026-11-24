@@ -1,33 +1,33 @@
 @tool
 class_name OmniTitleMenu
 extends OmniMenu
-## The title screen: the game's title with Start, Continue, Options and Quit.
+## the title screen: your game's title with Start, Continue, Options and Quit.
 ##
-## Drop [code]omni_title_menu.tscn[/code] into your title scene. It opens on its own, loads and applies
-## the player's settings, and covers the screen. Connect [signal start_pressed] (and
-## [signal continue_pressed] if you have saves) to start the game; Options opens the options screen and
-## Quit quits, with no code. Rename, hide or add items in the scene ([OmniMenu]).
+## drop [code]omni_title_menu.tscn[/code] into your title scene. it opens by itself, loads and
+## applies the player's settings, and covers the screen. connect [signal start_pressed] (and
+## [signal continue_pressed] if you have saves) to start the game. Options opens the options screen
+## and Quit quits, no code needed. rename, hide or add items in the scene ([OmniMenu]).
 
-## Start was pressed.
+## Start got pressed.
 signal start_pressed
-## Continue was pressed.
+## Continue got pressed.
 signal continue_pressed
 
-## Show Continue (set it when the player has a save).
+## shows Continue (turn it on when the player has a save).
 @export var can_continue := false:
 	set(value):
 		can_continue = value
 		if is_node_ready():
 			set_item_visible(&"continue", value)
-## Show Quit. Off by default on the web and phones, where games don't quit.
+## shows Quit. off by default on the web and phones since games don't quit there.
 @export var show_quit := true:
 	set(value):
 		show_quit = value
 		if is_node_ready():
 			set_item_visible(&"quit", value and not _quit_unsupported())
-## Close the title screen when Start or Continue is pressed. Turn off if you change scenes yourself.
+## closes the title screen when Start or Continue is pressed. turn it off if you change scenes yourself.
 @export var close_on_start := true
-## The options screen opened by Options. Empty: one is made from
+## the options screen Options opens. empty makes one from
 ## [b]Project Settings > omni_button/menus/options_scene[/b] the first time.
 @export var options_menu: OmniOptionsMenu
 

@@ -1,8 +1,8 @@
 extends SceneTree
-# Renders a grid of OmniButtons covering every generated visual and saves PNG snapshots, so the
-# output before and after a rendering change can be compared. Dev tool; not needed at runtime.
-# Needs a real renderer (not --headless).
-# Usage: godot --path . -s res://addons/omni_button/dev/OmniButtonSnapshot.gd -- <out_dir>
+# draws a grid of OmniButtons that covers every visual they make and saves png snapshots, so you can
+# compare before and after a rendering change. dev tool, not needed at runtime.
+# needs a real renderer (not --headless).
+# usage: godot --path . -s res://addons/omni_button/dev/OmniButtonSnapshot.gd -- <out_dir>
 
 const OmniButtonScript = preload("res://addons/omni_button/omni_button.gd")
 const ICON := preload("res://addons/omni_button/demo/icons/Icon-Potion6.png")
@@ -46,41 +46,41 @@ func _run() -> void:
 	bg.size = Vector2(1152, 648)
 	root.add_child(bg)
 
-	# Panels: default theme, custom style, each state style.
-	_cell(func(b): b.BackgroundType = 1)
-	_cell(func(b): b.BackgroundType = 1; b.PanelStyleBox = _flat(Color.STEEL_BLUE, 10, 2); b.PanelModulate = Color(1, 0.8, 0.8))
-	var hov := _cell(func(b): b.BackgroundType = 1; b.PanelStyleBox = _flat(Color.DIM_GRAY); b.PanelHoverStyleBox = _flat(Color.SEA_GREEN))
-	var prs := _cell(func(b): b.BackgroundType = 1; b.PanelStyleBox = _flat(Color.DIM_GRAY); b.PanelPressedStyleBox = _flat(Color.FIREBRICK))
-	_cell(func(b): b.BackgroundType = 1; b.PanelStyleBox = _flat(Color.DIM_GRAY); b.PanelDisabledStyleBox = _flat(Color.BLACK, 2, 1); b.Disabled = true)
-	# Background textures: every stretch mode, a non-square texture, flips, modulate.
+	# panels: default theme, custom style, each state style.
+	_cell(func(b): b.background_type = 1)
+	_cell(func(b): b.background_type = 1; b.panel_style_box = _flat(Color.STEEL_BLUE, 10, 2); b.panel_modulate = Color(1, 0.8, 0.8))
+	var hov := _cell(func(b): b.background_type = 1; b.panel_style_box = _flat(Color.DIM_GRAY); b.panel_hover_style_box = _flat(Color.SEA_GREEN))
+	var prs := _cell(func(b): b.background_type = 1; b.panel_style_box = _flat(Color.DIM_GRAY); b.panel_pressed_style_box = _flat(Color.FIREBRICK))
+	_cell(func(b): b.background_type = 1; b.panel_style_box = _flat(Color.DIM_GRAY); b.panel_disabled_style_box = _flat(Color.BLACK, 2, 1); b.disabled = true)
+	# background textures: every stretch mode, a non square texture, flips, modulate.
 	for stretch in 7:
-		_cell(func(b): b.BackgroundType = 2; b.texture = WIDE; b.stretch_mode = stretch; b.expand_mode = TextureRect.EXPAND_IGNORE_SIZE)
-	_cell(func(b): b.BackgroundType = 2; b.texture = WIDE; b.stretch_mode = 0; b.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; b.flip_h = true; b.BackgroundModulate = Color(0.6, 1, 0.6))
-	_cell(func(b): b.BackgroundType = 2; b.texture = WIDE; b.stretch_mode = 6; b.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; b.flip_v = true)
-	# Background expand modes (minimum-size effects), default stretch.
+		_cell(func(b): b.background_type = 2; b.texture = WIDE; b.stretch_mode = stretch; b.expand_mode = TextureRect.EXPAND_IGNORE_SIZE)
+	_cell(func(b): b.background_type = 2; b.texture = WIDE; b.stretch_mode = 0; b.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; b.flip_h = true; b.background_modulate = Color(0.6, 1, 0.6))
+	_cell(func(b): b.background_type = 2; b.texture = WIDE; b.stretch_mode = 6; b.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; b.flip_v = true)
+	# background expand modes (what they do to the minimum size), default stretch.
 	for expand in 6:
-		_cell(func(b): b.BackgroundType = 2; b.texture = WIDE; b.expand_mode = expand)
-	# Icons: stretch modes, flips, modulate, expand modes.
+		_cell(func(b): b.background_type = 2; b.texture = WIDE; b.expand_mode = expand)
+	# icons: stretch modes, flips, modulate, expand modes.
 	for stretch in 7:
-		_cell(func(b): b.IconTexture = ICON; b.IconStretchMode = stretch; b.IconExpandMode = TextureRect.EXPAND_IGNORE_SIZE)
-	_cell(func(b): b.IconTexture = ICON; b.IconFlipH = true; b.IconFlipV = true; b.IconModulate = Color(1, 0.5, 0.5); b.IconExpandMode = 1; b.IconStretchMode = 5)
+		_cell(func(b): b.icon_texture = ICON; b.icon_stretch_mode = stretch; b.icon_expand_mode = TextureRect.EXPAND_IGNORE_SIZE)
+	_cell(func(b): b.icon_texture = ICON; b.icon_flip_h = true; b.icon_flip_v = true; b.icon_modulate = Color(1, 0.5, 0.5); b.icon_expand_mode = 1; b.icon_stretch_mode = 5)
 	for expand in 6:
-		_cell(func(b): b.IconTexture = WIDE; b.IconExpandMode = expand; b.IconStretchMode = 0)
-	# Icon + panel + label, selection overlay, invert on press.
-	_cell(func(b): b.BackgroundType = 1; b.IconTexture = ICON; b.IconExpandMode = 1; b.IconStretchMode = 5; b.Text = "Label")
-	_cell(func(b): b.BackgroundType = 1; b.IconTexture = ICON; b.IconExpandMode = 1; b.IconStretchMode = 5; b.Selected = true; b.SelectedColor = Color(1, 1, 0, 0.35))
-	var inv := _cell(func(b): b.BackgroundType = 1; b.PanelStyleBox = _flat(Color.ROYAL_BLUE); b.IconTexture = ICON; b.IconExpandMode = 1; b.IconStretchMode = 5; b.Text = "Invert"; b.InvertModes = 1)
-	# Cooldown fill: every direction, filled and draining. Hold fill: every direction.
+		_cell(func(b): b.icon_texture = WIDE; b.icon_expand_mode = expand; b.icon_stretch_mode = 0)
+	# icon + panel + label, selected overlay, invert on press.
+	_cell(func(b): b.background_type = 1; b.icon_texture = ICON; b.icon_expand_mode = 1; b.icon_stretch_mode = 5; b.text = "Label")
+	_cell(func(b): b.background_type = 1; b.icon_texture = ICON; b.icon_expand_mode = 1; b.icon_stretch_mode = 5; b.selected = true; b.selected_color = Color(1, 1, 0, 0.35))
+	var inv := _cell(func(b): b.background_type = 1; b.panel_style_box = _flat(Color.ROYAL_BLUE); b.icon_texture = ICON; b.icon_expand_mode = 1; b.icon_stretch_mode = 5; b.text = "Invert"; b.invert_modes = 1)
+	# cooldown fill in every direction, filling and draining. hold fill in every direction.
 	var cds: Array = []
 	for dir in 4:
 		for filled in [false, true]:
-			cds.append(_cell(func(b): b.BackgroundType = 1; b.CooldownTrigger = 1; b.CooldownDuration = 10.0; b.CooldownFillDirection = dir; b.CooldownStartFilled = filled; b.CooldownColor = Color(0, 0, 0, 0.6)))
+			cds.append(_cell(func(b): b.background_type = 1; b.cooldown_trigger = 1; b.cooldown_duration = 10.0; b.cooldown_fill_direction = dir; b.cooldown_start_filled = filled; b.cooldown_color = Color(0, 0, 0, 0.6)))
 	var holds: Array = []
 	for dir in 4:
-		holds.append(_cell(func(b): b.BackgroundType = 1; b.HoldDuration = 1.0; b.HoldFillDirection = dir; b.HoldFillColor = Color(1, 1, 1, 0.5)))
-	# Virtual joystick default thumb.
-	_cell(func(b): b.EnableVirtualJoystick = true; b.DefaultThumbColor = Color(0.9, 0.6, 0.2, 0.9), 80, 80)
-	# Managed visuals above / below a user child.
+		holds.append(_cell(func(b): b.background_type = 1; b.hold_duration = 1.0; b.hold_fill_direction = dir; b.hold_fill_color = Color(1, 1, 1, 0.5)))
+	# virtual joystick default thumb.
+	_cell(func(b): b.enable_virtual_joystick = true; b.default_thumb_color = Color(0.9, 0.6, 0.2, 0.9), 80, 80)
+	# managed visuals above / below a child you added.
 	for on_top in [true, false]:
 		_cell(func(b):
 			var deco := ColorRect.new()
@@ -88,18 +88,18 @@ func _run() -> void:
 			deco.position = Vector2(20, 10)
 			deco.size = Vector2(60, 30)
 			b.add_child(deco)
-			b.BackgroundType = 1
-			b.PanelStyleBox = _flat(Color.MEDIUM_PURPLE)
-			b.ManagedDrawOnTop = on_top)
-	# Hover-scaled button (settled).
-	var hover_scaled := _cell(func(b): b.BackgroundType = 1; b.PanelStyleBox = _flat(Color.DARK_ORANGE); b.IconTexture = ICON; b.IconExpandMode = 1; b.IconStretchMode = 5; b.HoverScale = 1.25)
+			b.background_type = 1
+			b.panel_style_box = _flat(Color.MEDIUM_PURPLE)
+			b.managed_draw_on_top = on_top)
+	# hover scaled button (settled).
+	var hover_scaled := _cell(func(b): b.background_type = 1; b.panel_style_box = _flat(Color.DARK_ORANGE); b.icon_texture = ICON; b.icon_expand_mode = 1; b.icon_stretch_mode = 5; b.hover_scale = 1.25)
 
 	for _f in 10:
 		await process_frame
-	# Freeze interaction states.
-	hov.IsHovering = true
-	prs.IsPressed = true
-	inv.IsPressed = true
+	# freeze the interaction states.
+	hov.is_hovering = true
+	prs.is_pressed = true
+	inv.is_pressed = true
 	OmniButtonInput.on_mouse_entered(hover_scaled)
 	for i in cds.size():
 		var b = cds[i]
@@ -107,7 +107,7 @@ func _run() -> void:
 		b._cooldown_time_left = 10.0 * 0.6
 		OmniButtonTiming.update_cooldown_visual(b)
 	for b in holds:
-		b.IsPressed = true
+		b.is_pressed = true
 		b._hold_timer = 0.4
 		OmniButtonTiming.update_hold_fill_visual(b)
 	for _f in 40:
@@ -127,7 +127,7 @@ func _run() -> void:
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png(_out_dir.path_join("grid.png"))
 
-	# Demo scene, with the typewriter finished so the frame is deterministic.
+	# demo scene, with the typewriter done so the frame comes out the same every time.
 	for b in _all:
 		b.queue_free()
 	bg.queue_free()

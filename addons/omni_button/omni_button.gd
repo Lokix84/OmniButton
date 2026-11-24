@@ -1,81 +1,95 @@
 @tool
-class_name Omni_Button
+class_name OmniButton
 extends Control
-## A Control that does everything a button needs: press, release, toggle, hover, hold, swipe, cooldowns, typewriter text and a virtual joystick, with mouse, touch, keyboard and gamepad.
+## a button that does pretty much everything a game needs: press, release, toggle, hover, hold,
+## swipe, cooldowns, typewriter text, and it can even be a virtual joystick. works with mouse,
+## touch, keyboard and gamepad.
 ##
-## Turn features on in the Inspector; each feature's settings appear only while it is on, and keep their values when it is off. React to the button by connecting its signals ([signal pressed], [signal toggled], [signal hold], ...) or by setting the matching [code]*Action[/code] Callable ([member PressedAction], ...). Connecting a signal before the button is ready turns its Action checkbox on automatically.
-## The text autosizes to fit the button (or uses [member FixedFontSize]), can be a [Label] or a [RichTextLabel] with BBCode, and can type out with [method start_typewriter], including the timing tags [code][pause=0.5][/code], [code][speed=10][/code] and [code][/speed][/code].
+## turn stuff on in the inspector and only the settings for what's on show up. the rest keep
+## their values, they're just hidden. to react to it, connect a signal like [signal pressed],
+## [signal toggled] or [signal hold], or set one of the [code]*_action[/code] callables like
+## [member pressed_action]. if you connect a signal before the button is ready it flips that
+## action's checkbox on for you.
+## the text sizes itself to fit the button (or uses [member fixed_font_size] if you set one), can be
+## a [Label] or a [RichTextLabel] with bbcode, and can type itself out with [method start_typewriter].
+## the typewriter also gets the timing tags [code][pause=0.5][/code], [code][speed=10][/code] and
+## [code][/speed][/code].
 ## [codeblock]
-## var button := Omni_Button.new()
-## button.Text = "Start"
+## var button := OmniButton.new()
+## button.text = "Start"
 ## button.size = Vector2(200, 60)
 ## button.pressed.connect(func(): print("Start pressed"))
 ## add_child(button)
 ## [/codeblock]
-## Add your own decorations as direct children of the button (siblings of the internal [code]_Managed[/code] node), not inside [code]_Managed[/code]. Use [member ManagedDrawOnTop] for draw order, and set [member Control.mouse_filter] to Ignore or Pass on decorations so input still reaches the button. Names reserved for generated nodes (purged on refresh): Panel, Background, Icon, Label, RichLabel, Overlay, HoldFill, Cooldown, DefaultThumb, JoystickArea.
+## if you want your own decorations on it, add them as direct children of the button, next to the
+## internal [code]_Managed[/code] node, not inside it. [member managed_draw_on_top] picks which draws
+## on top, and set [member Control.mouse_filter] to Ignore or Pass on them so clicks still get to the
+## button. don't use these names for your own children, the button makes nodes with them and clears
+## them out on refresh: Panel, Background, Icon, Label, RichLabel, Overlay, HoldFill, Cooldown,
+## DefaultThumb, JoystickArea.
 
-# File layout (each #region folds in the script editor):
-#   Constants, signals and enums
-#   Settings: one region per Inspector category, in Inspector order. A setting's private
-#     backing variable sits directly above it.
-#   Runtime state: private per-button state, grouped by feature
-#   Scripting accessors, Lifecycle, Public API, Overridable hooks, Internal
-# Behaviour lives in the static helper files (OmniButtonVisuals, Input, Timing, Text, State,
-# Signals, Editor), which take the button as their first argument.
+# how this file is laid out (every #region folds up in the script editor):
+#   constants, signals and enums up top
+#   then the settings, one region per inspector category, same order you see them in.
+#     each setting's private backing var sits right above it
+#   then runtime state, grouped by feature
+#   then accessors, lifecycle, public api, hooks you can override, internal stuff
+# most of the real work happens in the static helpers in core/ (OmniButtonVisuals, Input, Timing,
+# Text, State, Signals, Editor). they all take the button as their first argument.
 
 
 #region Constants, signals and enums
-const _accessors = preload("res://addons/omni_button/core/omni_button_accessors.gd")
-## Loaded once per project instead of a ResourceLoader.exists() + load() in every button's _ready.
+const _Accessors = preload("res://addons/omni_button/core/omni_button_accessors.gd")
+## loaded once for the whole project so every button doesn't do its own exists() + load() in _ready.
 const _INVERT_MATERIAL = preload("res://addons/omni_button/core/shader/InvertColor.tres")
 
-## Emitted when the button is pressed (mouse, touch, or [member ActivationAction] while focused). Needs the Press action on ([member EnablePressedActions]).
+## fires when the button gets pressed: mouse, touch, or [member activation_action] while it has focus. needs [member enable_pressed_actions] on.
 signal pressed
-## Emitted when the button is released. Needs the Release action on ([member EnableReleasedActions]).
+## fires when the button gets let go. needs [member enable_released_actions] on.
 signal released
-## Emitted when the pointer enters the button. Needs the Hover action on.
+## fires when the pointer moves onto the button. needs the hover action on.
 signal hover_in
-## Emitted when the pointer leaves the button. Needs the Hover action on.
+## fires when the pointer leaves the button. needs the hover action on.
 signal hover_out
-## Emitted when the button toggles on or off ([member InteractionMode]). [param pressed] is the new state.
+## fires when the button flips on or off (see [member interaction_mode]). [param pressed] is the new state.
 signal toggled(pressed: bool)
-## Emitted when typewriter text finishes, including when [method skip_typewriter] or [method stop_typewriter] ends it.
+## fires when the typewriter finishes. also fires if [method skip_typewriter] or [method stop_typewriter] cut it short.
 signal typewriter_completed
-## Emitted for each character the typewriter reveals (not for characters skipped past).
+## fires for every character the typewriter shows. skipped characters don't count.
 signal typewriter_char_revealed(index: int, character: String)
-## Emitted once when the hold build-up completes ([member HoldDuration] greater than zero). Needs the Hold action on.
+## fires once when the hold fills up (so [member hold_duration] has to be above zero). needs the hold action on.
 signal hold
-## Emitted during a swipe with the normalized swipe [param direction]. Needs the Swipe action on.
+## fires while swiping, [param direction] is normalized. needs the swipe action on.
 signal swipe(direction: Vector2)
-## Emitted when a swipe ends.
+## fires when a swipe is over.
 signal swipe_ended
-## Emitted by [method print_log] when the Log action is on.
+## fires from [method print_log] when the log action is on.
 signal log(message: String)
-## Emitted by [method print_warn] when the Warning action is on.
+## fires from [method print_warn] when the warning action is on.
 signal warning(message: String)
-## Emitted by [method print_err] when the Error action is on.
+## fires from [method print_err] when the error action is on.
 signal error(message: String)
-## Emitted when the virtual joystick starts being dragged.
+## fires when someone starts dragging the virtual joystick.
 signal joystick_started
-## Emitted while the virtual joystick moves. [param axis] goes from -1 to 1 on each axis, after the deadzone.
+## fires while the virtual joystick moves. [param axis] goes -1 to 1 on each axis, deadzone already taken out.
 signal joystick_axis(axis: Vector2)
-## Emitted when the virtual joystick is released.
+## fires when the virtual joystick gets let go.
 signal joystick_ended
 
-enum CooldownDirection {BottomToTop = 0, TopToBottom = 1, LeftToRight = 2, RightToLeft = 3}
-enum BackgroundMode {None = 0, UsePanel = 1, UseTexture = 2}
-enum FollowModeEnum {None = 0, FollowBoth = 3, VirtualJoystick = 4}
-enum JoystickClampShape {Circle = 0, Rectangle = 1}
-enum SwipeInitMode {OnHoverIn = 0, OnPressed = 1}
-enum SwipeExitMode {OnHoverOut = 0, OnReleased = 1}
-enum CooldownTriggerEnum {None = 0, OnPress = 1, OnRelease = 2, OnPressAndRelease = 3}
+enum CooldownDirection {BOTTOM_TO_TOP = 0, TOP_TO_BOTTOM = 1, LEFT_TO_RIGHT = 2, RIGHT_TO_LEFT = 3}
+enum BackgroundMode {NONE = 0, USE_PANEL = 1, USE_TEXTURE = 2}
+enum FollowMode {NONE = 0, FOLLOW_BOTH = 3, VIRTUAL_JOYSTICK = 4}
+enum JoystickClampShape {CIRCLE = 0, RECTANGLE = 1}
+enum SwipeInitMode {ON_HOVER_IN = 0, ON_PRESSED = 1}
+enum SwipeExitMode {ON_HOVER_OUT = 0, ON_RELEASED = 1}
+enum CooldownTrigger {NONE = 0, ON_PRESS = 1, ON_RELEASE = 2, ON_PRESS_AND_RELEASE = 3}
 enum DebuggerLogMode {OFF = 0, BASIC = 1}
-enum LabelKind {None = 2, Label = 0, RichTextLabel = 1}
-enum InteractionModeEnum {Momentary = 0, ToggleOnPress = 1, ToggleOnRelease = 2}
-## Which modality owns the current press (mouse vs native touch) when emulate_mouse_from_touch is on.
-enum PointerGestureSource {None = 0, Mouse = 1, NativeTouch = 2}
+enum LabelKind {NONE = 2, LABEL = 0, RICH_TEXT_LABEL = 1}
+enum InteractionMode {MOMENTARY = 0, TOGGLE_ON_PRESS = 1, TOGGLE_ON_RELEASE = 2}
+## who owns the current press (mouse or real touch) when emulate_mouse_from_touch is on.
+enum PointerGestureSource {NONE = 0, MOUSE = 1, NATIVE_TOUCH = 2}
 
-# InvertModes and ActionMask bit flags
+# invert_modes and ActionMask bit flags
 const INVERT_PRESS := 1
 const INVERT_TOGGLE := 2
 const INVERT_HOVER := 4
@@ -105,87 +119,87 @@ const TYPEWRITER_EFFECT_TAGS := {
 #region Settings: actions, background, label type, visual effects
 @export_subgroup("Actions")
 var _action_mask_bits: int = 0
-## Emits the Pressed signal and runs its connected action when this button is pressed.
-@export var EnablePressedActions: bool:
+## sends [signal pressed] and runs [member pressed_action] when the button gets pressed.
+@export var enable_pressed_actions: bool:
 	get: return _action_enabled(ACT_PRESSED)
 	set(value):
 		_set_action_enabled(ACT_PRESSED, value)
 
-## Emits the Released signal and runs its connected action when this button is released.
-@export var EnableReleasedActions: bool:
+## sends [signal released] and runs [member released_action] when the button gets let go.
+@export var enable_released_actions: bool:
 	get: return _action_enabled(ACT_RELEASED)
 	set(value):
 		_set_action_enabled(ACT_RELEASED, value)
 
-## Emits HoverIn and HoverOut and runs their connected actions as the pointer enters or leaves.
-@export var EnableHoverActions: bool:
+## sends [signal hover_in] and [signal hover_out] (and runs their actions) as the pointer comes and goes.
+@export var enable_hover_actions: bool:
 	get: return _action_enabled(ACT_HOVER)
 	set(value):
 		_set_action_enabled(ACT_HOVER, value)
 
-## Emits Toggled and runs its connected action when the button changes toggle state.
-@export var EnableToggleActions: bool:
+## sends [signal toggled] and runs [member toggled_action] when the button flips on or off.
+@export var enable_toggle_actions: bool:
 	get: return _action_enabled(ACT_TOGGLE)
 	set(value):
 		_set_action_enabled(ACT_TOGGLE, value)
 
-## Emits Hold and runs its connected action when the configured hold duration completes.
-@export var EnableHoldActions: bool:
+## sends [signal hold] and runs [member hold_action] once the hold fills up.
+@export var enable_hold_actions: bool:
 	get: return _action_enabled(ACT_HOLD)
 	set(value):
 		_set_action_enabled(ACT_HOLD, value)
 
-## Emits Swipe and SwipeEnded and runs their connected actions for recognized swipe gestures.
-@export var EnableSwipeActions: bool:
+## sends [signal swipe] and [signal swipe_ended] (and runs their actions) when it sees a swipe.
+@export var enable_swipe_actions: bool:
 	get: return _action_enabled(ACT_SWIPE)
 	set(value):
 		var was_on := _action_enabled(ACT_SWIPE)
 		_set_action_enabled(ACT_SWIPE, value)
 		if was_on != _action_enabled(ACT_SWIPE): _notify_inspector()
 
-## Enables the Log signal and connected action for messages sent through this button.
-@export var EnableLogActions: bool:
+## turns on [signal log] and [member log_action] for messages sent through this button.
+@export var enable_log_actions: bool:
 	get: return _action_enabled(ACT_LOG)
 	set(value):
 		_set_action_enabled(ACT_LOG, value)
 
-## Enables the Warning signal and connected action for warnings sent through this button.
-@export var EnableWarningActions: bool:
+## turns on [signal warning] and [member warning_action] for warnings sent through this button.
+@export var enable_warning_actions: bool:
 	get: return _action_enabled(ACT_WARNING)
 	set(value):
 		_set_action_enabled(ACT_WARNING, value)
 
-## Enables the Error signal and connected action for errors sent through this button.
-@export var EnableErrorActions: bool:
+## turns on [signal error] and [member error_action] for errors sent through this button.
+@export var enable_error_actions: bool:
 	get: return _action_enabled(ACT_ERROR)
 	set(value):
 		_set_action_enabled(ACT_ERROR, value)
 
-## Runs after [signal pressed] is emitted. When set, it replaces the built-in [code]_run_built_in_pressed[/code] hook.
-var PressedAction: Callable
-## Runs after [signal released]. When set, it replaces the built-in released hook.
-var ReleasedAction: Callable
-## Runs after [signal hover_in]. When set, it replaces the built-in hover-in hook.
-var HoverInAction: Callable
-## Runs after [signal hover_out]. When set, it replaces the built-in hover-out hook.
-var HoverOutAction: Callable
-## Runs after [signal toggled]. When set, it replaces the built-in toggled hook.
-var ToggledAction: Callable
-## Runs after [signal hold]. When set, it replaces the built-in hold hook.
-var HoldAction: Callable
-## Runs after [signal swipe]. When set, it replaces the built-in swipe hook.
-var SwipeAction: Callable
-## Runs after [signal log] in [method print_log]. When set, it replaces the default [method @GlobalScope.print].
-var LogAction: Callable
-## Runs after [signal warning] in [method print_warn]. When set, it replaces the default [method @GlobalScope.push_warning].
-var WarningAction: Callable
-## Runs after [signal error] in [method print_err]. When set, it replaces the default [method @GlobalScope.push_error].
-var ErrorAction: Callable
+## runs after [signal pressed] goes out. if you set it, it replaces the built in [code]_run_built_in_pressed[/code] hook.
+var pressed_action: Callable
+## runs after [signal released]. if you set it, it replaces the built in released hook.
+var released_action: Callable
+## runs after [signal hover_in]. if you set it, it replaces the built in hover in hook.
+var hover_in_action: Callable
+## runs after [signal hover_out]. if you set it, it replaces the built in hover out hook.
+var hover_out_action: Callable
+## runs after [signal toggled]. if you set it, it replaces the built in toggled hook.
+var toggled_action: Callable
+## runs after [signal hold]. if you set it, it replaces the built in hold hook.
+var hold_action: Callable
+## runs after [signal swipe]. if you set it, it replaces the built in swipe hook.
+var swipe_action: Callable
+## runs after [signal log] in [method print_log]. if you set it, it's used instead of the normal [method @GlobalScope.print].
+var log_action: Callable
+## runs after [signal warning] in [method print_warn]. if you set it, it's used instead of the normal [method @GlobalScope.push_warning].
+var warning_action: Callable
+## runs after [signal error] in [method print_err]. if you set it, it's used instead of the normal [method @GlobalScope.push_error].
+var error_action: Callable
 
 @export_group("")
-var _background_mode := BackgroundMode.None
-## None draws no generated background; UsePanel draws a styled Panel; UseTexture draws a TextureRect background.
-@export var BackgroundType: BackgroundMode:
+var _background_mode := BackgroundMode.NONE
+## none means no background. use panel draws a styled panel, use texture draws a texture.
+@export var background_type: BackgroundMode:
 	get: return _background_mode
 	set(value):
 		var changed := _background_mode != value
@@ -196,9 +210,9 @@ var _background_mode := BackgroundMode.None
 		_apply_panel_styling()
 		_invalidate_visual_state()
 
-var _label_type: LabelKind = LabelKind.None
-## None creates no text node; Label uses plain text; RichTextLabel supports BBCode and rich text behavior.
-@export var LabelType: LabelKind:
+var _label_type: LabelKind = LabelKind.NONE
+## none means no text at all. label is plain text, rich text label lets you use bbcode and effects.
+@export var label_type: LabelKind:
 	get: return _label_type
 	set(value):
 		if _label_type == value:
@@ -212,26 +226,26 @@ var _label_type: LabelKind = LabelKind.None
 		OmniButtonEditor.refresh_label_type_inspector(self)
 
 var _disabled := false
-## Blocks pointer interaction and applies the disabled visual state.
-@export var Disabled: bool:
+## stops the button from taking clicks and switches it to the disabled look.
+@export var disabled: bool:
 	get: return _disabled
 	set(value):
 		_disabled = value
 		_invalidate_visual_state()
-## Multiplies the text and icon colors while [member Disabled] is on, so a disabled button reads as unavailable. White leaves them unchanged.
-@export var DisabledModulate: Color = Color(1, 1, 1, 0.45):
+## gets multiplied into the text and icon colors while [member disabled] is on so it looks greyed out. white leaves them alone.
+@export var disabled_modulate: Color = Color(1, 1, 1, 0.45):
 	set(value):
-		DisabledModulate = value
+		disabled_modulate = value
 		_invalidate_visual_state()
 
 @export_group("Visual Effects")
 @export_subgroup("Invert Display")
-## Selects the states that invert the button colors: Press, Toggle, Hover, and/or Hold.
-@export_flags("Press", "Toggle", "Hover", "Hold") var InvertModes: int = 0
+## which states flip the button's colors: press, toggle, hover, hold. pick as many as you want.
+@export_flags("Press", "Toggle", "Hover", "Hold") var invert_modes: int = 0
 @export_subgroup("Hover")
 var _hover_scale := 0.0
-## Scale of the button while hovered: 1.2 means 120% of normal size. Zero disables hover scaling. The scale is capped so the button stays inside the viewport.
-@export_range(0.0, 3.0, 0.01) var HoverScale: float:
+## how big the button gets on hover. 1.2 is 120%, zero turns it off. it won't grow past the edge of the screen.
+@export_range(0.0, 3.0, 0.01) var hover_scale: float:
 	get: return _hover_scale
 	set(value):
 		var updated := maxf(0.0, value)
@@ -248,105 +262,105 @@ var _hover_scale := 0.0
 			set_process(true)
 		_invalidate_visual_state()
 
-## Speed at which the hover scale transitions between normal and hovered size.
-@export_range(0.0, 100.0, 0.1) var HoverLerpSpeed: float = 25.0
+## how fast it grows and shrinks between normal and hover size.
+@export_range(0.0, 100.0, 0.1) var hover_lerp_speed: float = 25.0
 @export_subgroup("Selection")
-## Tint used by the selected-state overlay.
-@export var SelectedColor: Color = Color(1, 1, 1, 0.3)
+## tint for the selected overlay.
+@export var selected_color: Color = Color(1, 1, 1, 0.3)
 #endregion
 
 
 #region Settings: Input & Motion
 
 @export_category("Input & Motion")
-## InputMap action that activates this button while it has keyboard focus. Set to empty to disable focused input.
-@export var ActivationAction: StringName = &"ui_accept"
-## InputMap action held down while this button is pressed, like TouchScreenButton's action: an on-screen "jump" button then works with [code]Input.is_action_pressed("jump")[/code] and [code]_input()[/code]. Empty does nothing.
-@export var OutputAction: StringName = &"":
+## input map action that presses this button while it has focus. leave it empty and focus does nothing.
+@export var activation_action: StringName = &"ui_accept"
+## input map action that gets held down while this button is pressed, same idea as TouchScreenButton's action. so an on screen "jump" button works with [code]Input.is_action_pressed("jump")[/code] and [code]_input()[/code]. empty does nothing.
+@export var output_action: StringName = &"":
 	set(value):
-		if value == OutputAction: return
+		if value == output_action: return
 		OmniButtonState.release_output_action(self)
-		OutputAction = value
-## The OutputAction this button is currently holding down, so it can always be released.
+		output_action = value
+## the output_action we're holding down right now, so we can always let go of it.
 var _held_output_action: StringName = &""
 
 @export_group("Hit Area")
-## Optional Control whose global rectangle replaces this button's own rectangle for hit-testing (whether a release counts as inside). Drag and virtual joystick movement are also clamped to it.
-@export var BoundsSource: Control
-## Expands the code-level hit-test rectangle in pixels: x controls left/right and y controls top/bottom. Godot still routes pointer events by this Control's rectangle.
-@export var HitSlop: Vector2 = Vector2.ZERO
+## optional Control to use for hit testing instead of the button's own rect (decides if a release counts as inside). dragging and the virtual joystick also stay inside it.
+@export var bounds_source: Control
+## grows the hit test rect by this many pixels, x for left and right, y for top and bottom. godot still sends events by the Control's real rect though.
+@export var hit_slop: Vector2 = Vector2.ZERO
 
 @export_group("Drag & virtual joystick")
-var _follow_mode: FollowModeEnum = FollowModeEnum.None
-## None stays in place; FollowBoth moves with the pointer; VirtualJoystick emits joystick axes while the pointer moves within its clamp area. The settings for the chosen mode appear below it.
-@export var FollowMode: FollowModeEnum:
+var _follow_mode: FollowMode = FollowMode.NONE
+## none stays put. follow both moves with the pointer. virtual joystick sends joystick axes while the pointer moves inside its area. the settings for whichever you pick show up under it.
+@export var follow_mode: FollowMode:
 	get: return _follow_mode
 	set(value):
 		if _follow_mode == value:
 			return
 		_follow_mode = value
-		if _follow_mode == FollowModeEnum.None:
-			ClampToBounds = true
-		if _follow_mode != FollowModeEnum.VirtualJoystick:
-			ClampShape = JoystickClampShape.Circle
-			JoystickRadiusPx = 0
-			JoystickRectSizePx = Vector2.ZERO
-			JoystickDeadzone = 0.1
-			JoystickSnapToInput = true
-			JoystickHideWhenInactive = false
-			JoystickResetOnRelease = true
+		if _follow_mode == FollowMode.NONE:
+			clamp_to_bounds = true
+		if _follow_mode != FollowMode.VIRTUAL_JOYSTICK:
+			clamp_shape = JoystickClampShape.CIRCLE
+			joystick_radius_px = 0
+			joystick_rect_size_px = Vector2.ZERO
+			joystick_deadzone = 0.1
+			joystick_snap_to_input = true
+			joystick_hide_when_inactive = false
+			joystick_reset_on_release = true
 		notify_property_list_changed()
 		queue_refresh(true, false, false)
 
-## In FollowBoth mode, keeps the moving button inside its follow clamp rectangle; disabling it allows movement beyond the rectangle.
-@export var ClampToBounds: bool = true
-## Shorthand for FollowMode == VirtualJoystick, kept for scripts and for scenes saved before
-## FollowMode became the single switch. Not shown in the Inspector and not saved.
-var EnableVirtualJoystick: bool:
-	get: return _follow_mode == FollowModeEnum.VirtualJoystick
+## in follow both, keeps the button inside its follow area. turn it off and it can go anywhere.
+@export var clamp_to_bounds: bool = true
+## shortcut for follow_mode == VIRTUAL_JOYSTICK. it's still here for scripts and for scenes saved
+## before follow_mode was the one switch. not shown in the inspector and not saved.
+var enable_virtual_joystick: bool:
+	get: return _follow_mode == FollowMode.VIRTUAL_JOYSTICK
 	set(value):
 		if value:
-			FollowMode = FollowModeEnum.VirtualJoystick
-		elif _follow_mode == FollowModeEnum.VirtualJoystick:
-			FollowMode = FollowModeEnum.None
+			follow_mode = FollowMode.VIRTUAL_JOYSTICK
+		elif _follow_mode == FollowMode.VIRTUAL_JOYSTICK:
+			follow_mode = FollowMode.NONE
 
 @export_subgroup("Virtual Joystick")
-## Circle constrains movement to a radius; Rectangle constrains movement to the configured width and height.
-@export var ClampShape: JoystickClampShape = JoystickClampShape.Circle
-## Radius in pixels for circular joystick movement. Zero uses the control size to determine the radius.
-@export_range(0, 4096, 1) var JoystickRadiusPx: int = 0
-## Width and height in pixels of the rectangular joystick movement area.
-@export var JoystickRectSizePx: Vector2 = Vector2.ZERO
-## Normalized center radius where joystick input is treated as zero.
-@export_range(0.0, 1.0, 0.01) var JoystickDeadzone: float = 0.1
-## Moves the virtual joystick control with the pointer while the gesture is active.
-@export var JoystickSnapToInput: bool = true
-## Hides the control while the virtual joystick is not being used.
-@export var JoystickHideWhenInactive: bool = false
-## Returns the joystick thumb and axis to neutral when the pointer is released.
-@export var JoystickResetOnRelease: bool = true
+## circle keeps the stick inside a radius, rectangle keeps it inside a width and height.
+@export var clamp_shape: JoystickClampShape = JoystickClampShape.CIRCLE
+## radius in pixels for the circle. zero works it out from the button's size.
+@export_range(0, 4096, 1) var joystick_radius_px: int = 0
+## width and height in pixels for the rectangle.
+@export var joystick_rect_size_px: Vector2 = Vector2.ZERO
+## how much of the middle counts as zero, 0 to 1.
+@export_range(0.0, 1.0, 0.01) var joystick_deadzone: float = 0.1
+## moves the joystick along with the pointer while it's being used.
+@export var joystick_snap_to_input: bool = true
+## hides the joystick when nobody's using it.
+@export var joystick_hide_when_inactive: bool = false
+## snaps the thumb and axis back to the middle when you let go.
+@export var joystick_reset_on_release: bool = true
 @export_subgroup("Virtual Joystick Area")
-## Draws a visual guide for the joystick movement area.
-@export var EnableJoystickArea: bool = false:
+## draws an outline of the area the joystick can move in.
+@export var enable_joystick_area: bool = false:
 	set(value):
-		if EnableJoystickArea == value: return
-		EnableJoystickArea = value
+		if enable_joystick_area == value: return
+		enable_joystick_area = value
 		_notify_inspector()
 
-## Keeps the joystick area guide visible when the joystick is inactive.
-@export var JoystickAreaPersistent: bool = false
-## Color of the joystick area guide.
-@export var JoystickAreaColor: Color = Color(1, 1, 1, 0.25)
-## Line thickness in pixels for the joystick area guide.
-@export_range(0, 64, 1) var JoystickAreaThickness: int = 2
-## Uses the configured rectangular joystick area when clamping movement.
-@export var JoystickAreaUseRectForClamp: bool = false
-## Optional path to an external Control used to draw the joystick area guide.
-@export var JoystickAreaExternalPath: NodePath
+## keeps that outline showing even when the joystick isn't being used.
+@export var joystick_area_persistent: bool = false
+## color of the outline.
+@export var joystick_area_color: Color = Color(1, 1, 1, 0.25)
+## how thick the outline is in pixels.
+@export_range(0, 64, 1) var joystick_area_thickness: int = 2
+## clamps the stick to the rectangle area you set up.
+@export var joystick_area_use_rect_for_clamp: bool = false
+## optional path to some other Control to draw the outline on.
+@export var joystick_area_external_path: NodePath
 @export_subgroup("Virtual Joystick Thumb")
 var _enable_default_thumb := true
-## Creates the built-in joystick thumb when no custom thumb is supplied.
-@export var EnableDefaultThumb: bool:
+## makes a built in thumb if you didn't give it one.
+@export var enable_default_thumb: bool:
 	get: return _enable_default_thumb
 	set(value):
 		if _enable_default_thumb == value:
@@ -355,10 +369,10 @@ var _enable_default_thumb := true
 		_notify_inspector()
 		queue_refresh(true, false, false)
 
-## Default thumb size relative to the joystick movement area.
-@export_range(0.1, 1.0, 0.01) var DefaultThumbSizeRatio: float = 0.6
-## Color of the built-in joystick thumb.
-@export var DefaultThumbColor: Color = Color(1, 1, 1, 0.9)
+## size of the built in thumb compared to the joystick area.
+@export_range(0.1, 1.0, 0.01) var default_thumb_size_ratio: float = 0.6
+## color of the built in thumb.
+@export var default_thumb_color: Color = Color(1, 1, 1, 0.9)
 #endregion
 
 
@@ -368,8 +382,8 @@ var _enable_default_thumb := true
 
 @export_group("Icon")
 var _icon_texture: Texture2D
-## Texture displayed in the icon layer, behind the button text.
-@export var IconTexture: Texture2D:
+## the icon texture. it sits behind the text.
+@export var icon_texture: Texture2D:
 	get: return _icon_texture
 	set(value):
 		var had := _icon_texture != null
@@ -380,23 +394,23 @@ var _icon_texture: Texture2D
 		else:
 			queue_refresh(true, false, true)
 
-## Keep Size uses the texture's native dimensions; Ignore Size ignores its minimum size; Fit Width/Height constrain that dimension, with Proportional variants preserving aspect ratio.
+## keep size uses the texture's own size, ignore size ignores it, fit width/height lock that side, and the proportional ones keep the aspect ratio.
 @export_enum("Keep Size", "Ignore Size", "Fit Width", "Fit Width Proportional", "Fit Height", "Fit Height Proportional")
-var IconExpandMode: int = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-## Chooses scaling, tiling, native-size placement, centering, or aspect-preserving fit/cover behavior for the icon.
+var icon_expand_mode: int = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+## how the icon gets drawn: scaled, tiled, native size, centered, or fit/cover keeping the aspect ratio.
 @export_enum("Scale", "Tile", "Keep", "Keep Centered", "Keep Aspect", "Keep Aspect Centered", "Keep Aspect Covered")
-var IconStretchMode: int = TextureRect.STRETCH_SCALE
-## Mirrors the icon texture horizontally.
-@export var IconFlipH: bool = false
-## Mirrors the icon texture vertically.
-@export var IconFlipV: bool = false
-## Multiplies the icon texture colors by this color.
-@export var IconModulate: Color = Color.WHITE
+var icon_stretch_mode: int = TextureRect.STRETCH_SCALE
+## flips the icon left to right.
+@export var icon_flip_h: bool = false
+## flips the icon upside down.
+@export var icon_flip_v: bool = false
+## gets multiplied into the icon's colors.
+@export var icon_modulate: Color = Color.WHITE
 
 @export_group("Hold Build-Up")
 var _hold_duration := 0.0
-## Time the button must remain pressed before the Hold action fires. Zero disables hold build-up.
-@export_range(0.0, 5.0, 0.05) var HoldDuration: float:
+## how long you have to hold the button before the hold action fires. zero turns hold off.
+@export_range(0.0, 5.0, 0.05) var hold_duration: float:
 	get: return _hold_duration
 	set(value):
 		var updated := maxf(0.0, value)
@@ -408,39 +422,39 @@ var _hold_duration := 0.0
 		OmniButtonState.hold_duration_changed(self)
 		_invalidate_visual_state()
 
-## Color of the progress fill shown while the button is building up a hold.
-@export var HoldFillColor: Color = Color(1, 1, 1, 0.25)
-## Direction the hold progress fill advances: 0 bottom-to-top, 1 top-to-bottom, 2 left-to-right, 3 right-to-left.
-@export var HoldFillDirection: int = CooldownDirection.BottomToTop
+## color of the fill that grows while you're holding.
+@export var hold_fill_color: Color = Color(1, 1, 1, 0.25)
+## which way the hold fill grows: 0 bottom to top, 1 top to bottom, 2 left to right, 3 right to left.
+@export var hold_fill_direction: int = CooldownDirection.BOTTOM_TO_TOP
 
 @export_group("Swipe")
-## Minimum pointer travel in pixels required to recognize a swipe.
-@export_range(0.0, 1000.0, 1.0) var SwipeThreshold: float = 20.0
-## OnHoverIn begins touch swipe tracking on pointer entry; OnPressed begins tracking on touch press.
-@export var TouchSwipeInit: SwipeInitMode = SwipeInitMode.OnHoverIn
-## OnHoverOut ends touch swipe tracking when leaving the bounds; OnReleased ends it when the touch is released.
-@export var TouchSwipeExit: SwipeExitMode = SwipeExitMode.OnHoverOut
-## OnHoverIn begins mouse swipe tracking on pointer entry; OnPressed begins tracking on mouse press.
-@export var MouseSwipeInit: SwipeInitMode = SwipeInitMode.OnPressed
-## OnHoverOut ends mouse swipe tracking when leaving the bounds; OnReleased ends it when the mouse button is released.
-@export var MouseSwipeExit: SwipeExitMode = SwipeExitMode.OnReleased
+## how far in pixels the pointer has to move before it counts as a swipe.
+@export_range(0.0, 1000.0, 1.0) var swipe_threshold: float = 20.0
+## on hover in starts tracking a touch swipe as soon as the finger moves onto it, on pressed waits for the touch to press it.
+@export var touch_swipe_init: SwipeInitMode = SwipeInitMode.ON_HOVER_IN
+## on hover out ends a touch swipe when the finger leaves, on released ends it when the finger lifts.
+@export var touch_swipe_exit: SwipeExitMode = SwipeExitMode.ON_HOVER_OUT
+## on hover in starts tracking a mouse swipe when the pointer moves onto it, on pressed waits for a click.
+@export var mouse_swipe_init: SwipeInitMode = SwipeInitMode.ON_PRESSED
+## on hover out ends a mouse swipe when the pointer leaves, on released ends it when the mouse button comes up.
+@export var mouse_swipe_exit: SwipeExitMode = SwipeExitMode.ON_RELEASED
 
 @export_group("Toggle Behavior")
-## Momentary is pressed only while held; Toggle On Press switches state on press; Toggle On Release switches state on release.
-@export var InteractionMode: InteractionModeEnum = InteractionModeEnum.Momentary
+## momentary is only pressed while you hold it. toggle on press flips on press, toggle on release flips on release.
+@export var interaction_mode: InteractionMode = InteractionMode.MOMENTARY
 
 @export_group("Cooldown")
-var _cooldown_trigger := CooldownTriggerEnum.None
-## None disables cooldown; OnPress starts it on press; OnRelease starts it on release; OnPressAndRelease starts it on both events.
-@export var CooldownTrigger: CooldownTriggerEnum:
+var _cooldown_trigger := CooldownTrigger.NONE
+## none means no cooldown. on press starts it on press, on release on release, on press and release on both.
+@export var cooldown_trigger: CooldownTrigger:
 	get: return _cooldown_trigger
 	set(value):
 		if _cooldown_trigger == value:
 			return
-		var was_on := _cooldown_trigger != CooldownTriggerEnum.None
+		var was_on := _cooldown_trigger != CooldownTrigger.NONE
 		_cooldown_trigger = value
-		if was_on != (value != CooldownTriggerEnum.None): _notify_inspector()
-		if _cooldown_trigger == CooldownTriggerEnum.None:
+		if was_on != (value != CooldownTrigger.NONE): _notify_inspector()
+		if _cooldown_trigger == CooldownTrigger.NONE:
 			_cooldown_active = false
 			_cooldown_time_left = 0.0
 			_cooldown_delay_pending = false
@@ -452,31 +466,31 @@ var _cooldown_trigger := CooldownTriggerEnum.None
 				_cooldown.position = Vector2.ZERO
 		_invalidate_visual_state()
 
-## Wait time after the selected trigger before the cooldown fill begins.
-@export_range(0.0, 10.0, 0.01) var CooldownStartDelay: float = 0.0
-## Time the cooldown remains active after its start delay.
-@export_range(0.05, 60.0, 0.05) var CooldownDuration: float = 1.0
-## Shows the cooldown fill as full at the start and drains it, instead of filling from empty.
-@export var CooldownStartFilled: bool = false
-## Color of the cooldown overlay.
-@export var CooldownColor: Color = Color(0, 0, 0, 0.4)
-## Direction the cooldown overlay advances: 0 bottom-to-top, 1 top-to-bottom, 2 left-to-right, 3 right-to-left.
-@export var CooldownFillDirection: int = CooldownDirection.BottomToTop
-## Inverts the button colors while cooldown is active.
-@export var InvertOnCooldown: bool = false:
+## how long to wait after the trigger before the cooldown fill starts.
+@export_range(0.0, 10.0, 0.01) var cooldown_start_delay: float = 0.0
+## how long the cooldown lasts after that wait.
+@export_range(0.05, 60.0, 0.05) var cooldown_duration: float = 1.0
+## starts the cooldown fill full and drains it, instead of filling it up from empty.
+@export var cooldown_start_filled: bool = false
+## color of the cooldown overlay.
+@export var cooldown_color: Color = Color(0, 0, 0, 0.4)
+## which way the cooldown overlay moves: 0 bottom to top, 1 top to bottom, 2 left to right, 3 right to left.
+@export var cooldown_fill_direction: int = CooldownDirection.BOTTOM_TO_TOP
+## flips the button's colors while the cooldown is running.
+@export var invert_on_cooldown: bool = false:
 	set(value):
-		if InvertOnCooldown == value: return
-		InvertOnCooldown = value
+		if invert_on_cooldown == value: return
+		invert_on_cooldown = value
 		_notify_inspector()
 
-## Duration of the cooldown color-inversion transition. Zero applies it immediately.
-@export_range(0.0, 10.0, 0.01) var CooldownInvertDuration: float = 0.0
-## Temporarily returns the button to normal scale while cooldown is active.
-@export var SuspendHoverScaleDuringCooldown: bool = false
-## Allows hold build-up while cooldown is active.
-@export var AllowHoldDuringCooldown: bool = false
-## Hides the cooldown overlay while hold build-up is visible.
-@export var HideCooldownDuringHoldBuildUp: bool = true
+## how long that color flip takes. zero is instant.
+@export_range(0.0, 10.0, 0.01) var cooldown_invert_duration: float = 0.0
+## puts the button back to normal size while the cooldown is running.
+@export var suspend_hover_scale_during_cooldown: bool = false
+## lets hold keep building while the cooldown is running.
+@export var allow_hold_during_cooldown: bool = false
+## hides the cooldown overlay while the hold fill is showing.
+@export var hide_cooldown_during_hold_build_up: bool = true
 #endregion
 
 
@@ -484,13 +498,13 @@ var _cooldown_trigger := CooldownTriggerEnum.None
 
 @export_category("Text")
 var _text: String = ""
-## Text displayed on the button. Setting non-empty text automatically selects the plain Label if LabelType is None.
-@export_multiline var Text: String:
+## the text on the button. if label_type is none and you give it some text it switches to a plain label for you.
+@export_multiline var text: String:
 	get: return _text
 	set(value):
 		_text = value if value != null else ""
-		if _label_type == LabelKind.None and _text != "":
-			_label_type = LabelKind.Label
+		if _label_type == LabelKind.NONE and _text != "":
+			_label_type = LabelKind.LABEL
 			OmniButtonEditor.refresh_label_type_inspector(self)
 		if _tw_active:
 			_invalidate_visual_state()
@@ -499,38 +513,38 @@ var _text: String = ""
 		_invalidate_visual_state()
 		_schedule_fit_label()
 
-## Displays plain Label text in uppercase without changing the Text property.
-@export var LabelUppercase: bool = false:
+## shows plain label text in all caps without actually changing [member text].
+@export var label_uppercase: bool = false:
 	set(value):
-		LabelUppercase = value
+		label_uppercase = value
 		queue_refresh(false, false, false)
 
-## Clips plain Label text at the label boundary.
-@export var LabelClipText: bool = false:
+## cuts off plain label text at the edge of the label.
+@export var label_clip_text: bool = false:
 	set(value):
-		LabelClipText = value
+		label_clip_text = value
 		queue_refresh(false, false, false)
 
-## None keeps text unchanged; Trim Character/Word removes overflow; Ellipsis adds an ellipsis; Trim Word with Ellipsis trims at a word boundary and adds an ellipsis.
-@export_enum("None", "Trim Character", "Trim Word", "Ellipsis", "Trim Word with Ellipsis") var LabelTextOverrun: int = 0:
+## none leaves the text alone. trim character/word cuts off what doesn't fit, ellipsis adds "...", and trim word with ellipsis cuts at a word and adds "...".
+@export_enum("None", "Trim Character", "Trim Word", "Ellipsis", "Trim Word with Ellipsis") var label_text_overrun: int = 0:
 	set(value):
-		LabelTextOverrun = value
+		label_text_overrun = value
 		queue_refresh(false, false, false)
 
 @export_group("Typography")
-## Font resource used to draw button text.
-@export var LabelFont: Font
-## Base color used to draw the button text.
-@export var LabelTextColor: Color = Color.WHITE
-## Additional color modulation applied to the text.
-@export var TextModulate: Color = Color.WHITE
-## Horizontal alignment of the text inside its label.
-@export var LabelHorizontalAlignment: HorizontalAlignment = HORIZONTAL_ALIGNMENT_CENTER
-## Vertical alignment of the text inside its label.
-@export var LabelVerticalAlignment: VerticalAlignment = VERTICAL_ALIGNMENT_CENTER
+## font for the text.
+@export var label_font: Font
+## color of the text.
+@export var label_text_color: Color = Color.WHITE
+## extra color multiplied on top of the text.
+@export var text_modulate: Color = Color.WHITE
+## left, center or right inside the label.
+@export var label_horizontal_alignment: HorizontalAlignment = HORIZONTAL_ALIGNMENT_CENTER
+## top, center or bottom inside the label.
+@export var label_vertical_alignment: VerticalAlignment = VERTICAL_ALIGNMENT_CENTER
 var _label_autowrap: TextServer.AutowrapMode = TextServer.AUTOWRAP_OFF
-## Off never wraps; Arbitary wraps anywhere; Word wraps at word boundaries; Smart favors word boundaries but can break long words.
-@export var LabelAutowrap: TextServer.AutowrapMode:
+## off never wraps, arbitrary wraps anywhere, word wraps between words, smart tries words first but will break a long word if it has to.
+@export var label_autowrap: TextServer.AutowrapMode:
 	get: return _label_autowrap
 	set(value):
 		if _label_autowrap == value:
@@ -543,116 +557,116 @@ var _label_autowrap: TextServer.AutowrapMode = TextServer.AUTOWRAP_OFF
 @export_category("RichTextLabel")
 
 @export_group("Text Behavior")
-## Parses BBCode tags in RichTextLabel text when enabled; otherwise tags are shown literally.
-@export var RichLabelUseBBCode: bool = true:
+## reads the bbcode tags in rich text when on. off shows the tags as plain text.
+@export var rich_label_use_bbcode: bool = true:
 	set(value):
-		RichLabelUseBBCode = value
+		rich_label_use_bbcode = value
 		queue_refresh(false, false, false)
 
-## Makes the RichTextLabel size to its content instead of clipping to its assigned rectangle.
-@export var RichTextFitContent: bool = false:
+## lets the rich text label grow to fit what's in it instead of getting cut off.
+@export var rich_text_fit_content: bool = false:
 	set(value):
-		RichTextFitContent = value
+		rich_text_fit_content = value
 		queue_refresh(false, false, false)
 
-## Allows the RichTextLabel to be scrolled.
-@export var RichTextScrollActive: bool = false:
+## lets the rich text label scroll.
+@export var rich_text_scroll_active: bool = false:
 	set(value):
-		RichTextScrollActive = value
+		rich_text_scroll_active = value
 		queue_refresh(false, false, false)
 
-## Automatically scrolls to the newest content as text is added.
-@export var RichTextScrollFollowing: bool = false:
+## scrolls down to the newest text as it gets added.
+@export var rich_text_scroll_following: bool = false:
 	set(value):
-		RichTextScrollFollowing = value
+		rich_text_scroll_following = value
 		queue_refresh(false, false, false)
 
-## Allows users to select text in the RichTextLabel.
-@export var RichTextSelectionEnabled: bool = false:
+## lets players select the rich text.
+@export var rich_text_selection_enabled: bool = false:
 	set(value):
-		RichTextSelectionEnabled = value
+		rich_text_selection_enabled = value
 		queue_refresh(false, false, false)
 
-## Shows the RichTextLabel context menu for text actions.
-@export var RichTextContextMenuEnabled: bool = true:
+## shows the right click menu (copy, select all) on the rich text.
+@export var rich_text_context_menu_enabled: bool = true:
 	set(value):
-		RichTextContextMenuEnabled = value
+		rich_text_context_menu_enabled = value
 		queue_refresh(false, false, false)
 
 @export_category("Extra")
 
 @export_group("Text Sizing")
-## Extra horizontal and vertical space reserved when calculating an autosized font.
-@export var TextFitPadding: Vector2 = Vector2(12, 4)
-## Smallest font size considered by text autosizing. A wider MinFontSize-to-MaxFontSize range increases fit-search work.
-@export_range(6, 300, 1) var MinFontSize: int = 6
-## Largest font size considered by text autosizing.
-@export_range(6, 300, 1) var MaxFontSize: int = 100
-## Forces this font size when positive; zero lets autosizing choose the size.
-@export_range(0, 300, 1) var FixedFontSize: int = 0
-## Automatically fits text to the available label area.
-@export var EnableTextAutoSize: bool = true
-## Uniform internal padding applied around the label text.
-@export var LabelPadding: Vector2 = Vector2.ZERO
+## extra room left over on each side when working out the auto font size.
+@export var text_fit_padding: Vector2 = Vector2(12, 4)
+## smallest font size autosizing will try. the bigger the gap to max_font_size the more sizes it has to try.
+@export_range(6, 300, 1) var min_font_size: int = 6
+## biggest font size autosizing will try.
+@export_range(6, 300, 1) var max_font_size: int = 100
+## anything above zero forces that font size. zero lets autosizing pick.
+@export_range(0, 300, 1) var fixed_font_size: int = 0
+## sizes the text to fit the space it has.
+@export var enable_text_auto_size: bool = true
+## padding all the way around the text.
+@export var label_padding: Vector2 = Vector2.ZERO
 @export_subgroup("Additional Padding")
-## Additional left-side space excluded from the label text area.
-@export_range(0, 4096, 1) var LabelAdditionalPaddingLeft: float = 0.0
-## Additional top-side space excluded from the label text area.
-@export_range(0, 4096, 1) var LabelAdditionalPaddingTop: float = 0.0
-## Additional right-side space excluded from the label text area.
-@export_range(0, 4096, 1) var LabelAdditionalPaddingRight: float = 0.0
-## Additional bottom-side space excluded from the label text area.
-@export_range(0, 4096, 1) var LabelAdditionalPaddingBottom: float = 0.0
+## extra space taken off the left of the text area.
+@export_range(0, 4096, 1) var label_additional_padding_left: float = 0.0
+## extra space taken off the top of the text area.
+@export_range(0, 4096, 1) var label_additional_padding_top: float = 0.0
+## extra space taken off the right of the text area.
+@export_range(0, 4096, 1) var label_additional_padding_right: float = 0.0
+## extra space taken off the bottom of the text area.
+@export_range(0, 4096, 1) var label_additional_padding_bottom: float = 0.0
 
 @export_group("Typewriter")
-## Text used by StartTypewriter when no text argument is provided.
-@export var TextToType: String = ""
-## Temporarily returns the button to normal scale while typewriter text is active.
-@export var SuspendHoverDuringTypewriter: bool = true
-## Delays supported RichTextLabel effect tags until their text is revealed.
-@export var DelayEffectTagsDuringTypewriter: bool = true
-## Finishes the active typewriter effect when the button is pressed.
-@export var FinishTypewriterOnPress: bool = true
+## what [method start_typewriter_from_text_to_type] types out. if it's empty it uses [member text].
+@export var text_to_type: String = ""
+## puts the button back to normal size while the typewriter is going.
+@export var suspend_hover_during_typewriter: bool = true
+## holds off on rich text effect tags until the typewriter gets to them.
+@export var delay_effect_tags_during_typewriter: bool = true
+## pressing the button while it's typing shows the rest of the text right away.
+@export var finish_typewriter_on_press: bool = true
 #endregion
 
 
 #region Settings: Panel and TextureRect backgrounds
 
 @export_category("Panel")
-## Theme variation applied to the generated Panel background.
-@export var PanelThemeVariation: String = ""
-## Default Panel style. State-specific styles use this when they are not assigned.
-@export var PanelStyleBox: StyleBox
-## Panel style used while the pointer hovers over the button; falls back to PanelStyleBox.
-@export var PanelHoverStyleBox: StyleBox:
+## theme variation used on the panel background.
+@export var panel_theme_variation: String = ""
+## the normal panel style. any state style you leave empty uses this one.
+@export var panel_style_box: StyleBox
+## panel style while hovered. empty uses panel_style_box.
+@export var panel_hover_style_box: StyleBox:
 	set(value):
-		PanelHoverStyleBox = value
+		panel_hover_style_box = value
 		queue_refresh(false, true, false)
 
-## Panel style used while the button is pressed; falls back to PanelStyleBox.
-@export var PanelPressedStyleBox: StyleBox:
+## panel style while pressed. empty uses panel_style_box.
+@export var panel_pressed_style_box: StyleBox:
 	set(value):
-		PanelPressedStyleBox = value
+		panel_pressed_style_box = value
 		queue_refresh(false, true, false)
 
-## Panel style used while Disabled is true; falls back to PanelStyleBox.
-@export var PanelDisabledStyleBox: StyleBox:
+## panel style while [member disabled] is on. empty uses panel_style_box.
+@export var panel_disabled_style_box: StyleBox:
 	set(value):
-		PanelDisabledStyleBox = value
+		panel_disabled_style_box = value
 		queue_refresh(false, true, false)
 
-## Panel style used while the button has keyboard focus; falls back to PanelStyleBox.
-@export var PanelFocusStyleBox: StyleBox:
+## panel style while it has focus. empty uses panel_style_box.
+@export var panel_focus_style_box: StyleBox:
 	set(value):
-		PanelFocusStyleBox = value
+		panel_focus_style_box = value
 		queue_refresh(false, true, false)
 
-## Color modulation applied to the generated Panel background.
-@export var PanelModulate: Color = Color.WHITE
+## color multiplied over the panel background.
+@export var panel_modulate: Color = Color.WHITE
 
 @export_category("TextureRect")
 var _background_texture: Texture2D
-## Texture displayed by the TextureRect background when BackgroundType is UseTexture.
+## the background texture, used when background_type is use texture.
 @export var texture: Texture2D:
 	get: return _background_texture
 	set(value):
@@ -660,7 +674,7 @@ var _background_texture: Texture2D
 		_queue_background_refresh()
 
 var _background_expand_mode: int = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-## Controls how the background texture affects the TextureRect minimum size.
+## how the background texture affects the minimum size.
 @export var expand_mode: int:
 	get: return _background_expand_mode
 	set(value):
@@ -668,7 +682,7 @@ var _background_expand_mode: int = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 		_queue_background_refresh()
 
 var _background_stretch_mode: int = TextureRect.STRETCH_SCALE
-## Controls how the background texture is fitted or drawn inside its rectangle.
+## how the background texture gets fit or drawn in its rect.
 @export var stretch_mode: int:
 	get: return _background_stretch_mode
 	set(value):
@@ -676,7 +690,7 @@ var _background_stretch_mode: int = TextureRect.STRETCH_SCALE
 		_queue_background_refresh()
 
 var _background_flip_h := false
-## Mirrors the background texture horizontally.
+## flips the background texture left to right.
 @export var flip_h: bool:
 	get: return _background_flip_h
 	set(value):
@@ -684,15 +698,15 @@ var _background_flip_h := false
 		queue_refresh(false, false, false)
 
 var _background_flip_v := false
-## Mirrors the background texture vertically.
+## flips the background texture upside down.
 @export var flip_v: bool:
 	get: return _background_flip_v
 	set(value):
 		_background_flip_v = value
 		queue_refresh(false, false, false)
 
-## Color modulation applied to the TextureRect background.
-@export var BackgroundModulate: Color = Color.WHITE
+## color multiplied over the background texture.
+@export var background_modulate: Color = Color.WHITE
 #endregion
 
 
@@ -700,8 +714,8 @@ var _background_flip_v := false
 
 @export_category("Composition")
 var _managed_draw_on_top := true
-## Draws OmniButton-generated visuals above other direct children when enabled; disable to draw user children on top.
-@export var ManagedDrawOnTop: bool:
+## on draws the button's own visuals over your child nodes. turn it off to put your children on top.
+@export var managed_draw_on_top: bool:
 	get: return _managed_draw_on_top
 	set(value):
 		_managed_draw_on_top = value
@@ -710,82 +724,82 @@ var _managed_draw_on_top := true
 @export_category("Debug")
 @export_subgroup("State")
 var _selected := false
-## Sets the selected visual state programmatically.
-@export var Selected: bool:
+## turns the selected look on or off from code.
+@export var selected: bool:
 	get: return _selected
 	set(value):
 		OmniButtonState.set_selected(self, value)
 
 var _is_toggled := false
-## Gets or sets the current toggle state programmatically.
-@export var IsToggled: bool:
+## the toggle state. read it or set it from code.
+@export var is_toggled: bool:
 	get: return _is_toggled
 	set(value):
 		OmniButtonState.set_toggled(self, value)
 
 var _is_pressed := false
-## Gets or sets the current pressed state programmatically.
-@export var IsPressed: bool:
+## the pressed state. read it or set it from code.
+@export var is_pressed: bool:
 	get: return _is_pressed
 	set(value):
 		OmniButtonState.set_pressed(self, value)
 
 var _is_hovering := false
-## Gets or sets the current hover state programmatically.
-@export var IsHovering: bool:
+## the hover state. read it or set it from code.
+@export var is_hovering: bool:
 	get: return _is_hovering
 	set(value):
 		OmniButtonState.set_hovering(self, value)
 
 var _is_holding := false
-## Gets or sets the current hold state programmatically.
-@export var IsHolding: bool:
+## the hold state. read it or set it from code.
+@export var is_holding: bool:
 	get: return _is_holding
 	set(value):
 		OmniButtonState.set_holding(self, value)
 
 @export_subgroup("Logging")
-## Writes per-button diagnostic messages to the output: Off disables logging; Basic enables it.
-@export_enum("Off", "Basic") var DebuggerLog: int = DebuggerLogMode.OFF:
+## prints what this button is doing to the output. off is off, basic turns it on.
+@export_enum("Off", "Basic") var debugger_log: int = DebuggerLogMode.OFF:
 	set(value):
-		DebuggerLog = value
+		debugger_log = value
 		_dbg = value != DebuggerLogMode.OFF and not Engine.is_editor_hint()
 #endregion
 
 
 #region Runtime state
 
-# Build and refresh queue
-## False until _ready: exported setters fired during scene instantiation only record what changed,
-## and _ready builds every generated node once. Previously the Text setter built a Label, IconTexture
-## queued a rebuild that freed it, and _ready plus the first frame each re-applied everything.
+# build and refresh queue
+## false until _ready. setters that run while the scene is loading just write down what changed
+## and _ready builds everything once. it used to be the text setter made a label, icon_texture
+## queued a rebuild that threw it away, and then _ready and the first frame both redid everything.
 var _built := false
 var _pending_children_refresh := false
 var _pending_panel_styling := false
 var _pending_visual_refresh := false
 var _pending_fit_label := false
-## Cheap refresh for interaction state (hover/press/toggle/hold/focus/cooldown): invert material,
-## panel stylebox and selection overlay only. Full config re-application uses _pending_visual_refresh.
+## the cheap refresh for state changes (hover/press/toggle/hold/focus/cooldown). only touches the
+## invert material, panel style and selected overlay. full config redo goes through _pending_visual_refresh.
 var _pending_state_refresh := false
 var _runtime_refit_frames := 0
 
-# Logging and auto-enabled actions
-## Cached "logging on" flag. Call sites check `if _dbg:` before formatting so disabled logging costs no string work.
+# logging and auto enabled actions
+## cached "is logging on". callers check `if _dbg:` before building strings so logging off costs nothing.
 var _dbg := false
 var _auto_action_once_bits := 0
 
-# Pointer, hover and focus
+# pointer, hover and focus
 var _hover_target_scale := 1.0
 var _hover_top_level_active := false
 var _saved_global_pos := Vector2.ZERO
 var _saved_local_scale := Vector2.ONE
 var _saved_local_rotation := 0.0
-## -1 = mouse session; >= 0 = finger index for native touch press on this control
+## -1 means a mouse press, 0 and up is the finger index of a real touch press on this button
 var _active_touch_index := -1
-var _pointer_gesture_source: PointerGestureSource = PointerGestureSource.None
+var _pointer_gesture_source: PointerGestureSource = PointerGestureSource.NONE
 var _active_activation_action: StringName = &""
 
-# Hold and cooldown
+# hold and cooldown
 var _hold_timer := 0.0
 var _cooldown_active := false
 var _cooldown_time_left := 0.0
@@ -793,16 +807,16 @@ var _cooldown_delay_pending := false
 var _cooldown_delay_left := 0.0
 var _cooldown_elapsed := 0.0
 
-# Swipe
+# swipe
 var _swipe_start := Vector2.ZERO
 var _swipe_origin := Vector2.ZERO
 var _is_swiping := false
-## True once a swipe signal has fired in the current gesture; gates swipe_ended.
+## true once a swipe has fired in this gesture. swipe_ended only goes out if this is set.
 var _swipe_emitted := false
 var _touch_swipe_eligible := false
 
-# Text fitting
-# Cache the last chosen autosize to accelerate append cases
+# text fitting
+# remember the last autosize so adding text on the end goes quicker
 var _last_fit_font_size: int = -1
 var _rich_current_font_size: int = -1
 var _rich_verify_passes: int = 0
@@ -810,17 +824,17 @@ var _fitting_label := false
 var _fit_cache_sig: Array = []
 var _theme_applying := false
 
-# Typewriter: the rest of its state lives in OmniButtonTypewriter
+# typewriter, the rest of its state is in OmniButtonTypewriter
 var _tw_active := false
 
-# Virtual joystick
+# virtual joystick
 var _vj_active := false
 var _vj_home_global := Vector2.ZERO
 var _vj_saved_mouse_filter := MOUSE_FILTER_STOP
 
-# Managed root and generated visuals
+# managed root and the stuff we draw
 var _managed_root: Control
-## Generated visuals (OmniDrawItem canvas items, not nodes). The label stays a node.
+## the visuals we draw (OmniDrawItem canvas items, not nodes). the label is still a node.
 var _panel: OmniDrawItem
 var _background_tex: OmniDrawItem
 var _icon: OmniDrawItem
@@ -833,7 +847,7 @@ var _invert_material: ShaderMaterial
 var _default_thumb: OmniDrawItem
 var _vj_area_panel: Panel
 
-# Lazily created feature objects (they keep per-feature state) and editor change detection
+# feature objects made when first needed (they keep their own state) and editor change detection
 var _typewriter: OmniButtonTypewriter
 var _joystick: OmniButtonJoystick
 var __editor_last_sig: String = ""
@@ -841,8 +855,8 @@ var __editor_last_sig: String = ""
 
 
 #region Scripting accessors
-## Scripting accessors (button.label.color = ...). Created on first use rather than for every
-## button in _ready, since most buttons never touch them.
+## scripting accessors (button.label.color = ...). made the first time you use one instead of
+## for every button in _ready, since most buttons never touch them.
 var _accessor_cache := {}
 
 func _accessor(key: StringName, script_class) -> RefCounted:
@@ -852,64 +866,64 @@ func _accessor(key: StringName, script_class) -> RefCounted:
 		_accessor_cache[key] = a
 	return a
 
-## Shortcut to the text settings: [code]button.label.text[/code], [code].color[/code], [code].font[/code], [code].max_font_size[/code], ... Each forwards to the matching Inspector setting.
-var label: _accessors.OmniLabelAccessor:
-	get: return _accessor(&"label", _accessors.OmniLabelAccessor) as _accessors.OmniLabelAccessor
+## shortcut to the text settings: [code]button.label.text[/code], [code].color[/code], [code].font[/code], [code].max_font_size[/code] and so on. each one just passes through to the inspector setting.
+var label: _Accessors.OmniLabelAccessor:
+	get: return _accessor(&"label", _Accessors.OmniLabelAccessor) as _Accessors.OmniLabelAccessor
 
-## Shortcut to the icon settings: [code]button.icon.texture[/code], [code].modulate[/code], ...
-var icon: _accessors.OmniIconAccessor:
-	get: return _accessor(&"icon", _accessors.OmniIconAccessor) as _accessors.OmniIconAccessor
+## shortcut to the icon settings: [code]button.icon.texture[/code], [code].modulate[/code] and so on.
+var icon: _Accessors.OmniIconAccessor:
+	get: return _accessor(&"icon", _Accessors.OmniIconAccessor) as _Accessors.OmniIconAccessor
 
-## Shortcut to the background texture settings.
-var background: _accessors.OmniBackgroundAccessor:
-	get: return _accessor(&"background", _accessors.OmniBackgroundAccessor) as _accessors.OmniBackgroundAccessor
+## shortcut to the background texture settings.
+var background: _Accessors.OmniBackgroundAccessor:
+	get: return _accessor(&"background", _Accessors.OmniBackgroundAccessor) as _Accessors.OmniBackgroundAccessor
 
-## Shortcut to the panel style settings: [code]button.panel.style[/code], ...
-var panel: _accessors.OmniPanelAccessor:
-	get: return _accessor(&"panel", _accessors.OmniPanelAccessor) as _accessors.OmniPanelAccessor
+## shortcut to the panel style settings: [code]button.panel.style[/code] and so on.
+var panel: _Accessors.OmniPanelAccessor:
+	get: return _accessor(&"panel", _Accessors.OmniPanelAccessor) as _Accessors.OmniPanelAccessor
 
-## Shortcut to the selection overlay settings.
-var overlay: _accessors.OmniOverlayAccessor:
-	get: return _accessor(&"overlay", _accessors.OmniOverlayAccessor) as _accessors.OmniOverlayAccessor
+## shortcut to the selected overlay settings.
+var overlay: _Accessors.OmniOverlayAccessor:
+	get: return _accessor(&"overlay", _Accessors.OmniOverlayAccessor) as _Accessors.OmniOverlayAccessor
 
-## Shortcut to the cooldown settings: [code]button.cooldown.duration[/code], ...
-var cooldown: _accessors.OmniCooldownAccessor:
-	get: return _accessor(&"cooldown", _accessors.OmniCooldownAccessor) as _accessors.OmniCooldownAccessor
+## shortcut to the cooldown settings: [code]button.cooldown.duration[/code] and so on.
+var cooldown: _Accessors.OmniCooldownAccessor:
+	get: return _accessor(&"cooldown", _Accessors.OmniCooldownAccessor) as _Accessors.OmniCooldownAccessor
 
-## Shortcut to the hold build-up settings: [code]button.charge_up.duration[/code], ...
-var charge_up: _accessors.OmniChargeUpAccessor:
-	get: return _accessor(&"charge_up", _accessors.OmniChargeUpAccessor) as _accessors.OmniChargeUpAccessor
+## shortcut to the hold settings: [code]button.charge_up.duration[/code] and so on.
+var charge_up: _Accessors.OmniChargeUpAccessor:
+	get: return _accessor(&"charge_up", _Accessors.OmniChargeUpAccessor) as _Accessors.OmniChargeUpAccessor
 #endregion
 
 
 #region Lifecycle and engine callbacks
 
-## No signal connections are made here: hover and focus arrive as notifications (see
-## _notification), and pressed/released/... reach handlers through the signals alone. Each
-## connection cost ~0.6 KB per button, and the old self-connections made handlers that were
-## connected before the button entered the tree run twice per event.
+## no signal connections get made here. hover and focus come in as notifications (see
+## _notification) and pressed/released/etc get to handlers through the signals on their own.
+## every connection was about 0.6 KB per button, and the old self connections made handlers that
+## got connected before the button hit the tree run twice per event.
 func _enter_tree() -> void:
 	if Engine.is_editor_hint():
 		add_to_group("_omni_button_editor_poll")
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_STOP
-	if Selected and BackgroundType == BackgroundMode.None:
-		BackgroundType = BackgroundMode.UsePanel
+	if selected and background_type == BackgroundMode.NONE:
+		background_type = BackgroundMode.USE_PANEL
 	_invert_material = _INVERT_MATERIAL as ShaderMaterial
 	_built = true
 	OmniButtonVisuals.setup_children(self)
 	_apply_visual_state()
 	_fit_label_text()
-	# Everything queued by pre-ready setters is covered by the build above.
+	# whatever the setters queued before ready is already covered by the build above.
 	_pending_children_refresh = false; _pending_panel_styling = false
 	_pending_visual_refresh = false; _pending_state_refresh = false; _pending_fit_label = false
-	# Runtime layout often settles after _ready; refit once deferred and for a few frames.
+	# layout usually isn't settled yet at _ready, so refit once deferred and then for a few frames.
 	call_deferred("_fit_label_text")
 	if not Engine.is_editor_hint():
 		_runtime_refit_frames = 4
 	OmniButtonSignals.auto_enable_actions_once_from_connections(self)
-	if not Engine.is_editor_hint() and _follow_mode == FollowModeEnum.VirtualJoystick and JoystickHideWhenInactive:
+	if not Engine.is_editor_hint() and _follow_mode == FollowMode.VIRTUAL_JOYSTICK and joystick_hide_when_inactive:
 		visible = false
 	_update_unhandled_input_processing()
 
@@ -917,16 +931,16 @@ func _exit_tree() -> void:
 	if is_in_group("_omni_button_editor_poll"):
 		remove_from_group("_omni_button_editor_poll")
 	OmniButtonState.release_output_action(self)
-	# Generated canvas items survive a tree exit (reparenting keeps them under _Managed); they are
-	# released when the button itself is freed and its references drop.
+	# the canvas items we draw stick around through a tree exit (reparenting keeps them under
+	# _Managed). they go away when the button itself gets freed.
 
 func _process(delta: float) -> void:
-	# Apply any pending refresh in a single coalesced pass
+	# do whatever refresh is waiting, all in one go
 	if _pending_children_refresh or _pending_panel_styling or _pending_visual_refresh or _pending_state_refresh or _pending_fit_label:
 		if _pending_children_refresh:
 			_setup_children(); _pending_children_refresh = false
 		if _pending_visual_refresh:
-			# Full pass already includes panel styling and state visuals.
+			# the full pass already does panel styling and state visuals.
 			_apply_visual_state()
 			_pending_visual_refresh = false; _pending_panel_styling = false; _pending_state_refresh = false
 		else:
@@ -937,18 +951,18 @@ func _process(delta: float) -> void:
 		if _pending_fit_label:
 			_fit_label_text(); _pending_fit_label = false
 	OmniButtonTiming.process_runtime(self, delta)
-	# Typewriter progression
+	# typewriter
 	if _tw_active:
 		_typewriter.process_typewriter(delta)
-	# Runtime: allow a few frames of refit while layout settles. The fit cache key includes size and
-	# every fit input, so these passes cost one array compare unless layout actually moved.
+	# at runtime give layout a few frames of refit to settle. the fit cache key has the size and every
+	# fit input in it, so unless the layout actually moved these are just one array compare.
 	if not Engine.is_editor_hint() and _runtime_refit_frames > 0:
 		_runtime_refit_frames -= 1
 		_fit_label_text()
 
 	_try_stop_process_when_fully_idle()
-	# Do not reassign exported state properties every frame; avoids extra setter work
-	# Properties are updated at the time state changes (press/hover/toggle/hold)
+	# don't set the exported state properties every frame, the setters cost something.
+	# they get updated when the state actually changes (press/hover/toggle/hold)
 
 func _try_stop_process_when_fully_idle() -> void:
 	if _pending_children_refresh or _pending_panel_styling or _pending_visual_refresh or _pending_state_refresh or _pending_fit_label:
@@ -957,7 +971,7 @@ func _try_stop_process_when_fully_idle() -> void:
 		return
 	if _tw_active or _cooldown_delay_pending:
 		return
-	if _cooldown_trigger != CooldownTriggerEnum.None and _cooldown_active:
+	if _cooldown_trigger != CooldownTrigger.NONE and _cooldown_active:
 		return
 	if _is_pressed and _hold_duration > 0.0 and not _is_holding:
 		return
@@ -976,12 +990,12 @@ func _notification(what: int) -> void:
 		NOTIFICATION_RESIZED:
 			_layout_content()
 			_fit_label_text()
-			if _background_mode == BackgroundMode.UsePanel: queue_redraw()
+			if _background_mode == BackgroundMode.USE_PANEL: queue_redraw()
 			if _default_thumb != null and is_instance_valid(_default_thumb): _ensure_joystick().update_default_thumb_visual()
 			if _is_hovering and _hover_scale > 0.0:
 				OmniButtonTiming.update_hover_pivots(self); _hover_target_scale = OmniButtonTiming.hover_target_for_viewport(self); set_process(true)
 		NOTIFICATION_THEME_CHANGED:
-			# Theme fonts are not part of the fit cache key; force one refit.
+			# theme fonts aren't in the fit cache key so force a refit.
 			_fit_cache_sig = []
 			_apply_theme_now(); _apply_panel_styling(); _fit_label_text()
 			if _default_thumb != null and is_instance_valid(_default_thumb): _ensure_joystick().update_default_thumb_visual()
@@ -989,7 +1003,7 @@ func _notification(what: int) -> void:
 		NOTIFICATION_VISIBILITY_CHANGED:
 			if not is_visible_in_tree():
 				OmniButtonState.reset_press_state(self, true, true)
-				IsHovering = false
+				is_hovering = false
 		NOTIFICATION_PREDELETE:
 			_exit_tree()
 
@@ -1002,6 +1016,18 @@ func _unhandled_input(event: InputEvent) -> void:
 func _validate_property(property: Dictionary) -> void:
 	OmniButtonEditor.validate_property(self, property)
 
+## old scenes saved the settings as PascalCase (HoldDuration). this catches those on load and
+## hands them to the snake_case version, then the scene saves with the new names next time.
+func _set(property: StringName, value: Variant) -> bool:
+	var old_name := String(property)
+	if old_name.is_empty() or old_name[0] < "A" or old_name[0] > "Z":
+		return false
+	var new_name := old_name.replace("BBCode", "Bbcode").to_snake_case()
+	if not new_name in self:
+		return false
+	set(new_name, value)
+	return true
+
 func _editor_poll() -> void:
 	if not Engine.is_editor_hint() or not is_inside_tree():
 		return
@@ -1011,7 +1037,7 @@ func _editor_poll() -> void:
 
 #region Public API
 
-## Schedules a refresh for the next frame: [param children] rebuilds the generated visuals, [param panel_styling] re-applies the panel styles, and [param fit_label] refits the text. Call it after changing settings from code that don't refresh on their own (for example [member FixedFontSize]).
+## queues a refresh for next frame. [param children] rebuilds the visuals, [param panel_styling] redoes the panel styles, [param fit_label] refits the text. call it after changing a setting from code that doesn't refresh on its own (like [member fixed_font_size]).
 func queue_refresh(children:=false, panel_styling:=false, fit_label:=true) -> void:
 	_pending_children_refresh = _pending_children_refresh or children
 	_pending_panel_styling = _pending_panel_styling or panel_styling
@@ -1019,62 +1045,62 @@ func queue_refresh(children:=false, panel_styling:=false, fit_label:=true) -> vo
 	_pending_fit_label = _pending_fit_label or fit_label
 	set_process(true)
 
-## Types [param final_text] out at [param cps] characters per second (whole words when [param by_word] is on). [param preserve_bbcode_tags] keeps BBCode formatting and switches to a [RichTextLabel]. The timing tags [code][pause=s][/code], [code][speed=cps][/code] and [code][/speed][/code] are handled here and never shown. Emits [signal typewriter_char_revealed] per character and [signal typewriter_completed] at the end.
+## types [param final_text] out at [param cps] characters a second (whole words if [param by_word] is on). [param preserve_bbcode_tags] keeps the bbcode formatting and switches to a [RichTextLabel]. the timing tags [code][pause=s][/code], [code][speed=cps][/code] and [code][/speed][/code] get handled here and never show up. sends [signal typewriter_char_revealed] for each character and [signal typewriter_completed] at the end.
 func start_typewriter(final_text: String = "", cps: float = 30.0, by_word: bool = false, preserve_bbcode_tags: bool = false) -> void:
 	_ensure_typewriter().start_typewriter(final_text, cps, by_word, preserve_bbcode_tags)
 
-## Same as [method start_typewriter], typing [member TextToType] (or [member Text] when that is empty).
+## same as [method start_typewriter] but types [member text_to_type] (or [member text] if that's empty).
 func start_typewriter_from_text_to_type(cps: float = 30.0, by_word: bool = false, preserve_bbcode_tags: bool = false) -> void:
 	_ensure_typewriter().start_typewriter_from_text_to_type(cps, by_word, preserve_bbcode_tags)
 
-## Shows the rest of the typewriter text at once and emits [signal typewriter_completed].
+## shows the rest of the typewriter text right away and sends [signal typewriter_completed].
 func skip_typewriter() -> void:
 	_ensure_typewriter().skip_typewriter()
 
-## Stops the typewriter, keeping only the text revealed so far, and emits [signal typewriter_completed].
+## stops the typewriter where it is, keeps what's shown so far, and sends [signal typewriter_completed].
 func stop_typewriter() -> void:
 	_ensure_typewriter().stop_typewriter()
 
-## Starts the virtual joystick at [param global_point], as if it had been touched there.
+## starts the virtual joystick at [param global_point] like it got touched there.
 func start_virtual_joystick_at(global_point: Vector2) -> void:
 	_ensure_joystick().start_virtual_joystick_at(global_point)
 
-## Moves the virtual joystick to [param global_point].
+## moves the virtual joystick to [param global_point].
 func update_virtual_joystick(global_point: Vector2) -> void:
 	_ensure_joystick().update_virtual_joystick(global_point)
 
-## Releases the virtual joystick.
+## lets go of the virtual joystick.
 func stop_virtual_joystick() -> void:
 	_ensure_joystick().stop_virtual_joystick()
 
-## Starts the cooldown now, as if its [member CooldownTrigger] had happened.
+## starts the cooldown right now, like its [member cooldown_trigger] just happened.
 func start_cooldown() -> void:
 	OmniButtonTiming.start_cooldown(self)
 
-## Emits [signal log] and runs [member LogAction], or prints [param message] when no action is set.
+## sends [signal log] and runs [member log_action], or just prints [param message] if there's no action set.
 func print_log(message: String) -> void:
 	emit_signal("log", message)
-	if LogAction.is_valid(): LogAction.call(message)
+	if log_action.is_valid(): log_action.call(message)
 	else: _run_built_in_log(message)
 
-## Emits [signal warning] and runs [member WarningAction], or calls [method @GlobalScope.push_warning] when no action is set.
+## sends [signal warning] and runs [member warning_action], or calls [method @GlobalScope.push_warning] if there's no action set.
 func print_warn(message: String) -> void:
 	warning.emit(message)
-	if WarningAction.is_valid(): WarningAction.call(message)
+	if warning_action.is_valid(): warning_action.call(message)
 	else: _run_built_in_warning(message)
 
-## Emits [signal error] and runs [member ErrorAction], or calls [method @GlobalScope.push_error] when no action is set.
+## sends [signal error] and runs [member error_action], or calls [method @GlobalScope.push_error] if there's no action set.
 func print_err(message: String) -> void:
 	error.emit(message)
-	if ErrorAction.is_valid(): ErrorAction.call(message)
+	if error_action.is_valid(): error_action.call(message)
 	else: _run_built_in_error(message)
 #endregion
 
 
 #region Overridable hooks
 
-# Override in a script that extends Omni_Button. Each hook runs after its signal is emitted,
-# and only when the matching Action (PressedAction, ...) is not set.
+# override these in a script that extends OmniButton. each one runs after its signal goes out,
+# but only if the matching action (pressed_action and so on) isn't set.
 
 func _run_built_in_pressed() -> void: pass
 func _run_built_in_released() -> void: pass
@@ -1095,8 +1121,8 @@ func _debug(message: String) -> void:
 	if _dbg:
 		print("[OmniButton:%s] %s" % [name, message])
 
-## Rebuilds the Inspector when a feature switch flips, so that feature's settings show or hide.
-## Only the on/off transition notifies (not every slider step), and never at runtime.
+## redraws the inspector when a feature gets switched on or off so its settings show or hide.
+## only the on/off flip does it (not every slider tick), and never at runtime.
 func _notify_inspector() -> void:
 	if Engine.is_editor_hint():
 		notify_property_list_changed()
@@ -1110,21 +1136,21 @@ func _set_action_enabled(bit: int, enabled: bool) -> void:
 	else:
 		_action_mask_bits &= ~bit
 
-## Full re-application of configuration + state. Use for property/config changes.
+## full redo of config and state. use it when a setting changes.
 func _invalidate_visual_state() -> void:
-	# Theme reaches generated children through normal Control inheritance; _apply_theme_now() only
-	# needs to run on NOTIFICATION_THEME_CHANGED, not on every property change.
+	# the theme gets to our children through normal Control inheritance, so _apply_theme_now() only
+	# has to run on NOTIFICATION_THEME_CHANGED, not every time a property changes.
 	if not _pending_visual_refresh:
 		_pending_visual_refresh = true
 		set_process(true)
 
-## Interaction-state change only (hover/press/toggle/hold/focus/cooldown). Coalesced into the next frame.
+## just a state change (hover/press/toggle/hold/focus/cooldown). gets batched into next frame.
 func _invalidate_state_visuals() -> void:
 	if not _pending_state_refresh:
 		_pending_state_refresh = true
 		set_process(true)
 
-## Runtime: coalesce autosize with the next _process pass (after ApplyVisualState). Editor: fit immediately for inspector.
+## at runtime the autosize waits for the next _process (after apply_visual_state). in the editor it fits right away for the inspector.
 func _schedule_fit_label() -> void:
 	if Engine.is_editor_hint():
 		_fit_label_text()
@@ -1133,10 +1159,10 @@ func _schedule_fit_label() -> void:
 		set_process(true)
 
 ## apply_visual_state() already pushes texture/expand/stretch/flip onto a live Background node,
-## so a full child rebuild is only needed when that node must be created or removed.
+## so we only need a full rebuild when that node has to be made or removed.
 func _queue_background_refresh() -> void:
 	var live := _background_tex != null and is_instance_valid(_background_tex)
-	var wanted := _background_mode == BackgroundMode.UseTexture and _background_texture != null
+	var wanted := _background_mode == BackgroundMode.USE_TEXTURE and _background_texture != null
 	queue_refresh(live != wanted, false, false)
 
 func _on_focus_changed() -> void:
@@ -1145,8 +1171,8 @@ func _on_focus_changed() -> void:
 	_update_unhandled_input_processing()
 	_invalidate_state_visuals()
 
-## _unhandled_input only matters while focused (activation action) or mid-gesture (release outside).
-## Keeping it off otherwise stops every idle button from receiving every unhandled event.
+## _unhandled_input only matters while focused (activation action) or mid gesture (letting go outside).
+## leaving it off the rest of the time means idle buttons don't get every unhandled event.
 func _update_unhandled_input_processing() -> void:
 	if Engine.is_editor_hint():
 		return
@@ -1167,8 +1193,8 @@ func _ensure_joystick() -> OmniButtonJoystick:
 	return _joystick
 
 func _enable_top_level(enable: bool) -> void:
-	# top_level drops the parent's transform, so carry its scale and rotation over: a button inside a
-	# scaled container keeps its on-screen size and place while hovered or dragged.
+	# top_level drops the parent's transform, so copy its scale and rotation over. that way a button
+	# in a scaled container stays the same size and in the same spot while hovered or dragged.
 	if enable and not _hover_top_level_active:
 		var gt := get_global_transform()
 		_saved_global_pos = gt.origin
@@ -1187,7 +1213,7 @@ func _enable_top_level(enable: bool) -> void:
 		var delta := origin - get_global_transform().origin
 		var parent_item := get_parent() as CanvasItem
 		if parent_item != null:
-			# position is in the parent's space, which may be scaled or rotated.
+			# position is in the parent's space, which might be scaled or rotated.
 			delta = parent_item.get_global_transform().affine_inverse().basis_xform(delta)
 		position += delta
 		_hover_top_level_active = false
@@ -1199,9 +1225,9 @@ func _apply_theme_now() -> void:
 	if _rich_label != null and is_instance_valid(_rich_label): _rich_label.theme = theme
 	_theme_applying = false
 
-# The wrappers below skip work until _ready has built the generated nodes. _layout_content,
-# _fit_label_text, _verify_rich_text_fit and _reset_pressed_visuals_after_cooldown_start are
-# also call_deferred targets (called by name), so they stay methods on the node.
+# the wrappers below don't do anything until _ready has built everything. _layout_content,
+# _fit_label_text, _verify_rich_text_fit and _reset_pressed_visuals_after_cooldown_start also get
+# called with call_deferred (by name), so they have to stay methods on the node.
 
 func _setup_children() -> void:
 	if not _built: return

@@ -1,19 +1,19 @@
 extends Control
-# The OmniButton dialog demo: every window, the story file, the base overlay and the looks, from one
-# screen. Run with F6. Each button opens a window on demand; the log on the right shows the call
-# that ran and what it returned.
+# the dialog demo: every window, the story file, the base overlay and the looks, all on one
+# screen. run it with F6. each button opens a window when you click it, and the log on the right
+# shows the call that ran and what it gave back.
 #
-# Two ways to use the windows, switched with the "Windows" button at the top:
-#   - OmniDialog (code): calls go to the OmniDialog autoload, which makes its windows when first
-#     needed. Example: var yes: bool = await OmniDialog.confirm("Quit?")
-#   - This scene's nodes: the same calls go to ScenePopup, SceneToast, SceneBox and SceneNarration,
-#     the prebuilt window scenes dropped into this scene and set up in the Inspector (select one to
-#     see its settings). Example: var yes: bool = await $ScenePopup.confirm("Quit?")
-# ShopPopup (its question is written in the Inspector) and the two overlays are always this scene's.
+# there's two ways to use the windows, switch with the "Windows" button at the top:
+#   - OmniDialog (code): calls go to the OmniDialog autoload, which makes its windows the first
+#     time they're needed. like: var yes: bool = await OmniDialog.confirm("Quit?")
+#   - this scene's nodes: the same calls go to ScenePopup, SceneToast, SceneBox and SceneNarration,
+#     the prebuilt window scenes dropped into this scene and set up in the inspector (click one to
+#     see its settings). like: var yes: bool = await $ScenePopup.confirm("Quit?")
+# ShopPopup (its question is filled in in the inspector) and the two overlays are always this scene's.
 #
-# Making a look: duplicate a .tres in themes/, drag it into this scene root's "Your Look", run the
-# scene and pick it with the Look button. Edit the .tres in the editor and save; when you click back
-# into the running game it reloads the look, so the next window you open shows the change.
+# making a look: duplicate a .tres in themes/, drag it into "Your Look" on this scene's root, run
+# the scene and pick it with the Look button. edit the .tres in the editor and save, and when you
+# click back into the running game it reloads the look so the next window you open has the change.
 
 const DialogScript := preload("res://addons/omni_button/prebuilt/dialog/core/omni_dialog.gd")
 const STORY := "res://addons/omni_button/prebuilt/dialog/demo/story/gate_story.json"
@@ -29,8 +29,8 @@ const LOOKS := {
 const SPEEDS := [["Normal", 1.0], ["Fast", 2.0], ["Instant", 0.0], ["Slow", 0.5]]
 const ANIMATIONS := ["None", "Fade", "Scale", "SlideUp", "SlideDown"]
 
-## Your own look (an OmniDialogTheme .tres) to try out. The Look button adds it after Modern and
-## Retro, and the running game reloads it from disk whenever its window gets focus back.
+## your own look (an OmniDialogTheme .tres) to try out. the Look button adds it after the built in
+## ones, and the running game reloads it from disk whenever its window gets focus back.
 @export var your_look: OmniDialogTheme
 
 @onready var scene_popup: OmniPopup = $ScenePopup
@@ -41,9 +41,9 @@ const ANIMATIONS := ["None", "Fade", "Scale", "SlideUp", "SlideDown"]
 @onready var overlay_a: OmniOverlay = $OverlayA
 @onready var overlay_b: OmniOverlay = $OverlayB
 
-## The OmniDialog autoload (or a local copy when the plugin hasn't registered it).
+## the OmniDialog autoload (or a local copy if the plugin hasn't registered it).
 var dialog: Node
-## Plays the story file on this scene's windows, with its own answers.
+## plays the story file on this scene's windows, with its own answers.
 var scene_runner := OmniDialogRunner.new()
 var use_scene := false
 var _look_names: Array = []
@@ -62,13 +62,13 @@ func _ready() -> void:
 	scene_runner.narration = scene_narration
 	scene_runner.popup = scene_popup
 	scene_runner.toast = scene_toast
-	# Both runners get the same story events. (Don't bind a runner into its own handler: it keeps its
-	# handlers, so that would be a reference loop and the runner would never be freed.)
+	# both runners get the same story events. (don't bind a runner into its own handler, it holds
+	# onto its handlers so that'd be a reference loop and the runner would never get freed.)
 	for r: OmniDialogRunner in [dialog.runner, scene_runner]:
 		r.register_event("flash", _flash)
 		r.register_event("shake", _shake)
 		r.register_event("give_item", _give_item)
-	# The End key also skips (hold the button above the text, or keep End held).
+	# the End key skips too (hold the button above the text, or hold End).
 	for w in [dialog.get_dialogue(), dialog.get_narration(), scene_box, scene_narration]:
 		w.skip_action = &"ui_end"
 	for o: OmniOverlay in [overlay_a, overlay_b]:
@@ -101,15 +101,15 @@ func _connect_buttons() -> void:
 		"ResetButton": _on_reset_answers,
 		"OpenOverlayButton": func(): overlay_a.open(), "AnimationButton": _cycle_animation,
 		"PauseButton": _toggle_pause, "BackdropButton": _toggle_backdrop_click,
-		# Buttons inside the overlays' content.
+		# buttons inside the overlays' content.
 		"StackButton": func(): overlay_b.open(), "CloseAButton": func(): overlay_a.close(),
 		"CloseBButton": func(): overlay_b.close(),
 	}
 	for button_name in actions:
 		get_node("%" + button_name).pressed.connect(actions[button_name])
 
-## Scales the demo's own screen like the dialog windows scale themselves (see OmniOverlay.fit_to_screen),
-## so it works at any game resolution, from 320x180 up.
+## scales the demo's own screen the same way the dialog windows scale themselves (see
+## OmniOverlay.fit_to_screen), so it works at any resolution from 320x180 up.
 func _fit_to_screen() -> void:
 	var margin: Control = $Margin
 	var screen := get_viewport().get_visible_rect().size
@@ -123,16 +123,16 @@ func _fit_to_screen() -> void:
 	margin.size = screen / s
 
 func _process(delta: float) -> void:
-	# Keeps turning unless an overlay pauses the game.
+	# keeps spinning unless an overlay pauses the game.
 	%Spinner.rotation += delta * 2.0
 
-## Where a call goes: the autoload, or this scene's window of that kind.
+## where a call goes: the autoload, or this scene's window of that kind.
 func _target(kind: String) -> Object:
 	if not use_scene:
 		return dialog
 	return {"popup": scene_popup, "toast": scene_toast, "box": scene_box, "narration": scene_narration}[kind]
 
-## How the log writes the target of a call.
+## how the log writes where a call went.
 func _who(kind: String) -> String:
 	if not use_scene:
 		return "OmniDialog"
@@ -157,7 +157,7 @@ func _on_choose() -> void:
 	var pick: int = await _target("popup").choose("Pick a class.", PackedStringArray(["Warrior", "Mage", "Rogue"]), "New game")
 	_add_log("await %s.choose(...)  ->  %d%s" % [_who("popup"), pick, "  (canceled)" if pick < 0 else ""])
 
-## One answer leads to the next question.
+## one answer leads into the next question.
 func _on_chain() -> void:
 	var popup := _target("popup")
 	var pick: int = await popup.choose("Which door?", PackedStringArray(["Left", "Right"]))
@@ -170,7 +170,7 @@ func _on_chain() -> void:
 		_target("toast").toast("The %s door creaks open." % door)
 	_add_log("door chain: choose -> %d, confirm -> %s" % [pick, sure])
 
-## ShopPopup's title, message and buttons are set in the Inspector; code only shows it.
+## ShopPopup's title, message and buttons are set in the inspector, the code just shows it.
 func _on_shop() -> void:
 	var pick: int = await shop_popup.show_configured()
 	_add_log("await $ShopPopup.show_configured()  ->  %d" % pick)
@@ -196,7 +196,7 @@ func _on_ask() -> void:
 	var replies := ["Merchants use the east gate.", "Then keep moving.", "[shake]Watch your tongue.[/shake]"]
 	await box.say("Gate Guard", replies[pick] if pick >= 0 else "...", GUARD)
 
-## Answers of very different lengths: they wrap and share one font size; the box keeps its size.
+## answers that are really different lengths. they wrap and share one font size, and the box keeps its size.
 func _on_long_ask() -> void:
 	var box := _target("box")
 	var pick: int = await box.ask("Gate Guard", "State your business, and be quick about it.", PackedStringArray([
@@ -215,7 +215,7 @@ func _on_narration() -> void:
 	await n.narrate("Three days after the fire,[pause=0.5] the gates opened again.")
 	_add_log("await %s.narrate(...) x2  finished" % _who("narration"))
 
-## Narration, dialogue, a popup and a toast in one short scene.
+## narration, dialogue, a popup and a toast in one short scene.
 func _on_mixed() -> void:
 	await _target("narration").narrate("Night falls over the market.")
 	var box := _target("box")
@@ -230,7 +230,7 @@ func _on_mixed() -> void:
 
 #region Story file
 
-## Plays an entry of demo/story/gate_story.json (open it to see the lines).
+## plays an entry from demo/story/gate_story.json (open it to see the lines).
 func _play(key: String) -> void:
 	var who := "OmniDialog" if not use_scene else "scene_runner"
 	_add_log("await %s.play(\"gate_story.json\", \"%s\")  started" % [who, key])
@@ -249,14 +249,14 @@ func _on_reset_answers() -> void:
 	_runner().set_answers({})
 	_add_log("answers cleared (the story starts fresh)")
 
-## Runs the file checker on the story and shows its report.
+## runs the file checker on the story and shows what it says.
 func _on_check_file() -> void:
 	var problems := OmniDialogValidator.check_file(STORY)
 	var report := OmniDialogValidator.format_report(STORY.get_file(), problems)
 	_add_log("OmniDialogValidator.check_file(...)  ->  %d problem(s)" % problems.size())
 	await _target("popup").alert("[code]%s[/code]" % report, "Story file check")
 
-## "flash" event: a white flash. The story waits for it, because the handler awaits the tween.
+## "flash" event: a white flash. the story waits for it since the handler awaits the tween.
 func _flash() -> void:
 	var flash: ColorRect = %Flash
 	flash.color.a = 0.8
@@ -273,7 +273,7 @@ func _shake() -> void:
 	t.tween_property(bg, "position", Vector2.ZERO, 0.04)
 	await t.finished
 
-## "give_item" event: shows what changed hands as a toast.
+## "give_item" event: shows what got handed over as a toast.
 func _give_item(what: String) -> void:
 	_target("toast").toast(what)
 
@@ -305,9 +305,9 @@ func _toggle_backdrop_click() -> void:
 	_refresh_overlay_labels()
 
 func _refresh_overlay_labels() -> void:
-	%AnimationButton.Text = "Animation: %s" % ANIMATIONS[overlay_a.open_animation]
-	%PauseButton.Text = "Pauses game: %s" % ("On" if overlay_a.pause_tree else "Off")
-	%BackdropButton.Text = "Click outside closes: %s" % ("On" if overlay_a.close_on_backdrop_click else "Off")
+	%AnimationButton.text = "Animation: %s" % ANIMATIONS[overlay_a.open_animation]
+	%PauseButton.text = "Pauses game: %s" % ("On" if overlay_a.pause_tree else "Off")
+	%BackdropButton.text = "Click outside closes: %s" % ("On" if overlay_a.close_on_backdrop_click else "Off")
 
 #endregion
 
@@ -315,7 +315,7 @@ func _refresh_overlay_labels() -> void:
 
 func _set_mode(scene: bool) -> void:
 	use_scene = scene
-	%WindowsButton.Text = "Windows: this scene's nodes" if scene else "Windows: OmniDialog (code)"
+	%WindowsButton.text = "Windows: this scene's nodes" if scene else "Windows: OmniDialog (code)"
 	%Info.text = ("Calls go to ScenePopup, SceneToast, SceneBox and SceneNarration: prebuilt windows dropped into this scene and set up in the Inspector (slower typing, longer toasts). Same method names, on the node: await $ScenePopup.confirm(...)"
 		if scene else
 		"Calls go to the OmniDialog autoload, which makes its windows when first needed. No scene setup: await OmniDialog.confirm(...), await OmniDialog.say(...), await OmniDialog.play(file, key)")
@@ -323,7 +323,7 @@ func _set_mode(scene: bool) -> void:
 func _set_speed(index: int) -> void:
 	_speed = index
 	dialog.text_speed_scale = SPEEDS[index][1]
-	%SpeedButton.Text = "Text speed: %s" % SPEEDS[index][0]
+	%SpeedButton.text = "Text speed: %s" % SPEEDS[index][0]
 
 func _set_look(look_name: String) -> void:
 	_look = look_name
@@ -331,12 +331,12 @@ func _set_look(look_name: String) -> void:
 	dialog.set_dialog_theme(t)
 	for w: OmniOverlay in [scene_popup, scene_toast, scene_box, scene_narration, shop_popup, overlay_a, overlay_b]:
 		w.dialog_theme = t
-	# The demo's own buttons and labels use the look too.
+	# the demo's own buttons and labels use the look too.
 	theme = t.theme
 	for node in find_children("*", "Control", true, false):
 		if node.scene_file_path == OPTION_SCENE:
 			t.style_option(node)
-	%LookButton.Text = "Look: " + look_name
+	%LookButton.text = "Look: " + look_name
 
 static func _shipped_name(t: OmniDialogTheme) -> String:
 	for n in LOOKS:
@@ -344,7 +344,7 @@ static func _shipped_name(t: OmniDialogTheme) -> String:
 			return n
 	return "Modern"
 
-## Coming back from the editor: reload your look from disk so saved edits show up.
+## coming back from the editor, reload your look from disk so your saved edits show up.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_IN and your_look != null and your_look.resource_path != "" and is_node_ready():
 		your_look = ResourceLoader.load(your_look.resource_path, "", ResourceLoader.CACHE_MODE_IGNORE_DEEP)

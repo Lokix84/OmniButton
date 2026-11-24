@@ -1,7 +1,7 @@
 extends SceneTree
-# Checks JSON dialog files: loading, every line type, answers, conditions, jumps, events and the
+# checks json dialog files: loading, every line type, answers, conditions, jumps, events, and the
 # runner working with or without the OmniDialog autoload.
-# Usage: godot --headless --path . -s res://addons/omni_button/prebuilt/dialog/dev/OmniDialogDataValidation.gd
+# usage: godot --headless --path . -s res://addons/omni_button/prebuilt/dialog/dev/OmniDialogDataValidation.gd
 
 const DialogScript := preload("res://addons/omni_button/prebuilt/dialog/core/omni_dialog.gd")
 const BoxScene := preload("res://addons/omni_button/prebuilt/dialog/windows/dialogue_box/omni_dialogue_box.tscn")
@@ -111,7 +111,7 @@ func _write_files() -> void:
 	b.close()
 	OmniDialogFile.clear_cache()
 
-## Plays the windows like a player: advances text, and answers questions from _picks.
+## plays the windows like a player would: moves the text along and answers questions from _picks.
 func _drive(runner: OmniDialogRunner) -> void:
 	_driving = true
 	while _driving:
@@ -161,18 +161,18 @@ func _run() -> void:
 	var flashes: Array = []
 	dlg.register_event("flash", func(times, color): flashes.append([times, color]))
 
-	# --- Loading
+	# --- loading
 	_check(OmniDialogFile.get_keys(FILE).has("intro") and OmniDialogFile.get_keys(FILE).size() == 12, "a dialog file loads with all its entries")
 	_check(OmniDialogFile.get_entry(FILE, "object_form").get("skippable") == false, "an entry can be an object with lines and options")
 	_check(OmniDialogFile.get_entry(FILE, "missing").is_empty(), "a missing key gives an empty entry")
 	_check(OmniDialogFile.load_file(BAD_FILE).is_empty(), "a broken JSON file reports an error and loads nothing")
 	_check(OmniDialogFile.load_file("user://does_not_exist.json").is_empty(), "a missing file reports an error and loads nothing")
 
-	# --- The main path: Trade, then follow
+	# --- the main path: Trade, then follow
 	var given := await _play(dlg, "intro", [0, true])
 	_check(given == {"business": "trade", "met_guard": true, "follow": true}, "play returns the answers given during the entry")
 	_check(_shown.has("Welcome, trader.") and not _shown.has("Bribes noted."), "if shows only the line whose answer matches")
-	# JSON numbers load as floats, so 1 arrives as 1.0.
+	# json numbers load as floats, so 1 comes in as 1.0.
 	_check(flashes == [[1.0, "red"]] and events.has(["flash", [1.0, "red"]]), "event lines run their handler with the args")
 	_check(_shown.has("You follow the guard.") and dlg.get_toast().count() >= 1, "toast lines show a toast")
 	_check(_shown.has("The market.") and _shown.has("Chapter done.") and not _shown.has("skipped by goto"), "goto continues in another entry and skips the rest")
@@ -185,7 +185,7 @@ func _run() -> void:
 	_check(given.get("business") == "leave" and _shown.has("Then go.") and not _shown.has("after end"), "an option's next jumps, and end stops the entry")
 	_check(not _shown.has("Welcome, trader."), "lines after a jump don't run")
 
-	# --- Hidden option appears once its condition is met; confirm No goes to on_no
+	# --- a hidden option shows up once its condition is met, confirm No goes to on_no
 	dlg.set_answer("has_gold", true)
 	_picks = []
 	var seen_options := [0]
@@ -199,16 +199,16 @@ func _run() -> void:
 	_check(given.get("business") == "bribe" and _shown.has("Bribes noted."), "the extra option can be picked")
 	_check(given.get("follow") == false and _shown.has("Then go."), "confirm stores false and follows on_no")
 
-	# --- Plain string options, number values and list / null conditions
+	# --- plain string options, number values and list / null conditions
 	given = await _play(dlg, "plain_options", [1])
 	_check(given.get("num") == 1, "plain string options store their index")
 	_check(_shown.has("Picked B.") and _shown.has("Picked A or B.") and _shown.has("Unasked."), "number, list and null conditions match")
 
-	# --- Popup choice with an option event
+	# --- popup choice with an option event
 	given = await _play(dlg, "popup_choice", [1])
 	_check(given.get("class") == "mage" and events.any(func(e): return e[0] == "mage_picked"), "choice lines use the popup and fire option events")
 
-	# --- An awaited event holds the dialog until it finishes
+	# --- an awaited event holds the dialog until it's done
 	var slow_done := [false]
 	dlg.register_event("slow", func():
 		await create_timer(0.3).timeout
@@ -220,12 +220,12 @@ func _run() -> void:
 	await _play(dlg, "slow_event", [])
 	_check(slow_done[0] and not shown_before_done[0], "the next line waits for an awaited event handler")
 
-	# --- A line's own event fires before it shows
+	# --- a line's own event fires before it shows
 	events.clear()
 	await _play(dlg, "line_event", [])
 	_check(events.has(["cue", ["door"]]), "a line's event fires")
 
-	# --- Object-form entry, loop guard, missing key
+	# --- object form entry, loop guard, missing key
 	await _play(dlg, "object_form", [])
 	_check(_shown.has("Object form."), "object-form entries play their lines")
 	dlg.runner.max_lines_per_play = 50
@@ -248,14 +248,14 @@ func _run() -> void:
 	await process_frame
 	_check(stopped[0] and not dlg.get_dialogue().is_open(), "stop ends the entry and closes the dialogue box")
 
-	# --- Saving and loading answers
+	# --- saving and loading answers
 	var saved: Dictionary = dlg.get_answers()
 	dlg.set_answers({})
 	_check(dlg.get_answer("business") == null, "set_answers replaces the answers")
 	dlg.set_answers(saved)
 	_check(dlg.get_answer("business") == "bribe", "answers come back from a saved Dictionary")
 
-	# --- Skipping fast-forwards to the next question
+	# --- skipping fast forwards to the next question
 	var box: OmniDialogueBox = dlg.get_dialogue()
 	var skip_events: Array = []
 	dlg.register_event("skip_event", func(): skip_events.append(dlg.is_skipping()))
@@ -271,7 +271,7 @@ func _run() -> void:
 	await process_frame
 	_check(box.skip_button != null and box.skip_button.visible, "the hold-to-skip button shows during a skippable entry")
 	var started_at := Time.get_ticks_msec()
-	box.skip_button.hold.emit()   # what holding the button until its fill completes does
+	box.skip_button.hold.emit()   # same as holding the button until it fills up
 	for i in 10:
 		await process_frame
 	_check(box.state == OmniTextWindow.State.CHOOSING, "skipping stops at the next question, which shows normally")
@@ -281,10 +281,10 @@ func _run() -> void:
 	_check(dlg.get_toast().count() == toasts_before, "toasts are dropped while skipping")
 	_check(skip_signals == ["started", "stopped"] and not dlg.is_skipping(), "skip_started and skip_stopped are emitted")
 	_check(not box.skip_button.visible, "the skip button hides while answers show")
-	_check(_shown.has("Skip C") and box.body.Text == "Question", "skipped lines run without being shown")
+	_check(_shown.has("Skip C") and box.body.text == "Question", "skipped lines run without being shown")
 	box._option_nodes[0].pressed.emit()
 	await process_frame
-	# (Text only updates when the reveal finishes, so check that the line started and is typing.)
+	# (the text only updates when the reveal finishes, so check the line started and is typing.)
 	_check(_shown.back() == "After the question" and box.state in [OmniTextWindow.State.REVEALING, OmniTextWindow.State.WAITING], "after the question the entry plays normally again")
 	box.advance(); box.advance()
 	for i in 4:
@@ -292,7 +292,7 @@ func _run() -> void:
 	_check(skip_result[0] != null and skip_result[0].get("after_skip") == 0, "the entry finishes with the answer given after skipping")
 	_check(not box.skip_button.visible, "the skip button hides when the entry ends")
 
-	# --- Skipping during a question only reveals it; the question is never skipped
+	# --- skipping during a question just reveals it, a question never gets skipped
 	var q_result := [null]
 	var run_q := func(): q_result[0] = await dlg.play(FILE, "skip_tail")
 	run_q.call()
@@ -313,7 +313,7 @@ func _run() -> void:
 		await process_frame
 	_check(q_result[0] != null and q_result[0].get("after_skip") == 0, "the question was still answered")
 
-	# --- An entry marked "skippable": false can't be skipped
+	# --- an entry marked "skippable": false can't be skipped
 	var no_skip_done := [false]
 	var run_no_skip := func():
 		await dlg.play(FILE, "no_skip")
@@ -324,7 +324,7 @@ func _run() -> void:
 	_check(not box.skip_button.visible, "no skip button for a skippable: false entry")
 	dlg.skip_entry()
 	await process_frame
-	_check(not dlg.is_skipping() and box.state != OmniTextWindow.State.IDLE and box.body.Text == "Must read", "skip does nothing on a skippable: false entry")
+	_check(not dlg.is_skipping() and box.state != OmniTextWindow.State.IDLE and box.body.text == "Must read", "skip does nothing on a skippable: false entry")
 	for i in 3:
 		box.advance(); box.advance()
 		await process_frame
@@ -350,7 +350,7 @@ func _run() -> void:
 		await process_frame
 	box.skip_action = &""
 
-	# --- The file checker
+	# --- the file checker
 	_check(OmniDialogValidator.check_file(FILE).filter(func(p): return p["severity"] == "error").is_empty(), "the test story has no errors")
 	var problems := OmniDialogValidator.check_file(MISTAKES_FILE)
 	var report := OmniDialogValidator.format_report(MISTAKES_FILE, problems)
@@ -376,7 +376,7 @@ func _run() -> void:
 	_check(report.contains("start, line 2"), "problems say which entry and line they're on")
 	_check(OmniDialogValidator.check_file(BAD_FILE).size() == 1, "an unreadable file is one error")
 
-	# --- A runner without the autoload, on a dropped-in dialogue box
+	# --- a runner without the autoload, on a dropped in dialogue box
 	var own_box: OmniDialogueBox = BoxScene.instantiate()
 	own_box.animation_duration = 0.0
 	own_box.characters_per_second = 500.0

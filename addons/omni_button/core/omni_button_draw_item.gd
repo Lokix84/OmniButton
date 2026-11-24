@@ -2,15 +2,15 @@
 extends RefCounted
 class_name OmniDrawItem
 
-## One generated OmniButton visual (panel, background, icon, selection overlay, cooldown fill,
-## hold fill or joystick thumb) drawn on a bare RenderingServer canvas item instead of a Control
-## node. It has no Node, theme, layout, notification or input overhead; it only redraws when one
-## of its draw properties changes.
+## one of the button's visuals (panel, background, icon, selected overlay, cooldown fill, hold
+## fill or joystick thumb) drawn straight on a RenderingServer canvas item instead of being a
+## Control node. no node, theme, layout, notification or input overhead, and it only redraws when
+## one of its draw properties changes.
 ##
-## Draw output intentionally matches the node it replaces: ColorRect (RECT), Panel (STYLE) and
-## TextureRect (TEXTURE, including stretch modes, flips, atlas margins and the expand-mode minimum
-## size that lets oversized textures spill past the button). Property names mirror those nodes so
-## timing/joystick code reads the same.
+## it draws exactly what the node it replaced used to: ColorRect (RECT), Panel (STYLE) and
+## TextureRect (TEXTURE, stretch modes, flips, atlas margins and the expand mode minimum size that
+## lets big textures spill past the button). the property names match those nodes so the timing
+## and joystick code reads the same.
 
 enum Kind {RECT, STYLE, TEXTURE}
 
@@ -18,7 +18,7 @@ var kind: int
 var rid: RID
 var name: String
 
-# --- Canvas item state (applied to the RenderingServer immediately) ---------------------------
+# --- canvas item state (goes to the RenderingServer right away) ---------------------------------
 var visible := true:
 	set(value):
 		if value == visible: return
@@ -39,16 +39,16 @@ var z_index := 0:
 		if value == z_index: return
 		z_index = value
 		RenderingServer.canvas_item_set_z_index(rid, value)
-## CanvasItem.TextureFilter value; PARENT_NODE inherits like a node would.
+## a CanvasItem.TextureFilter value. PARENT_NODE inherits like a node would.
 var texture_filter := CanvasItem.TEXTURE_FILTER_PARENT_NODE:
 	set(value):
 		if value == texture_filter: return
 		texture_filter = value
-		# CanvasItem.TextureFilter and RenderingServer.CanvasItemTextureFilter share values, except
-		# PARENT_NODE (0) which maps to DEFAULT (0): inherit from the parent canvas item.
+		# CanvasItem.TextureFilter and RenderingServer.CanvasItemTextureFilter use the same values,
+		# except PARENT_NODE (0) lines up with DEFAULT (0), which inherits from the parent canvas item.
 		RenderingServer.canvas_item_set_default_texture_filter(rid, int(value))
 
-# --- Draw properties (any change schedules one redraw at the end of the frame) ----------------
+# --- draw properties (any change queues one redraw at the end of the frame) ---------------------
 var position := Vector2.ZERO:
 	set(value):
 		if value == position: return
@@ -64,8 +64,8 @@ var color := Color.WHITE:
 		if value == color: return
 		color = value
 		_mark()
-## RECT only: corner radii (top-left, top-right, bottom-right, bottom-left). Non-zero draws a rounded
-## rectangle, so fills can follow a rounded panel.
+## RECT only: corner radii (top left, top right, bottom right, bottom left). anything above zero
+## draws a rounded rect, so the fills can follow a rounded panel.
 var corner_radius := Vector4i.ZERO:
 	set(value):
 		if value == corner_radius: return
@@ -115,8 +115,8 @@ func _init(item_kind: int, parent_canvas_item: RID, item_name: String, z := 0) -
 	z_index = z
 	RenderingServer.canvas_item_set_z_index(rid, z)
 
-## Releases the canvas item now. Call when the visual is removed; dropping the last reference does
-## the same, but another holder (a script caching the object) would otherwise keep it on screen.
+## frees the canvas item now. call it when the visual gets removed. dropping the last reference
+## does the same thing, but if something else is hanging onto it (a script caching it) it'd stay on screen.
 func queue_free() -> void:
 	for res in _watched:
 		if is_instance_valid(res) and res.changed.is_connected(_mark):
@@ -133,10 +133,10 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE and rid.is_valid():
 		RenderingServer.free_rid(rid)
 
-## Redraw when an edited StyleBox/Texture resource changes, like Panel/TextureRect do.
-## Each resource is subscribed once and kept: a panel swapping between its normal/hover/pressed
-## styles then costs no signal (dis)connects. A change on a style that is not currently shown only
-## causes one redundant redraw.
+## redraw when a StyleBox/Texture we use gets edited, same as Panel/TextureRect do.
+## each resource gets hooked up once and stays hooked, so a panel flipping between its normal,
+## hover and pressed styles doesn't connect and disconnect signals every time. worst case an edit
+## to a style that isn't showing causes one extra redraw.
 var _watched: Array[Resource] = []
 
 func _watch(res: Resource) -> void:
@@ -177,7 +177,7 @@ func redraw() -> void:
 		Kind.TEXTURE:
 			_draw_texture_rect()
 
-## Size the TextureRect node would have had: anchored size grown to its expand-mode minimum.
+## the size a TextureRect would've been: the anchored size grown to its expand mode minimum.
 func _texture_rect_size() -> Vector2:
 	var s := size
 	if texture == null:
@@ -198,7 +198,7 @@ func _texture_rect_size() -> Vector2:
 			min_size = Vector2(0, s.x * (th / tw) if tw > 0.0 else 0.0)
 	return Vector2(maxf(s.x, min_size.x), maxf(s.y, min_size.y))
 
-## Port of TextureRect's NOTIFICATION_DRAW.
+## copy of what TextureRect does in NOTIFICATION_DRAW.
 func _draw_texture_rect() -> void:
 	if texture == null:
 		return
@@ -221,7 +221,7 @@ func _draw_texture_rect() -> void:
 			draw_size = tex_size
 		TextureRect.STRETCH_KEEP_ASPECT, TextureRect.STRETCH_KEEP_ASPECT_CENTERED:
 			draw_size = node_size
-			# Integer truncation matches the engine (int tex_width / tex_height).
+			# integer division on purpose, the engine does it the same way (int tex_width / tex_height).
 			var tex_width := int(texture.get_width() * draw_size.y / texture.get_height())
 			var tex_height := int(draw_size.y)
 			if tex_width > draw_size.x:

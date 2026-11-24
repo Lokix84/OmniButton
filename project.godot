@@ -15,6 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="OmniButton"
+config/version="1.5.0"
 run/main_scene="res://addons/omni_button/demo/omni_button_demo.tscn"
 config/features=PackedStringArray("4.7")
 config/icon="res://addons/omni_button/OmniButtonGDV1.png"

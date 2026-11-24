@@ -25,14 +25,14 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(400, 72)
 layout_mode = 2
 script = ExtResource("3_omni")
-LabelType = 1
-Text = "Message"
-LabelHorizontalAlignment = 0
-LabelVerticalAlignment = 0
-LabelAutowrap = 3
-TextFitPadding = Vector2(0, 0)
-MinFontSize = 12
-MaxFontSize = 20
+label_type = 1
+text = "Message"
+label_horizontal_alignment = 0
+label_vertical_alignment = 0
+label_autowrap = 3
+text_fit_padding = Vector2(0, 0)
+min_font_size = 12
+max_font_size = 20
 
 [node name="ButtonRow" type="HBoxContainer" parent="Root/Panel/Content/Layout"]
 unique_name_in_owner = true

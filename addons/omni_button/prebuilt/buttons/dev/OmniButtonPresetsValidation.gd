@@ -1,8 +1,8 @@
 extends SceneTree
-# Checks the ready-made buttons in prebuilt/buttons/presets/: each loads with the shared styles and
-# sends the signal it is meant for (the touch presets with real input events), buttons in scaled
+# checks the ready made buttons in prebuilt/buttons/presets/. each one loads with the shared styles
+# and sends the signal it's supposed to (the touch ones with real input events), buttons in scaled
 # containers keep their size while hovered or dragged, and the demo scene loads and fits small screens.
-# Usage: godot --headless --path . -s res://addons/omni_button/prebuilt/buttons/dev/OmniButtonPresetsValidation.gd
+# usage: godot --headless --path . -s res://addons/omni_button/prebuilt/buttons/dev/OmniButtonPresetsValidation.gd
 
 const DIR := "res://addons/omni_button/prebuilt/buttons/"
 const PRESETS := ["omni_menu_button", "omni_toggle_button", "omni_icon_button", "omni_item_button",
@@ -27,8 +27,8 @@ func _run() -> void:
 		if scene == null:
 			continue
 		var b = scene.instantiate()
-		_check(b is Omni_Button, "%s is an Omni_Button" % p)
-		_check(b.PanelStyleBox == NORMAL and b.PanelFocusStyleBox == FOCUS and b.PanelDisabledStyleBox == DISABLED, "%s uses the shared styles" % p)
+		_check(b is OmniButton, "%s is an OmniButton" % p)
+		_check(b.panel_style_box == NORMAL and b.panel_focus_style_box == FOCUS and b.panel_disabled_style_box == DISABLED, "%s uses the shared styles" % p)
 		_check(b.focus_mode == Control.FOCUS_ALL, "%s can take keyboard / gamepad focus" % p)
 		_check(b.custom_minimum_size.x > 0.0 and b.custom_minimum_size.y > 0.0, "%s has a minimum size" % p)
 		root.add_child(b)
@@ -36,50 +36,50 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 
-	# Menu: pressed
-	var menu: Omni_Button = made["omni_menu_button"]
+	# menu: pressed
+	var menu: OmniButton = made["omni_menu_button"]
 	var count := [0]
 	menu.pressed.connect(func(): count[0] += 1)
 	_click(menu)
 	_check(count[0] == 1, "menu button emits pressed on click")
-	_check(menu.HoverScale > 1.0, "menu button grows on hover")
-	menu.Disabled = true
+	_check(menu.hover_scale > 1.0, "menu button grows on hover")
+	menu.disabled = true
 	await process_frame
 	_click(menu)
 	_check(count[0] == 1, "a disabled menu button ignores clicks")
-	_check(menu._label != null and menu._label.modulate == menu.DisabledModulate, "a disabled button fades its text")
-	menu.Disabled = false
+	_check(menu._label != null and menu._label.modulate == menu.disabled_modulate, "a disabled button fades its text")
+	menu.disabled = false
 	await process_frame
 	_check(menu._label.modulate == Color.WHITE, "re-enabling restores the text")
 
-	# Toggle: toggled(on), stays on
-	var toggle: Omni_Button = made["omni_toggle_button"]
+	# toggle: toggled(on), stays on
+	var toggle: OmniButton = made["omni_toggle_button"]
 	var states: Array[bool] = []
 	toggle.toggled.connect(func(on: bool): states.append(on))
 	_click(toggle)
-	_check(states == [true] and toggle.IsToggled, "toggle button turns on with toggled(true)")
+	_check(states == [true] and toggle.is_toggled, "toggle button turns on with toggled(true)")
 	_click(toggle)
-	_check(states == [true, false] and not toggle.IsToggled, "a second click turns it off with toggled(false)")
+	_check(states == [true, false] and not toggle.is_toggled, "a second click turns it off with toggled(false)")
 
-	# Icon: pressed, no text, tooltip
-	var icon: Omni_Button = made["omni_icon_button"]
-	_check(icon.IconTexture != null and icon.LabelType == Omni_Button.LabelKind.None, "icon button shows an icon and no text")
+	# icon: pressed, no text, tooltip
+	var icon: OmniButton = made["omni_icon_button"]
+	_check(icon.icon_texture != null and icon.label_type == OmniButton.LabelKind.NONE, "icon button shows an icon and no text")
 	_check(icon.tooltip_text != "", "icon button has a tooltip")
-	icon.Disabled = true
+	icon.disabled = true
 	await process_frame
-	_check(icon._icon != null and icon._icon.modulate == icon.DisabledModulate, "a disabled button fades its icon")
-	icon.DisabledModulate = Color.WHITE
+	_check(icon._icon != null and icon._icon.modulate == icon.disabled_modulate, "a disabled button fades its icon")
+	icon.disabled_modulate = Color.WHITE
 	await process_frame
-	_check(icon._icon.modulate == Color.WHITE, "a white DisabledModulate leaves the icon unchanged")
-	icon.Disabled = false
+	_check(icon._icon.modulate == Color.WHITE, "a white disabled_modulate leaves the icon unchanged")
+	icon.disabled = false
 
-	# Item: icon and caption along the bottom
-	var item: Omni_Button = made["omni_item_button"]
-	_check(item.IconTexture != null and item.Text != "" and item.LabelVerticalAlignment == VERTICAL_ALIGNMENT_BOTTOM, "item button has an icon and a bottom caption")
+	# item: icon and caption along the bottom
+	var item: OmniButton = made["omni_item_button"]
+	_check(item.icon_texture != null and item.text != "" and item.label_vertical_alignment == VERTICAL_ALIGNMENT_BOTTOM, "item button has an icon and a bottom caption")
 
-	# Hold: only hold fires, after the hold time
-	var hold: Omni_Button = made["omni_hold_button"]
-	hold.HoldDuration = 0.1
+	# hold: only hold fires, after the hold time
+	var hold: OmniButton = made["omni_hold_button"]
+	hold.hold_duration = 0.1
 	var held := [0]
 	var hold_pressed := [0]
 	hold.hold.connect(func(): held[0] += 1)
@@ -95,9 +95,9 @@ func _run() -> void:
 	_check(hold_pressed[0] == 0, "the hold button doesn't emit pressed")
 	_check(hold._hold_fill != null and hold._hold_fill.corner_radius == Vector4i(10, 10, 10, 10), "the hold fill follows the panel's rounded corners")
 
-	# Cooldown: pressed, then ignores presses until the cooldown ends
-	var cd: Omni_Button = made["omni_cooldown_button"]
-	cd.CooldownDuration = 0.2
+	# cooldown: pressed, then ignores presses until the cooldown's over
+	var cd: OmniButton = made["omni_cooldown_button"]
+	cd.cooldown_duration = 0.2
 	var fired := [0]
 	cd.pressed.connect(func(): fired[0] += 1)
 	_click(cd)
@@ -115,11 +115,11 @@ func _run() -> void:
 		b.queue_free()
 	await process_frame
 
-	# Square panels keep square fills.
-	var square := Omni_Button.new()
-	square.BackgroundType = Omni_Button.BackgroundMode.UsePanel
-	square.PanelStyleBox = StyleBoxFlat.new()
-	square.CooldownTrigger = Omni_Button.CooldownTriggerEnum.OnPress
+	# square panels keep square fills.
+	var square := OmniButton.new()
+	square.background_type = OmniButton.BackgroundMode.USE_PANEL
+	square.panel_style_box = StyleBoxFlat.new()
+	square.cooldown_trigger = OmniButton.CooldownTrigger.ON_PRESS
 	square.size = Vector2(80, 40)
 	root.add_child(square)
 	await process_frame
@@ -132,14 +132,14 @@ func _run() -> void:
 	await _check_scaled_parent()
 	await _check_more_presets()
 
-	# Demo scene: loads, wires its buttons, and fits a 320x180 screen.
+	# demo scene: loads, hooks up its buttons, and fits a 320x180 screen.
 	var demo: Control = load(DIR + "demo/omni_button_presets_demo.tscn").instantiate()
 	root.add_child(demo)
 	await process_frame
 	await process_frame
-	var music: Omni_Button = demo.get_node("%Music")
+	var music: OmniButton = demo.get_node("%Music")
 	_click(music)
-	_check(music.Text == "Music: On", "demo: the toggle handler changes the toggle's text")
+	_check(music.text == "Music: On", "demo: the toggle handler changes the toggle's text")
 	_check(demo.get_node("%Log").text.contains("Music: toggled on"), "demo: signals are logged")
 	var accept_has_pad := false
 	for e in InputMap.action_get_events(&"ui_accept"):
@@ -171,7 +171,7 @@ func _check_more_presets() -> void:
 	for p: String in MORE_PRESETS:
 		_check(load(DIR + "presets/" + p + ".tscn") != null, "%s loads" % p)
 
-	# Typewriter: types on start; the first press only finishes; later presses count.
+	# typewriter: types on start, the first press just finishes, later presses count.
 	var tw: OmniTypewriterButton = load(DIR + "presets/omni_typewriter_button.tscn").instantiate()
 	tw.start_delay = 0.0
 	tw.characters_per_second = 20.0
@@ -195,8 +195,8 @@ func _check_more_presets() -> void:
 	_check(tw.is_typing() and tw.modulate.a == 1.0, "typewriter: play() restarts the typing and stops the pulse")
 	tw.queue_free()
 
-	# Invert flash: colors flip only while pressed.
-	var inv: Omni_Button = load(DIR + "presets/omni_invert_button.tscn").instantiate()
+	# invert flash: colors only flip while pressed.
+	var inv: OmniButton = load(DIR + "presets/omni_invert_button.tscn").instantiate()
 	inv.position = Vector2(50, 200)
 	root.add_child(inv)
 	await process_frame
@@ -209,7 +209,7 @@ func _check_more_presets() -> void:
 	_check(inv._panel.material == null, "invert button: colors return on release")
 	inv.queue_free()
 
-	# Tab bar: one tab on, signal, pages, and new tabs picked up.
+	# tab bar: one tab on, the signal, pages, and new tabs getting picked up.
 	var bar: OmniTabBar = load(DIR + "presets/omni_tab_bar.tscn").instantiate()
 	bar.position = Vector2(50, 300)
 	var pages := Control.new()
@@ -220,29 +220,29 @@ func _check_more_presets() -> void:
 	root.add_child(bar)
 	await process_frame
 	var tabs := bar.get_tabs()
-	_check(tabs.size() == 3 and tabs[0].IsToggled and not tabs[1].IsToggled, "tab bar: the first tab starts on")
+	_check(tabs.size() == 3 and tabs[0].is_toggled and not tabs[1].is_toggled, "tab bar: the first tab starts on")
 	_check(pages.get_child(0).visible and not pages.get_child(1).visible, "tab bar: only the first page is shown")
 	var changes: Array[int] = []
 	bar.tab_changed.connect(func(i: int): changes.append(i))
 	_click(tabs[2])
-	_check(changes == [2] and bar.current_tab == 2 and tabs[2].IsToggled and not tabs[0].IsToggled, "tab bar: clicking a tab turns it on and the others off")
+	_check(changes == [2] and bar.current_tab == 2 and tabs[2].is_toggled and not tabs[0].is_toggled, "tab bar: clicking a tab turns it on and the others off")
 	_check(pages.get_child(2).visible and not pages.get_child(0).visible, "tab bar: the matching page is shown")
 	_click(tabs[2])
-	_check(tabs[2].IsToggled and changes == [2], "tab bar: clicking the tab that is on keeps it on")
+	_check(tabs[2].is_toggled and changes == [2], "tab bar: clicking the tab that is on keeps it on")
 	bar.current_tab = 1
-	_check(tabs[1].IsToggled and not tabs[2].IsToggled and changes == [2, 1], "tab bar: setting current_tab switches tabs")
-	var extra: Omni_Button = load(DIR + "presets/omni_tab_button.tscn").instantiate()
+	_check(tabs[1].is_toggled and not tabs[2].is_toggled and changes == [2, 1], "tab bar: setting current_tab switches tabs")
+	var extra: OmniButton = load(DIR + "presets/omni_tab_button.tscn").instantiate()
 	bar.add_child(extra)
 	await process_frame
 	await process_frame
 	_click(extra)
-	_check(bar.current_tab == 3 and not tabs[1].IsToggled, "tab bar: a tab added at runtime joins the group")
+	_check(bar.current_tab == 3 and not tabs[1].is_toggled, "tab bar: a tab added at runtime joins the group")
 	bar.queue_free()
 	pages.queue_free()
 	await process_frame
 
 func _check_touch_presets() -> void:
-	# Headless windows start tiny; pushed input outside the window never reaches the GUI.
+	# headless windows start tiny, and input pushed outside the window never gets to the gui.
 	root.size = Vector2i(1152, 648)
 	for p: String in TOUCH_PRESETS:
 		_check(load(DIR + "presets/" + p + ".tscn") != null, "%s loads" % p)
@@ -250,7 +250,7 @@ func _check_touch_presets() -> void:
 		if not InputMap.has_action(a):
 			InputMap.add_action(a)
 
-	# Fixed joystick: 160x160 at (100, 100), center (180, 180); the thumb travels to the ring's edge (80 px).
+	# fixed joystick: 160x160 at (100, 100), center (180, 180). the thumb goes out to the ring's edge (80 px).
 	var stick: OmniJoystick = load(DIR + "presets/omni_joystick.tscn").instantiate()
 	stick.position = Vector2(100, 100)
 	stick.action_right = &"test_right"
@@ -285,7 +285,7 @@ func _check_touch_presets() -> void:
 	_mouse_button(Vector2(30, 30), false)
 	stick.queue_free()
 
-	# Floating joystick: a 400x240 zone at (0, 300); the ring appears where the finger lands.
+	# floating joystick: a 400x240 zone at (0, 300). the ring shows up where the finger lands.
 	var zone: OmniJoystick = load(DIR + "presets/omni_floating_joystick.tscn").instantiate()
 	zone.position = Vector2(0, 300)
 	root.add_child(zone)
@@ -314,7 +314,7 @@ func _check_touch_presets() -> void:
 	await process_frame
 	zone.queue_free()
 
-	# Swipe pad: one swiped signal per gesture, snapped to four directions.
+	# swipe pad: one swiped signal per gesture, snapped to four directions.
 	var pad: OmniSwipePad = load(DIR + "presets/omni_swipe_pad.tscn").instantiate()
 	pad.position = Vector2(500, 100)
 	root.add_child(pad)
@@ -340,39 +340,39 @@ func _check_touch_presets() -> void:
 	_check(OmniSwipePad.snap(Vector2(-0.8, 0.6)) == Vector2.LEFT and OmniSwipePad.snap(Vector2(0.2, 0.9)) == Vector2.DOWN, "swipe pad: directions snap to the nearest of four")
 	pad.queue_free()
 
-	# Action button: holds its OutputAction while pressed.
-	var action: Omni_Button = load(DIR + "presets/omni_action_button.tscn").instantiate()
+	# action button: holds its output_action while pressed.
+	var action: OmniButton = load(DIR + "presets/omni_action_button.tscn").instantiate()
 	action.position = Vector2(500, 400)
-	action.OutputAction = &"test_jump"
+	action.output_action = &"test_jump"
 	root.add_child(action)
 	await process_frame
 	var pressed := [0]
 	action.pressed.connect(func(): pressed[0] += 1)
 	_send_mouse(action, true)
-	_check(pressed[0] == 1 and Input.is_action_pressed("test_jump"), "action button: pressing it holds OutputAction")
+	_check(pressed[0] == 1 and Input.is_action_pressed("test_jump"), "action button: pressing it holds output_action")
 	_send_mouse(action, false)
-	_check(not Input.is_action_pressed("test_jump"), "action button: releasing it lets go of OutputAction")
-	# A real touch (through the viewport, so _gui_input gets control-relative positions) on a button
-	# away from the screen's corner, while another finger is down elsewhere.
+	_check(not Input.is_action_pressed("test_jump"), "action button: releasing it lets go of output_action")
+	# a real touch (through the viewport, so _gui_input gets control relative positions) on a button
+	# away from the corner of the screen, while another finger is down somewhere else.
 	_touch(0, Vector2(50, 600), true)
 	_touch(1, Vector2(555, 455), true)
 	await process_frame
-	_check(action.IsPressed and Input.is_action_pressed("test_jump"), "action button: a second finger's touch presses it")
+	_check(action.is_pressed and Input.is_action_pressed("test_jump"), "action button: a second finger's touch presses it")
 	_touch(1, Vector2(555, 455), false)
 	await process_frame
-	_check(not action.IsPressed and not Input.is_action_pressed("test_jump"), "action button: lifting that finger releases it")
+	_check(not action.is_pressed and not Input.is_action_pressed("test_jump"), "action button: lifting that finger releases it")
 	_touch(0, Vector2(50, 600), false)
 	_send_mouse(action, true)
 	action.queue_free()
 	await process_frame
-	_check(not Input.is_action_pressed("test_jump"), "action button: removing it while pressed lets go of OutputAction")
+	_check(not Input.is_action_pressed("test_jump"), "action button: removing it while pressed lets go of output_action")
 
-## Buttons inside a scaled container keep their on-screen size while hovered or dragged.
+## buttons inside a scaled container keep their on screen size while hovered or dragged.
 func _check_scaled_parent() -> void:
 	var holder := Control.new()
 	holder.scale = Vector2(0.5, 0.5)
 	root.add_child(holder)
-	var menu: Omni_Button = load(DIR + "presets/omni_menu_button.tscn").instantiate()
+	var menu: OmniButton = load(DIR + "presets/omni_menu_button.tscn").instantiate()
 	menu.position = Vector2(100, 100)
 	holder.add_child(menu)
 	await process_frame
@@ -389,7 +389,7 @@ func _check_scaled_parent() -> void:
 	stick.position = Vector2(400, 400)
 	holder.add_child(stick)
 	await process_frame
-	# On screen: 80x80 at (200, 200), center (240, 240), travel 40 px.
+	# on screen: 80x80 at (200, 200), center (240, 240), 40 px of travel.
 	_mouse_button(Vector2(240, 240), true)
 	await process_frame
 	_mouse_move(Vector2(256, 240))

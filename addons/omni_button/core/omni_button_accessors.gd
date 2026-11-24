@@ -1,237 +1,237 @@
-## Scripting accessors behind button.label, .icon, .background, .panel, .overlay, .cooldown and
-## .charge_up. Each forwards to the button's settings for one visual part.
+## the scripting accessors behind button.label, .icon, .background, .panel, .overlay, .cooldown
+## and .charge_up. each one just passes through to the button's settings for one part.
 
-## Text settings of an [Omni_Button] ([member Omni_Button.label]).
+## the text settings of an [OmniButton] ([member label]).
 class OmniLabelAccessor:
-	var _o: Omni_Button
-	func _init(o: Omni_Button) -> void: _o = o
-	## Same as [member Omni_Button.Text].
+	var _o: OmniButton
+	func _init(o: OmniButton) -> void: _o = o
+	## same as [member text].
 	var text: String:
-		get: return _o.Text
-		set(value): _o.Text = value
-	## Same as [member Omni_Button.LabelType].
-	var type: Omni_Button.LabelKind:
-		get: return _o.LabelType
-		set(value): _o.LabelType = value
-	## Same as [member Omni_Button.TextModulate].
+		get: return _o.text
+		set(value): _o.text = value
+	## same as [member label_type].
+	var type: OmniButton.LabelKind:
+		get: return _o.label_type
+		set(value): _o.label_type = value
+	## same as [member text_modulate].
 	var modulate: Color:
-		get: return _o.TextModulate
-		set(value): _o.TextModulate = value; _o.queue_refresh(false, false, false)
-	## Same as [member Omni_Button.LabelFont].
+		get: return _o.text_modulate
+		set(value): _o.text_modulate = value; _o.queue_refresh(false, false, false)
+	## same as [member label_font].
 	var font: Font:
-		get: return _o.LabelFont
-		set(value): _o.LabelFont = value; _o.queue_refresh(false, false, true)
-	## Same as [member Omni_Button.LabelTextColor].
+		get: return _o.label_font
+		set(value): _o.label_font = value; _o.queue_refresh(false, false, true)
+	## same as [member label_text_color].
 	var color: Color:
-		get: return _o.LabelTextColor
-		set(value): _o.LabelTextColor = value; _o.queue_refresh(false, false, false)
-	## Same as [member Omni_Button.TextFitPadding].
+		get: return _o.label_text_color
+		set(value): _o.label_text_color = value; _o.queue_refresh(false, false, false)
+	## same as [member text_fit_padding].
 	var fit_padding: Vector2:
-		get: return _o.TextFitPadding
-		set(value): _o.TextFitPadding = value; _o.queue_refresh(false, false, true)
-	## Same as [member Omni_Button.MinFontSize].
+		get: return _o.text_fit_padding
+		set(value): _o.text_fit_padding = value; _o.queue_refresh(false, false, true)
+	## same as [member min_font_size].
 	var min_font_size: int:
-		get: return _o.MinFontSize
-		set(value): _o.MinFontSize = value; _o.queue_refresh(false, false, true)
-	## Same as [member Omni_Button.MaxFontSize].
+		get: return _o.min_font_size
+		set(value): _o.min_font_size = value; _o.queue_refresh(false, false, true)
+	## same as [member max_font_size].
 	var max_font_size: int:
-		get: return _o.MaxFontSize
-		set(value): _o.MaxFontSize = value; _o.queue_refresh(false, false, true)
-	## Same as [member Omni_Button.FixedFontSize].
+		get: return _o.max_font_size
+		set(value): _o.max_font_size = value; _o.queue_refresh(false, false, true)
+	## same as [member fixed_font_size].
 	var fixed_font_size: int:
-		get: return _o.FixedFontSize
-		set(value): _o.FixedFontSize = value; _o.queue_refresh(false, false, true)
-	## Same as [member Omni_Button.EnableTextAutoSize].
+		get: return _o.fixed_font_size
+		set(value): _o.fixed_font_size = value; _o.queue_refresh(false, false, true)
+	## same as [member enable_text_auto_size].
 	var auto_size: bool:
-		get: return _o.EnableTextAutoSize
-		set(value): _o.EnableTextAutoSize = value; _o.queue_refresh(false, false, true)
-	## Same as [member Omni_Button.LabelHorizontalAlignment].
+		get: return _o.enable_text_auto_size
+		set(value): _o.enable_text_auto_size = value; _o.queue_refresh(false, false, true)
+	## same as [member label_horizontal_alignment].
 	var h_align: HorizontalAlignment:
-		get: return _o.LabelHorizontalAlignment
-		set(value): _o.LabelHorizontalAlignment = value; _o.queue_refresh(false, false, false)
-	## Same as [member Omni_Button.LabelVerticalAlignment].
+		get: return _o.label_horizontal_alignment
+		set(value): _o.label_horizontal_alignment = value; _o.queue_refresh(false, false, false)
+	## same as [member label_vertical_alignment].
 	var v_align: VerticalAlignment:
-		get: return _o.LabelVerticalAlignment
-		set(value): _o.LabelVerticalAlignment = value; _o.queue_refresh(false, false, false)
-	## Same as [member Omni_Button.LabelPadding].
+		get: return _o.label_vertical_alignment
+		set(value): _o.label_vertical_alignment = value; _o.queue_refresh(false, false, false)
+	## same as [member label_padding].
 	var padding: Vector2:
-		get: return _o.LabelPadding
-		set(value): _o.LabelPadding = value; _o.queue_refresh(false, false, true)
-	## Same as [member Omni_Button.LabelAdditionalPaddingLeft].
+		get: return _o.label_padding
+		set(value): _o.label_padding = value; _o.queue_refresh(false, false, true)
+	## same as [member label_additional_padding_left].
 	var pad_left: float:
-		get: return _o.LabelAdditionalPaddingLeft
-		set(value): _o.LabelAdditionalPaddingLeft = value; _o.queue_refresh(false, false, true)
-	## Same as [member Omni_Button.LabelAdditionalPaddingTop].
+		get: return _o.label_additional_padding_left
+		set(value): _o.label_additional_padding_left = value; _o.queue_refresh(false, false, true)
+	## same as [member label_additional_padding_top].
 	var pad_top: float:
-		get: return _o.LabelAdditionalPaddingTop
-		set(value): _o.LabelAdditionalPaddingTop = value; _o.queue_refresh(false, false, true)
-	## Same as [member Omni_Button.LabelAdditionalPaddingRight].
+		get: return _o.label_additional_padding_top
+		set(value): _o.label_additional_padding_top = value; _o.queue_refresh(false, false, true)
+	## same as [member label_additional_padding_right].
 	var pad_right: float:
-		get: return _o.LabelAdditionalPaddingRight
-		set(value): _o.LabelAdditionalPaddingRight = value; _o.queue_refresh(false, false, true)
-	## Same as [member Omni_Button.LabelAdditionalPaddingBottom].
+		get: return _o.label_additional_padding_right
+		set(value): _o.label_additional_padding_right = value; _o.queue_refresh(false, false, true)
+	## same as [member label_additional_padding_bottom].
 	var pad_bottom: float:
-		get: return _o.LabelAdditionalPaddingBottom
-		set(value): _o.LabelAdditionalPaddingBottom = value; _o.queue_refresh(false, false, true)
-	## Same as [member Omni_Button.LabelAutowrap].
+		get: return _o.label_additional_padding_bottom
+		set(value): _o.label_additional_padding_bottom = value; _o.queue_refresh(false, false, true)
+	## same as [member label_autowrap].
 	var autowrap: TextServer.AutowrapMode:
-		get: return _o.LabelAutowrap
-		set(value): _o.LabelAutowrap = value; _o.queue_refresh(false, false, true)
+		get: return _o.label_autowrap
+		set(value): _o.label_autowrap = value; _o.queue_refresh(false, false, true)
 
-## Icon settings of an [Omni_Button] ([member Omni_Button.icon]).
+## the icon settings of an [OmniButton] ([member icon]).
 class OmniIconAccessor:
-	var _o: Omni_Button
-	func _init(o: Omni_Button) -> void: _o = o
-	## Same as [member Omni_Button.IconTexture].
+	var _o: OmniButton
+	func _init(o: OmniButton) -> void: _o = o
+	## same as [member icon_texture].
 	var tex: Texture2D:
-		get: return _o.IconTexture
-		set(value): _o.IconTexture = value; _o.queue_refresh(false, false, false)
-	## Same as [member Omni_Button.IconExpandMode].
+		get: return _o.icon_texture
+		set(value): _o.icon_texture = value; _o.queue_refresh(false, false, false)
+	## same as [member icon_expand_mode].
 	var expand_mode: int:
-		get: return _o.IconExpandMode
-		set(value): _o.IconExpandMode = value; _o.queue_refresh(false, false, false)
-	## Same as [member Omni_Button.IconStretchMode].
+		get: return _o.icon_expand_mode
+		set(value): _o.icon_expand_mode = value; _o.queue_refresh(false, false, false)
+	## same as [member icon_stretch_mode].
 	var stretch_mode: int:
-		get: return _o.IconStretchMode
-		set(value): _o.IconStretchMode = value; _o.queue_refresh(false, false, false)
-	## Same as [member Omni_Button.IconFlipH].
+		get: return _o.icon_stretch_mode
+		set(value): _o.icon_stretch_mode = value; _o.queue_refresh(false, false, false)
+	## same as [member icon_flip_h].
 	var flip_h: bool:
-		get: return _o.IconFlipH
-		set(value): _o.IconFlipH = value; _o.queue_refresh(false, false, false)
-	## Same as [member Omni_Button.IconFlipV].
+		get: return _o.icon_flip_h
+		set(value): _o.icon_flip_h = value; _o.queue_refresh(false, false, false)
+	## same as [member icon_flip_v].
 	var flip_v: bool:
-		get: return _o.IconFlipV
-		set(value): _o.IconFlipV = value; _o.queue_refresh(false, false, false)
-	## Same as [member Omni_Button.IconModulate].
+		get: return _o.icon_flip_v
+		set(value): _o.icon_flip_v = value; _o.queue_refresh(false, false, false)
+	## same as [member icon_modulate].
 	var modulate: Color:
-		get: return _o.IconModulate
-		set(value): _o.IconModulate = value; _o.queue_refresh(false, false, false)
+		get: return _o.icon_modulate
+		set(value): _o.icon_modulate = value; _o.queue_refresh(false, false, false)
 
-## Background texture settings of an [Omni_Button] ([member Omni_Button.background]).
+## the background texture settings of an [OmniButton] ([member background]).
 class OmniBackgroundAccessor:
-	var _o: Omni_Button
-	func _init(o: Omni_Button) -> void: _o = o
-	## Same as [member Omni_Button.BackgroundType].
-	var mode: Omni_Button.BackgroundMode:
-		get: return _o.BackgroundType
-		set(value): _o.BackgroundType = value; _o.queue_refresh(true, true, true)
-	## Same as [member Omni_Button.texture].
+	var _o: OmniButton
+	func _init(o: OmniButton) -> void: _o = o
+	## same as [member background_type].
+	var mode: OmniButton.BackgroundMode:
+		get: return _o.background_type
+		set(value): _o.background_type = value; _o.queue_refresh(true, true, true)
+	## same as [member texture].
 	var tex: Texture2D:
 		get: return _o.texture
 		set(value): _o.texture = value; _o.queue_refresh(false, false, false)
-	## Same as [member Omni_Button.expand_mode].
+	## same as [member expand_mode].
 	var expand_mode: int:
 		get: return _o.expand_mode
 		set(value): _o.expand_mode = value; _o.queue_refresh(false, false, false)
-	## Same as [member Omni_Button.stretch_mode].
+	## same as [member stretch_mode].
 	var stretch_mode: int:
 		get: return _o.stretch_mode
 		set(value): _o.stretch_mode = value; _o.queue_refresh(false, false, false)
-	## Same as [member Omni_Button.flip_h].
+	## same as [member flip_h].
 	var flip_h: bool:
 		get: return _o.flip_h
 		set(value): _o.flip_h = value; _o.queue_refresh(false, false, false)
-	## Same as [member Omni_Button.flip_v].
+	## same as [member flip_v].
 	var flip_v: bool:
 		get: return _o.flip_v
 		set(value): _o.flip_v = value; _o.queue_refresh(false, false, false)
-	## Same as [member Omni_Button.BackgroundModulate].
+	## same as [member background_modulate].
 	var modulate: Color:
-		get: return _o.BackgroundModulate
-		set(value): _o.BackgroundModulate = value; _o.queue_refresh(false, false, false)
+		get: return _o.background_modulate
+		set(value): _o.background_modulate = value; _o.queue_refresh(false, false, false)
 
-## Panel style settings of an [Omni_Button] ([member Omni_Button.panel]).
+## the panel style settings of an [OmniButton] ([member panel]).
 class OmniPanelAccessor:
-	var _o: Omni_Button
-	func _init(o: Omni_Button) -> void: _o = o
-	## Same as [member Omni_Button.PanelModulate].
+	var _o: OmniButton
+	func _init(o: OmniButton) -> void: _o = o
+	## same as [member panel_modulate].
 	var modulate: Color:
-		get: return _o.PanelModulate
-		set(value): _o.PanelModulate = value; _o.queue_refresh(false, false, false)
-	## Same as [member Omni_Button.PanelThemeVariation].
+		get: return _o.panel_modulate
+		set(value): _o.panel_modulate = value; _o.queue_refresh(false, false, false)
+	## same as [member panel_theme_variation].
 	var theme_variation: String:
-		get: return _o.PanelThemeVariation
-		set(value): _o.PanelThemeVariation = value; _o.queue_refresh(false, true, false)
-	## Same as [member Omni_Button.PanelStyleBox].
+		get: return _o.panel_theme_variation
+		set(value): _o.panel_theme_variation = value; _o.queue_refresh(false, true, false)
+	## same as [member panel_style_box].
 	var style_box: StyleBox:
-		get: return _o.PanelStyleBox
-		set(value): _o.PanelStyleBox = value; _o.queue_refresh(false, true, false)
+		get: return _o.panel_style_box
+		set(value): _o.panel_style_box = value; _o.queue_refresh(false, true, false)
 
-## Cooldown settings of an [Omni_Button] ([member Omni_Button.cooldown]).
+## the cooldown settings of an [OmniButton] ([member cooldown]).
 class OmniCooldownAccessor:
-	var _o: Omni_Button
-	func _init(o: Omni_Button) -> void: _o = o
-	## Same as [member Omni_Button.CooldownStartDelay].
+	var _o: OmniButton
+	func _init(o: OmniButton) -> void: _o = o
+	## same as [member cooldown_start_delay].
 	var start_delay: float:
-		get: return _o.CooldownStartDelay
-		set(value): _o.CooldownStartDelay = value
-	## Same as [member Omni_Button.CooldownDuration].
+		get: return _o.cooldown_start_delay
+		set(value): _o.cooldown_start_delay = value
+	## same as [member cooldown_duration].
 	var duration: float:
-		get: return _o.CooldownDuration
-		set(value): _o.CooldownDuration = value
-	## Same as [member Omni_Button.CooldownTrigger].
-	var trigger: Omni_Button.CooldownTriggerEnum:
-		get: return _o.CooldownTrigger
-		set(value): _o.CooldownTrigger = value
-	## Same as [member Omni_Button.CooldownStartFilled].
+		get: return _o.cooldown_duration
+		set(value): _o.cooldown_duration = value
+	## same as [member cooldown_trigger].
+	var trigger: OmniButton.CooldownTrigger:
+		get: return _o.cooldown_trigger
+		set(value): _o.cooldown_trigger = value
+	## same as [member cooldown_start_filled].
 	var start_filled: bool:
-		get: return _o.CooldownStartFilled
-		set(value): _o.CooldownStartFilled = value
-	## Same as [member Omni_Button.CooldownColor].
+		get: return _o.cooldown_start_filled
+		set(value): _o.cooldown_start_filled = value
+	## same as [member cooldown_color].
 	var color: Color:
-		get: return _o.CooldownColor
-		set(value): _o.CooldownColor = value; _o._invalidate_visual_state()
-	## Same as [member Omni_Button.CooldownFillDirection].
+		get: return _o.cooldown_color
+		set(value): _o.cooldown_color = value; _o._invalidate_visual_state()
+	## same as [member cooldown_fill_direction].
 	var direction: int:
-		get: return _o.CooldownFillDirection
-		set(value): _o.CooldownFillDirection = value
-	## Same as [member Omni_Button.InvertOnCooldown].
+		get: return _o.cooldown_fill_direction
+		set(value): _o.cooldown_fill_direction = value
+	## same as [member invert_on_cooldown].
 	var invert_on_cooldown: bool:
-		get: return _o.InvertOnCooldown
-		set(value): _o.InvertOnCooldown = value; _o._invalidate_visual_state()
-	## Same as [member Omni_Button.CooldownInvertDuration].
+		get: return _o.invert_on_cooldown
+		set(value): _o.invert_on_cooldown = value; _o._invalidate_visual_state()
+	## same as [member cooldown_invert_duration].
 	var invert_duration: float:
-		get: return _o.CooldownInvertDuration
-		set(value): _o.CooldownInvertDuration = value; _o._invalidate_visual_state()
-	## Same as [member Omni_Button.SuspendHoverScaleDuringCooldown].
+		get: return _o.cooldown_invert_duration
+		set(value): _o.cooldown_invert_duration = value; _o._invalidate_visual_state()
+	## same as [member suspend_hover_scale_during_cooldown].
 	var suspend_hover_scale: bool:
-		get: return _o.SuspendHoverScaleDuringCooldown
-		set(value): _o.SuspendHoverScaleDuringCooldown = value
-	## Same as [member Omni_Button.AllowHoldDuringCooldown].
+		get: return _o.suspend_hover_scale_during_cooldown
+		set(value): _o.suspend_hover_scale_during_cooldown = value
+	## same as [member allow_hold_during_cooldown].
 	var allow_hold_during: bool:
-		get: return _o.AllowHoldDuringCooldown
-		set(value): _o.AllowHoldDuringCooldown = value
-	## Same as [member Omni_Button.HideCooldownDuringHoldBuildUp].
+		get: return _o.allow_hold_during_cooldown
+		set(value): _o.allow_hold_during_cooldown = value
+	## same as [member hide_cooldown_during_hold_build_up].
 	var hide_during_charge_up: bool:
-		get: return _o.HideCooldownDuringHoldBuildUp
-		set(value): _o.HideCooldownDuringHoldBuildUp = value
+		get: return _o.hide_cooldown_during_hold_build_up
+		set(value): _o.hide_cooldown_during_hold_build_up = value
 
-## Hold build-up settings of an [Omni_Button] ([member Omni_Button.charge_up]).
+## the hold settings of an [OmniButton] ([member charge_up]).
 class OmniChargeUpAccessor:
-	var _o: Omni_Button
-	func _init(o: Omni_Button) -> void: _o = o
-	## Same as [member Omni_Button.HoldDuration].
+	var _o: OmniButton
+	func _init(o: OmniButton) -> void: _o = o
+	## same as [member hold_duration].
 	var duration: float:
-		get: return _o.HoldDuration
-		set(value): _o.HoldDuration = value
-	## Same as [member Omni_Button.HoldFillColor].
+		get: return _o.hold_duration
+		set(value): _o.hold_duration = value
+	## same as [member hold_fill_color].
 	var color: Color:
-		get: return _o.HoldFillColor
-		set(value): _o.HoldFillColor = value; _o._invalidate_visual_state()
-	## Same as [member Omni_Button.HoldFillDirection].
+		get: return _o.hold_fill_color
+		set(value): _o.hold_fill_color = value; _o._invalidate_visual_state()
+	## same as [member hold_fill_direction].
 	var direction: int:
-		get: return _o.HoldFillDirection
-		set(value): _o.HoldFillDirection = value
+		get: return _o.hold_fill_direction
+		set(value): _o.hold_fill_direction = value
 
-## Selection overlay settings of an [Omni_Button] ([member Omni_Button.overlay]).
+## the selected overlay settings of an [OmniButton] ([member overlay]).
 class OmniOverlayAccessor:
-	var _o: Omni_Button
-	func _init(o: Omni_Button) -> void: _o = o
-	## Same as [member Omni_Button.Selected].
+	var _o: OmniButton
+	func _init(o: OmniButton) -> void: _o = o
+	## same as [member selected].
 	var enabled: bool:
-		get: return _o.Selected
-		set(value): _o.Selected = value; _o.queue_refresh(false, false, false)
-	## Same as [member Omni_Button.SelectedColor].
+		get: return _o.selected
+		set(value): _o.selected = value; _o.queue_refresh(false, false, false)
+	## same as [member selected_color].
 	var color: Color:
-		get: return _o.SelectedColor
-		set(value): _o.SelectedColor = value; _o.queue_refresh(false, false, false)
+		get: return _o.selected_color
+		set(value): _o.selected_color = value; _o.queue_refresh(false, false, false)

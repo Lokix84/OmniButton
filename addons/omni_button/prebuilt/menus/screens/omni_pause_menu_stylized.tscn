@@ -68,19 +68,19 @@ step = -14.0
 
 [node name="Resume" parent="Root/Panel/Content/Layout/Items" instance=ExtResource("option")]
 layout_mode = 2
-Text = "Resume"
+text = "Resume"
 
 [node name="Options" parent="Root/Panel/Content/Layout/Items" instance=ExtResource("option")]
 layout_mode = 2
-Text = "Options"
+text = "Options"
 
 [node name="QuitToTitle" parent="Root/Panel/Content/Layout/Items" instance=ExtResource("option")]
 layout_mode = 2
-Text = "Quit to title"
+text = "Quit to title"
 
 [node name="QuitGame" parent="Root/Panel/Content/Layout/Items" instance=ExtResource("option")]
 layout_mode = 2
-Text = "Quit game"
+text = "Quit game"
 
 [node name="Stylizer" type="Node" parent="." node_paths=PackedStringArray("bands", "title_label")]
 script = ExtResource("stylizer")

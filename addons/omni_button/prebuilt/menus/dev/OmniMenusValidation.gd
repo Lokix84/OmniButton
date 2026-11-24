@@ -1,9 +1,9 @@
 extends SceneTree
-# Checks the menus (prebuilt/menus/): OmniSettings (define, apply, save / load, reset), the title
-# screen, the pause menu (opening on Esc / Start, pausing, confirm before quitting), the options screen
-# (rows built from the settings, sliders, choices, tabs, reset, saving), the OmniMenus autoload script
-# and the demo. Input goes through Input.parse_input_event, like a real keyboard or controller.
-# Usage: godot --headless --path . -s res://addons/omni_button/prebuilt/menus/dev/OmniMenusValidation.gd
+# checks the menus (prebuilt/menus/): OmniSettings (define, apply, save / load, reset), the title
+# screen, the pause menu (opening on esc / start, pausing, confirming before quitting), the options
+# screen (rows built from the settings, sliders, choices, tabs, reset, saving), the OmniMenus autoload
+# script and the demo. input goes through Input.parse_input_event like a real keyboard or controller.
+# usage: godot --headless --path . -s res://addons/omni_button/prebuilt/menus/dev/OmniMenusValidation.gd
 
 const M := "res://addons/omni_button/prebuilt/menus/"
 const TEST_SETTINGS := "user://omni_menus_validation.cfg"
@@ -16,7 +16,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	root.size = Vector2i(1152, 648)
-	# Never touch the real settings file.
+	# never touch the real settings file.
 	ProjectSettings.set_setting(OmniSettings.PATH_SETTING, TEST_SETTINGS)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SETTINGS))
 	if AudioServer.get_bus_index("Music") < 0:
@@ -75,7 +75,7 @@ func _check_settings() -> void:
 	OmniSettings.reset_to_defaults()
 	_check(OmniTextWindow.text_speed_scale == 1.0 and applied[0] == true, "settings: a full reset applies every default")
 
-	# A setting defined after the file was loaded (the usual case for a game's own settings).
+	# a setting defined after the file loaded (the normal case for a game's own settings).
 	var file := ConfigFile.new()
 	file.set_value("game", "late", 7)
 	file.set_value("game", "never_defined", "keep me")
@@ -139,7 +139,7 @@ func _check_pause() -> void:
 	await _frames(3)
 	_check(not pause.is_open() and not paused, "pause: Start again resumes")
 
-	# Doesn't open over another window.
+	# doesn't open over another window.
 	var popup: OmniPopup = load("res://addons/omni_button/prebuilt/dialog/windows/popup/omni_popup.tscn").instantiate()
 	popup.animation_duration = 0.0
 	root.add_child(popup)
@@ -169,7 +169,7 @@ func _check_pause() -> void:
 	await _frames(3)
 	_check(ask.is_open(), "pause: asking again after Cancel shows the popup again")
 	ask._button_nodes[0].pressed.emit() # Quit
-	await create_timer(0.3).timeout # the answer arrives once the popup has closed
+	await create_timer(0.3).timeout # the answer comes once the popup's closed
 	_check(not pause.is_open() and quits[0] == 1 and not paused, "pause: confirming closes, unpauses and emits quit_to_title")
 	pause.queue_free()
 	popup.queue_free()
@@ -197,12 +197,12 @@ func _check_options() -> void:
 	_joy(JOY_BUTTON_RIGHT_SHOULDER)
 	await _frames(3)
 	_check(opts.get_current_page() == "Gameplay", "options: the shoulder buttons switch tabs")
-	var speed := opts.get_control("gameplay/text_speed") as Omni_Button
-	_check(speed != null and speed.Text.contains("Normal"), "options: text speed shows Normal")
+	var speed := opts.get_control("gameplay/text_speed") as OmniButton
+	_check(speed != null and speed.text.contains("Normal"), "options: text speed shows Normal")
 	_check(root.gui_get_focus_owner() == speed, "options: switching tabs focuses the first row")
 	_action(&"ui_right")
 	await _frames(2)
-	_check(OmniSettings.get_value("gameplay/text_speed") == 2.0 and speed.Text.contains("Fast"), "options: right on a choice steps forward")
+	_check(OmniSettings.get_value("gameplay/text_speed") == 2.0 and speed.text.contains("Fast"), "options: right on a choice steps forward")
 	_action(&"ui_left")
 	_action(&"ui_left")
 	await _frames(2)
@@ -210,10 +210,10 @@ func _check_options() -> void:
 	speed.pressed.emit()
 	await _frames(1)
 	_check(OmniSettings.get_value("gameplay/text_speed") == 1.0, "options: confirm on a choice steps forward")
-	var shake := opts.get_control("gameplay/screen_shake") as Omni_Button
-	_check(shake != null and shake.Text.contains("On"), "options: a game-defined toggle appears on its page")
+	var shake := opts.get_control("gameplay/screen_shake") as OmniButton
+	_check(shake != null and shake.text.contains("On"), "options: a game-defined toggle appears on its page")
 	shake.pressed.emit()
-	_check(OmniSettings.get_value("gameplay/screen_shake") == false and shake.Text.contains("Off"), "options: pressing a toggle flips it")
+	_check(OmniSettings.get_value("gameplay/screen_shake") == false and shake.text.contains("Off"), "options: pressing a toggle flips it")
 	OmniSettings.set_value("gameplay/text_speed", 0.0)
 	opts.reset_button.pressed.emit()
 	await _frames(2)
@@ -233,9 +233,9 @@ func _check_stylized() -> void:
 	var stylizer: OmniMenuStylizer = title.get_node("Stylizer")
 	_check(title.is_open() and not title.style_items, "stylized title: opens and styles its own items")
 	var start := title.get_item(&"start")
-	_check(start.PanelStyleBox is StyleBoxEmpty and (start.PanelFocusStyleBox as StyleBoxFlat).bg_color == look.accent_color and (start.PanelFocusStyleBox as StyleBoxFlat).skew.x > 0.0, "stylized title: items are text with a slanted accent shape when selected")
-	_check(root.gui_get_focus_owner() == start and start.LabelTextColor == look.accent_text_color, "stylized title: the selected item's text uses accent_text_color")
-	_check(title.get_item(&"options").LabelTextColor == look.menu_text_color, "stylized title: other items use menu_text_color")
+	_check(start.panel_style_box is StyleBoxEmpty and (start.panel_focus_style_box as StyleBoxFlat).bg_color == look.accent_color and (start.panel_focus_style_box as StyleBoxFlat).skew.x > 0.0, "stylized title: items are text with a slanted accent shape when selected")
+	_check(root.gui_get_focus_owner() == start and start.label_text_color == look.accent_text_color, "stylized title: the selected item's text uses accent_text_color")
+	_check(title.get_item(&"options").label_text_color == look.menu_text_color, "stylized title: other items use menu_text_color")
 	_check(title.title_label.has_theme_font_override("font") and title.title_label.get_theme_font_size("font_size") == stylizer.title_size, "stylized title: the title uses the big slanted font")
 	var stair := title.items_box as OmniStaircaseContainer
 	_check(stair != null and start.position.x > title.get_item(&"options").position.x, "stylized title: each lower item steps along the slant")
@@ -320,7 +320,7 @@ func _check_demo() -> void:
 	await _frames(4)
 	_check(title.is_open() and title.can_continue and not paused, "demo: Quit to title goes back to the title, with Continue")
 
-	# The demo's own settings switch the menu style and the look.
+	# the demo's own settings switch the menu style and the look.
 	_check(OmniSettings.get_pages().has("Demo"), "demo: its own settings add a Demo tab")
 	OmniSettings.set_value("demo/menu_style", "stylized")
 	await _frames(3)

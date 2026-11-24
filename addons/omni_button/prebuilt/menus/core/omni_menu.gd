@@ -1,33 +1,33 @@
 @tool
 class_name OmniMenu
 extends OmniOverlay
-## Base of the menu screens ([OmniTitleMenu], [OmniPauseMenu]): an [OmniOverlay] with a title and a
-## column of buttons.
+## the base for the menu screens ([OmniTitleMenu], [OmniPauseMenu]). an [OmniOverlay] with a title
+## and a column of buttons.
 ##
-## Every [Omni_Button] under [code]%Items[/code] is a menu item. Its node name is its id, in snake case
-## ([code]QuitToTitle[/code] → [code]&"quit_to_title"[/code]): pressing it emits [signal item_pressed]
-## with that id. To add an item, duplicate one in the scene, rename it and change its text; connect
-## [signal item_pressed] to react to it. The items are styled by the look, like dialog buttons.
+## every [OmniButton] under [code]%Items[/code] is a menu item, and its node name in snake case is its
+## id ([code]QuitToTitle[/code] → [code]&"quit_to_title"[/code]). pressing it sends [signal item_pressed]
+## with that id. to add one, duplicate an item in the scene, rename it and change its text, then
+## connect [signal item_pressed] to do something with it. the look styles the items, same as dialog buttons.
 
-## A menu item was pressed. [param item] is its node name in snake case.
+## a menu item got pressed. [param item] is its node name in snake case.
 signal item_pressed(item: StringName)
 
-## Style the items as the look's option buttons. The stylized scenes turn this off and style them
-## through their [OmniMenuStylizer].
+## styles the items like the look's option buttons. the stylized scenes turn this off and style
+## them with their [OmniMenuStylizer] instead.
 @export var style_items := true
-## The options screen scene that Options opens. Empty: [b]Project Settings > omni_button/menus/options_scene[/b].
+## the options screen that Options opens. empty uses [b]Project Settings > omni_button/menus/options_scene[/b].
 @export_file("*.tscn", "*.scn") var options_scene: String = ""
 
-## Text shown at the top of the menu. Empty hides it.
+## text at the top of the menu. empty hides it.
 @export var title: String = "":
 	set(value):
 		title = value
 		if is_node_ready():
 			_apply_title()
 
-## The [Label] showing [member title] (type variation [code]OmniMenuTitle[/code]).
+## the [Label] showing [member title] (type variation [code]OmniMenuTitle[/code]).
 @onready var title_label: Label = get_node_or_null("%Title")
-## The container whose [Omni_Button] children are the items.
+## the container whose [OmniButton] children are the items.
 @onready var items_box: Container = %Items
 
 func _ready() -> void:
@@ -40,23 +40,23 @@ func _ready() -> void:
 		if not b.pressed.is_connected(_on_item_pressed):
 			b.pressed.connect(_on_item_pressed.bind(id))
 
-## The items, in order (hidden ones included).
-func get_items() -> Array[Omni_Button]:
-	var out: Array[Omni_Button] = []
+## the items, in order (hidden ones too).
+func get_items() -> Array[OmniButton]:
+	var out: Array[OmniButton] = []
 	if items_box != null:
 		for c in items_box.get_children():
-			if c is Omni_Button:
+			if c is OmniButton:
 				out.append(c)
 	return out
 
-## The item with id [param item] (node name in snake case), or [code]null[/code].
-func get_item(item: StringName) -> Omni_Button:
+## the item with id [param item] (node name in snake case), or [code]null[/code].
+func get_item(item: StringName) -> OmniButton:
 	for b in get_items():
 		if StringName(String(b.name).to_snake_case()) == item:
 			return b
 	return null
 
-## Shows or hides an item.
+## shows or hides an item.
 func set_item_visible(item: StringName, on: bool) -> void:
 	var b := get_item(item)
 	if b != null:
@@ -65,11 +65,11 @@ func set_item_visible(item: StringName, on: bool) -> void:
 
 func _on_item_pressed(item: StringName) -> void:
 	if not is_top():
-		return # Something is open on top of this menu (a popup, the options screen).
+		return # something's open on top of this menu (a popup, the options screen).
 	item_pressed.emit(item)
 	_handle_item(item)
 
-## Override to give items built-in behavior. Called after [signal item_pressed].
+## override this to give items built in behavior. runs after [signal item_pressed].
 func _handle_item(_item: StringName) -> void:
 	pass
 
@@ -85,7 +85,7 @@ func _on_dialog_theme(t: OmniDialogTheme) -> void:
 		t.style_option(b)
 	_restyle_items()
 
-## One font size for all the visible items, like a popup's buttons.
+## one font size for all the visible items, like a popup's buttons.
 func _restyle_items() -> void:
 	var t := get_dialog_theme()
 	if t == null or not style_items or not is_inside_tree() or Engine.is_editor_hint():
@@ -99,12 +99,12 @@ func _restyle_items() -> void:
 
 func _get_default_focus() -> Control:
 	for b in get_items():
-		if b.visible and not b.Disabled:
+		if b.visible and not b.disabled:
 			return b
 	return super()
 
-## Opens [param menu] on top of this one, creating it from [param scene_path] the first time
-## (as a child of this menu, one layer above). Returns the menu.
+## opens [param menu] on top of this one, making it from [param scene_path] the first time
+## (as a child of this menu, one layer up). gives back the menu.
 func _open_child_menu(menu: OmniOverlay, scene_path: String) -> OmniOverlay:
 	if options_scene != "":
 		scene_path = options_scene
@@ -118,7 +118,7 @@ func _open_child_menu(menu: OmniOverlay, scene_path: String) -> OmniOverlay:
 		add_child(menu)
 	if menu.layer <= layer:
 		menu.layer = layer + 1
-	# Hide this menu's panel while the other one is up, so the two don't show through each other.
+	# hide this menu's panel while the other one's up so they don't show through each other.
 	panel.modulate.a = 0.0
 	if not menu.closed.is_connected(_on_child_menu_closed):
 		menu.closed.connect(_on_child_menu_closed, CONNECT_ONE_SHOT)

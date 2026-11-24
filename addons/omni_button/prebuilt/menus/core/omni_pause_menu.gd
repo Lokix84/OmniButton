@@ -1,40 +1,40 @@
 @tool
 class_name OmniPauseMenu
 extends OmniMenu
-## The pause menu: Resume, Options and Quit to title, opened by Esc or the gamepad Start button.
+## the pause menu: Resume, Options and Quit to title, opened with esc or start on a gamepad.
 ##
-## Drop [code]omni_pause_menu.tscn[/code] into your level (or player) scene. During play, the pause
-## action opens it and pauses the game; pressing it again, cancel or Resume closes it and unpauses.
-## It only opens while nothing else is open on screen (a dialog, another menu) and the game isn't
-## already paused. Quit to title asks first, then changes to [member title_scene] or emits
+## drop [code]omni_pause_menu.tscn[/code] into your level (or player) scene. during play the pause
+## action opens it and pauses the game, and pressing it again, cancel or Resume closes it and
+## unpauses. it only opens if nothing else is open on screen (a dialog, another menu) and the game
+## isn't already paused. Quit to title asks first, then changes to [member title_scene] or sends
 ## [signal quit_to_title].
 
-## The menu closed and the game resumed.
+## the menu closed and the game's running again.
 signal resumed
-## Quit to title was confirmed. Emitted after the menu closed and the game unpaused.
+## Quit to title got confirmed. goes out after the menu closed and the game unpaused.
 signal quit_to_title
-## Quit game was confirmed.
+## Quit game got confirmed.
 signal quit_game
 
-## Open the menu with [member pause_action] / [member pause_button] during play.
+## lets [member pause_action] / [member pause_button] open the menu during play.
 @export var open_on_pause := true
-## InputMap action that opens and closes the menu (Esc by default).
+## input map action that opens and closes the menu (esc by default).
 @export var pause_action: StringName = &"ui_cancel"
-## Controller button that opens and closes the menu.
+## controller button that opens and closes the menu.
 @export var pause_button: JoyButton = JOY_BUTTON_START
-## Scene to change to after Quit to title is confirmed. Empty: only [signal quit_to_title] is emitted.
+## scene to change to once Quit to title is confirmed. empty means only [signal quit_to_title] goes out.
 @export_file("*.tscn", "*.scn") var title_scene: String = ""
-## Ask before quitting.
+## asks before quitting.
 @export var confirm_quit := true
-## Question asked before Quit to title.
+## the question it asks before Quit to title.
 @export_multiline var quit_question := "Quit to the title screen?\nUnsaved progress will be lost."
-## Show a Quit game item too (off by default; hidden on the web and phones).
+## shows a Quit game item too (off by default, and hidden on the web and phones).
 @export var show_quit_game := false:
 	set(value):
 		show_quit_game = value
 		if is_node_ready():
 			set_item_visible(&"quit_game", value and not OmniTitleMenu._quit_unsupported())
-## The options screen opened by Options. Empty: one is made from
+## the options screen Options opens. empty makes one from
 ## [b]Project Settings > omni_button/menus/options_scene[/b] the first time.
 @export var options_menu: OmniOptionsMenu
 
@@ -46,11 +46,11 @@ func _ready() -> void:
 	if not Engine.is_editor_hint():
 		OmniSettings.ensure_loaded()
 
-## Opens the menu and pauses the game (same as pressing the pause action).
+## opens the menu and pauses the game (same as hitting the pause action).
 func pause() -> void:
 	open()
 
-## Closes the menu and resumes the game.
+## closes the menu and unpauses the game.
 func resume() -> void:
 	if is_open():
 		await close()
@@ -98,7 +98,7 @@ func _handle_item(item: StringName) -> void:
 			quit_game.emit()
 			get_tree().quit()
 
-## Asks a yes / no question in a popup above the menu.
+## asks a yes / no question in a popup on top of the menu.
 func _ask(question: String) -> bool:
 	if _popup == null or not is_instance_valid(_popup):
 		var scene := load(OmniDialogAutoload.scene_path("popup_scene")) as PackedScene

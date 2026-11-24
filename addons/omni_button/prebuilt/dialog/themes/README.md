@@ -1,6 +1,6 @@
 # Looks
 
-A **look** is one file that styles every dialog window at once: popups, toasts, the dialogue box and narration. This folder holds the two that ship:
+A **look** is one file that styles every dialog window at once (popups, toasts, the dialogue box and narration) and the [menus](../../menus/README.md). This folder holds the three that ship:
 
 - `omni_dialog_modern.tres`: the default look.
 - `omni_dialog_retro.tres`: a pixel-font, blue-and-gold RPG look.

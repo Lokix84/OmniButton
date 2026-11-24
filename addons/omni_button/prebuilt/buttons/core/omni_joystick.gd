@@ -1,62 +1,62 @@
 class_name OmniJoystick
 extends Control
-## An on-screen joystick for touch and mouse, built from an [Omni_Button] in virtual-joystick mode.
+## an on screen joystick for touch and mouse, made out of an [OmniButton] in virtual joystick mode.
 ##
-## The scene has three parts: this node (the area that reacts to touches), [code]Base[/code] (the
-## ring) and [code]Base/Thumb[/code] (the [Omni_Button] that follows the finger). Read [member axis],
-## connect [signal axis_changed], or set the [code]action_*[/code] properties so the joystick holds
-## down InputMap actions and [method Input.get_vector] works as it does with a gamepad stick.[br][br]
-## [b]Fixed[/b] ([member floating] off): the ring stays where you placed it; touching anywhere on it
-## starts the joystick.[br]
-## [b]Floating[/b] ([member floating] on): this node is a touch zone (for example the left half of the
-## screen). The ring appears where the finger lands and hides again when it lifts.
+## the scene is three parts: this node (the area that takes the touches), [code]Base[/code] (the
+## ring) and [code]Base/Thumb[/code] (the [OmniButton] that follows your finger). read [member axis],
+## connect [signal axis_changed], or fill in the [code]action_*[/code] settings so the joystick holds
+## down input map actions and [method Input.get_vector] works just like it does with a gamepad stick.[br][br]
+## [b]fixed[/b] ([member floating] off): the ring stays where you put it, touch anywhere on it to
+## start.[br]
+## [b]floating[/b] ([member floating] on): this node is a touch zone (like the left half of the
+## screen). the ring shows up wherever the finger lands and hides again when it lifts.
 
-## The joystick started: a finger or the mouse went down on it.
+## the joystick started, a finger or the mouse went down on it.
 signal started
-## The stick moved. [param axis] goes from -1 to 1 on each axis (up is negative y), after the dead zone.
+## the stick moved. [param axis] goes -1 to 1 on each axis (up is negative y), dead zone already taken out.
 signal axis_changed(axis: Vector2)
-## The finger lifted. [member axis] is back to zero.
+## the finger lifted. [member axis] is back to zero.
 signal ended
 
-## The ring appears where the finger lands, anywhere inside this node, instead of staying in place.
+## the ring shows up wherever the finger lands inside this node instead of staying put.
 @export var floating := false
-## Floating only: hide the ring while nobody is touching the zone.
+## floating only: hides the ring while nobody's touching the zone.
 @export var hide_when_idle := true
 
 @export_group("Input Actions")
-## Held down with the stick's strength while it points left. Empty does nothing.
+## held down (as hard as the stick is pushed) while it points left. empty does nothing.
 @export var action_left: StringName = &""
-## Held down with the stick's strength while it points right. Empty does nothing.
+## held down (as hard as the stick is pushed) while it points right. empty does nothing.
 @export var action_right: StringName = &""
-## Held down with the stick's strength while it points up. Empty does nothing.
+## held down (as hard as the stick is pushed) while it points up. empty does nothing.
 @export var action_up: StringName = &""
-## Held down with the stick's strength while it points down. Empty does nothing.
+## held down (as hard as the stick is pushed) while it points down. empty does nothing.
 @export var action_down: StringName = &""
 
-## Current stick position: -1 to 1 on each axis, zero when released.
+## where the stick is right now: -1 to 1 on each axis, zero when let go.
 var axis := Vector2.ZERO
 
-## The ring. Its size sets how far the thumb can travel.
+## the ring. its size is how far the thumb can go.
 @onready var base: Control = $Base
-## The [Omni_Button] that follows the finger. Its joystick settings (dead zone, radius) live on it.
-@onready var thumb: Omni_Button = $Base/Thumb
+## the [OmniButton] that follows the finger. its joystick settings (dead zone, radius) are on it.
+@onready var thumb: OmniButton = $Base/Thumb
 
 const _NONE := -2
 const _MOUSE := -1
-## Which pointer is driving the stick: _NONE, _MOUSE, or a touch index.
+## which pointer is driving the stick: _NONE, _MOUSE, or a touch index.
 var _pointer := _NONE
 var _warned_actions := {}
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	base.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# This node handles every touch, so the thumb never takes input itself.
+	# this node handles all the touches, so the thumb never takes input itself.
 	thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	thumb.joystick_axis.connect(_on_thumb_axis)
 	if floating and hide_when_idle:
 		base.visible = false
 
-## Whether a finger (or the mouse) is on the stick.
+## true while a finger (or the mouse) is on the stick.
 func is_active() -> bool:
 	return _pointer != _NONE
 
@@ -71,7 +71,7 @@ func _gui_input(event: InputEvent) -> void:
 		_begin(_MOUSE, get_global_transform() * event.position)
 		accept_event()
 
-## Moves and releases are followed everywhere on screen, so the stick keeps working when the finger
+## moves and releases get tracked over the whole screen, so the stick keeps working when the finger
 ## slides off this node.
 func _input(event: InputEvent) -> void:
 	if _pointer == _NONE:
@@ -94,7 +94,7 @@ func _notification(what: int) -> void:
 func _begin(pointer: int, global_point: Vector2) -> void:
 	_pointer = pointer
 	if floating:
-		# Center the ring on the finger, kept inside this node.
+		# center the ring on the finger, but keep it inside this node.
 		var local := get_global_transform().affine_inverse() * global_point
 		var top_left := local - base.size * 0.5
 		base.position = Vector2(

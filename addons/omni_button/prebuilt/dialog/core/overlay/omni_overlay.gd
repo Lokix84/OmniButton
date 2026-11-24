@@ -2,37 +2,37 @@
 @icon("res://addons/omni_button/prebuilt/dialog/core/icons/overlay.svg")
 extends CanvasLayer
 class_name OmniOverlay
-## Base of every dialog window: opening and closing, backdrop, focus, cancel and pausing.
+## the base of every dialog window. handles opening and closing, the backdrop, focus, cancel and pausing.
 ##
-## [OmniPopup], [OmniToast], [OmniDialogueBox] and [OmniNarration] all inherit [code]omni_overlay.tscn[/code]. To make your own kind of window (a shop, an inventory, a pause screen), make a [b]New Inherited Scene[/b] from it and put your controls under [code]Root/Panel/Content[/code].
-## It opens and closes with a short animation ([method open], [method close], both awaitable), can dim the game and block clicks behind it, keeps keyboard and gamepad focus inside while open, closes on the cancel action, and can pause the game.
-## Several windows can be open at once, such as a popup over a dialogue box. The most recently opened one is on top: only it reacts to cancel and keeps focus, and closing it hands focus back to the one underneath.
+## [OmniPopup], [OmniToast], [OmniDialogueBox] and [OmniNarration] all inherit [code]omni_overlay.tscn[/code]. to make your own kind of window (a shop, an inventory, a pause screen), make a [b]New Inherited Scene[/b] from it and put your controls under [code]Root/Panel/Content[/code].
+## it opens and closes with a quick animation ([method open] and [method close], you can await both), can dim the game and block clicks behind it, keeps keyboard and gamepad focus inside while it's open, closes on the cancel action, and can pause the game.
+## more than one window can be open at once, like a popup over a dialogue box. the last one opened is on top. only that one reacts to cancel and keeps focus, and closing it hands focus back to the one under it.
 
-## Emitted when [method open] starts, before the animation.
+## fires when [method open] starts, before the animation.
 signal opening
-## Emitted when the open animation has finished.
+## fires when the open animation is done.
 signal opened
-## Emitted when [method close] starts, before the animation.
+## fires when [method close] starts, before the animation.
 signal closing
-## Emitted when the window is hidden after the close animation.
+## fires when the window is hidden after the close animation.
 signal closed
-## Emitted by [method cancel]: the cancel action, a backdrop click (when enabled), or a call from code.
+## fires from [method cancel]: the cancel action, a backdrop click (if that's on), or a call from code.
 signal canceled
 
-## How the window appears and disappears. Every animation also fades.
-enum OverlayAnimation {None, Fade, Scale, SlideUp, SlideDown}
+## how the window shows up and goes away. every animation fades too.
+enum OverlayAnimation {NONE, FADE, SCALE, SLIDE_UP, SLIDE_DOWN}
 
 @export_group("Window")
-## Open as soon as the scene is ready.
+## opens as soon as the scene is ready.
 @export var start_open: bool = false
-## Modal overlays join the open-overlay stack: they take focus, react to the cancel action and
-## can pause the game. Non-modal ones (toasts) only show and hide, and never take input.
+## modal overlays go on the open overlay stack, so they take focus, react to cancel and can pause
+## the game. non modal ones (toasts) just show and hide and never take input.
 @export var modal: bool = true
-## Pause the game (SceneTree.paused) while open. The overlay keeps running.
+## pauses the game (SceneTree.paused) while it's open. the overlay itself keeps running.
 @export var pause_tree: bool = false
-## Scale the window to the game's resolution, so it takes the same share of the screen at any size
-## (320x180, 640x360, 1920x1080...). The window is laid out for
-## [b]Project Settings > omni_button/dialog/reference_size[/b] and scaled from there. Turn off to
+## scales the window to the game's resolution so it takes up the same amount of screen at any size
+## (320x180, 640x360, 1920x1080...). the window is laid out for
+## [b]Project Settings > omni_button/dialog/reference_size[/b] and scaled from there. turn it off to
 ## lay the window out in the game's own pixels.
 @export var fit_to_screen: bool = true:
 	set(value):
@@ -40,53 +40,53 @@ enum OverlayAnimation {None, Fade, Scale, SlideUp, SlideDown}
 		if is_node_ready():
 			_fit_to_screen()
 @export_group("Look")
-## The look of this window. Empty uses Project Settings > omni_button/dialog/theme.
+## the look for this window. empty uses project settings > omni_button/dialog/theme.
 @export var dialog_theme: OmniDialogTheme:
 	set(value):
 		dialog_theme = value
 		if is_node_ready():
 			apply_dialog_theme()
 @export_group("Animation")
-## Animation played by [method open].
-@export var open_animation: OverlayAnimation = OverlayAnimation.Fade
-## Animation played by [method close].
-@export var close_animation: OverlayAnimation = OverlayAnimation.Fade
-## Length of the open and close animations, in seconds. [code]0[/code] shows and hides at once.
+## animation [method open] plays.
+@export var open_animation: OverlayAnimation = OverlayAnimation.FADE
+## animation [method close] plays.
+@export var close_animation: OverlayAnimation = OverlayAnimation.FADE
+## how long the open and close animations take in seconds. [code]0[/code] shows and hides right away.
 @export_range(0.0, 2.0, 0.01, "suffix:s") var animation_duration: float = 0.15
-## Distance in pixels the panel travels for SlideUp/SlideDown.
+## how many pixels the panel moves for SLIDE_UP / SLIDE_DOWN.
 @export var slide_distance: float = 48.0
 @export_group("Backdrop")
-## Dim the game and block clicks to it while open.
+## dims the game and blocks clicks to it while open.
 @export var show_backdrop: bool = true:
 	set(value):
 		show_backdrop = value
 		_apply_backdrop()
-## Color of the backdrop behind the panel.
+## color of the backdrop behind the panel.
 @export var backdrop_color: Color = Color(0, 0, 0, 0.5):
 	set(value):
 		backdrop_color = value
 		_apply_backdrop()
-## Clicking the backdrop (outside the panel) cancels.
+## clicking the backdrop (outside the panel) cancels.
 @export var close_on_backdrop_click: bool = false
 @export_group("Input")
-## The cancel action closes the overlay (after emitting canceled).
+## the cancel action closes the overlay (after sending canceled).
 @export var close_on_cancel: bool = true
-## InputMap action that cancels. Empty turns it off.
+## input map action that cancels. empty turns it off.
 @export var cancel_action: StringName = &"ui_cancel"
-## Keyboard/gamepad focus stays inside the overlay while it is the top one.
+## keyboard/gamepad focus stays inside the overlay while it's the one on top.
 @export var trap_focus: bool = true
 @export_group("")
 
-## Open overlays, oldest first. The last one is on top.
+## open overlays, oldest first. the last one is on top.
 static var _stack: Array[OmniOverlay] = []
 
-## Emitted when an open/close animation ends or is cut short by the next one.
+## fires when an open/close animation ends or the next one cuts it off.
 signal _animation_ended
 
 var _is_open := false
 var _tween: Tween
 var _play_id := 0
-## Panel position before a slide started, so a cut-short slide can put it back.
+## where the panel was before a slide started, so a slide that gets cut off can put it back.
 var _slide_rest := Vector2.ZERO
 var _sliding := false
 var _focus_before_open: Control
@@ -94,13 +94,13 @@ var _last_focus_inside: Control
 var _paused_tree := false
 var _was_tree_paused := false
 
-## Full-screen [Control] that holds the backdrop and the panel. The look's [Theme] is applied here.
+## full screen [Control] that holds the backdrop and the panel. the look's [Theme] goes on this.
 @onready var root_control: Control = %Root
-## Full-screen [ColorRect] that dims the game and blocks clicks to it.
+## full screen [ColorRect] that dims the game and blocks clicks to it.
 @onready var backdrop: ColorRect = %Backdrop
-## The window's panel ([PanelContainer] in the prebuilt scenes).
+## the window's panel ([PanelContainer] in the prebuilt scenes).
 @onready var panel: Control = %Panel
-## Where a window's own controls go.
+## where a window's own controls go.
 @onready var content: Control = %Content
 
 func _ready() -> void:
@@ -116,8 +116,8 @@ func _ready() -> void:
 	if start_open:
 		open.call_deferred()
 
-## The look is applied in the editor too, so windows preview with it. Remove it while the editor saves,
-## so the look's Theme isn't copied into the scene file, then put it back.
+## the look gets applied in the editor too so windows preview with it. take it off while the editor
+## saves so the look's Theme doesn't get copied into the scene file, then put it back.
 func _notification(what: int) -> void:
 	if not Engine.is_editor_hint() or root_control == null:
 		return
@@ -134,19 +134,19 @@ func _exit_tree() -> void:
 
 #region Public API
 
-## Returns [code]true[/code] from [method open] until [method close] starts.
+## returns [code]true[/code] from [method open] until [method close] starts.
 func is_open() -> bool:
 	return _is_open
 
-## Returns the modal window on top (the one that reacts to cancel and keeps focus), or [code]null[/code] when none is open.
+## returns the modal window on top (the one that reacts to cancel and keeps focus), or [code]null[/code] if none are open.
 static func get_top() -> OmniOverlay:
 	return null if _stack.is_empty() else _stack.back()
 
-## Returns [code]true[/code] while this is the most recently opened window, the one that reacts to cancel and keeps focus.
+## returns [code]true[/code] while this is the last window opened, the one that reacts to cancel and keeps focus.
 func is_top() -> bool:
 	return _is_open and not _stack.is_empty() and _stack.back() == self
 
-## Shows the window and focuses its default control. Awaitable: returns once the animation ends.
+## shows the window and focuses its default control. you can await it, it returns once the animation's done.
 func open() -> void:
 	if _is_open:
 		return
@@ -170,7 +170,7 @@ func open() -> void:
 	if _is_open:
 		opened.emit()
 
-## Hides the window and gives focus back to whatever had it before. Awaitable: returns once the animation ends.
+## hides the window and gives focus back to whatever had it before. you can await it, it returns once the animation's done.
 func close() -> void:
 	if not _is_open:
 		return
@@ -181,12 +181,12 @@ func close() -> void:
 		_release_focus_trap()
 	await _play(close_animation, false)
 	if _is_open:
-		return # reopened while closing
+		return # got reopened while closing
 	visible = false
 	_finish_close_state()
 	closed.emit()
 
-## Emits [signal canceled], then closes when [member close_on_cancel] is on.
+## sends [signal canceled], then closes if [member close_on_cancel] is on.
 func cancel() -> void:
 	if not _is_open:
 		return
@@ -196,11 +196,11 @@ func cancel() -> void:
 
 #endregion
 
-## Returns the look in use: [member dialog_theme], or the project default.
+## returns the look being used: [member dialog_theme], or the project default.
 func get_dialog_theme() -> OmniDialogTheme:
 	return dialog_theme if dialog_theme != null else OmniDialogTheme.get_default()
 
-## Applies the current look: its [Theme] on [member root_control], then the window's own [code]Omni_Button[/code] parts.
+## applies the current look. its [Theme] goes on [member root_control], then the window's own [code]OmniButton[/code] parts get styled.
 func apply_dialog_theme() -> void:
 	var t := get_dialog_theme()
 	if t == null or root_control == null:
@@ -208,21 +208,21 @@ func apply_dialog_theme() -> void:
 	root_control.theme = t.theme
 	_on_dialog_theme(t)
 
-## Project setting with the screen size the windows are laid out for.
+## project setting with the screen size the windows are laid out for.
 const REFERENCE_SIZE_SETTING := "omni_button/dialog/reference_size"
-## Screen size the prebuilt windows are laid out for.
+## the screen size the prebuilt windows are laid out for.
 const DEFAULT_REFERENCE_SIZE := Vector2i(1152, 648)
 
-## Returns the screen size windows are laid out for: [b]Project Settings > omni_button/dialog/reference_size[/b]
+## returns the screen size windows are laid out for: [b]Project Settings > omni_button/dialog/reference_size[/b]
 ## ([code](0, 0)[/code] turns scaling off for every window).
 static func get_reference_size() -> Vector2:
 	return Vector2(ProjectSettings.get_setting(REFERENCE_SIZE_SETTING, DEFAULT_REFERENCE_SIZE))
 
-## Returns how much the window is scaled to fit the game's resolution (1 when it isn't).
+## returns how much the window is scaled to fit the game's resolution (1 if it isn't).
 func get_screen_scale() -> float:
 	return scale.x
 
-## Scales the layer so a window laid out for the reference size takes the same share of the screen,
+## scales the layer so a window laid out for the reference size takes up the same amount of screen,
 ## and sizes [member root_control] to cover the whole screen at that scale.
 func _fit_to_screen() -> void:
 	if Engine.is_editor_hint() or root_control == null or not is_inside_tree():
@@ -242,25 +242,25 @@ func _fit_to_screen() -> void:
 
 #region Hooks for window scenes
 
-## Called when a look is applied. Style the window's Omni_Button parts here.
+## runs when a look gets applied. style the window's OmniButton parts here.
 func _on_dialog_theme(_t: OmniDialogTheme) -> void:
 	pass
 
-## Called when opening, before the animation. Fill in content here.
+## runs when opening, before the animation. fill in the content here.
 func _on_open() -> void:
 	pass
 
-## Called when closing, before the animation.
+## runs when closing, before the animation.
 func _on_close() -> void:
 	pass
 
-## Control that receives focus on open. Default: the first focusable control inside %Content.
+## the control that gets focus on open. by default it's the first focusable control inside %Content.
 func _get_default_focus() -> Control:
 	var chain := _get_focus_chain()
 	return chain[0] if not chain.is_empty() else null
 
-## Focusable controls inside the overlay, in tab order. Default: visible controls under %Content
-## whose focus_mode is not FOCUS_NONE, in tree order.
+## focusable controls inside the overlay, in tab order. by default it's the visible controls under
+## %Content whose focus_mode isn't FOCUS_NONE, in tree order.
 func _get_focus_chain() -> Array[Control]:
 	var out: Array[Control] = []
 	_collect_focusable(content, out)
@@ -281,8 +281,8 @@ func _collect_focusable(node: Node, out: Array[Control]) -> void:
 			out.append(c)
 		_collect_focusable(c, out)
 
-## Focuses the default control and links Tab / Shift+Tab into a loop over the focus chain.
-## Directional navigation is left to Godot; focus that leaves the overlay is pulled back.
+## focuses the default control and loops Tab / Shift+Tab around the focus chain.
+## arrow key navigation is left up to godot, and if focus leaves the overlay it gets pulled back.
 func _focus_default() -> void:
 	var chain := _get_focus_chain()
 	for i in chain.size():
@@ -294,7 +294,7 @@ func _focus_default() -> void:
 		target.grab_focus()
 		_last_focus_inside = target
 
-## Focuses the default control again, for windows that change their content while open.
+## focuses the default control again, for windows that change what's in them while open.
 func refresh_focus() -> void:
 	if not _is_open or not modal:
 		return
@@ -309,7 +309,7 @@ func _on_gui_focus_changed(c: Control) -> void:
 	if _is_inside(c):
 		_last_focus_inside = c
 		return
-	# Focus left the overlay: pull it back.
+	# focus left the overlay, pull it back.
 	var back := _last_focus_inside if is_instance_valid(_last_focus_inside) and _last_focus_inside.is_visible_in_tree() else _get_default_focus()
 	if back != null and back.is_inside_tree():
 		back.grab_focus.call_deferred()
@@ -320,7 +320,7 @@ func _release_focus_trap() -> void:
 		var focused := vp.gui_get_focus_owner()
 		if _is_inside(focused):
 			focused.release_focus()
-	# Give focus back to whatever had it before, unless another overlay has opened above since.
+	# give focus back to whatever had it before, unless another overlay opened on top since then.
 	var restore := _focus_before_open
 	_focus_before_open = null
 	_last_focus_inside = null
@@ -378,16 +378,16 @@ func _apply_backdrop() -> void:
 	backdrop.color = backdrop_color
 	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP if show_backdrop else Control.MOUSE_FILTER_IGNORE
 
-## Runs the open/close animation and returns when it ends or is cut short by another one.
+## runs the open/close animation and returns when it ends or another one cuts it off.
 func _play(anim: OverlayAnimation, showing: bool) -> void:
 	_play_id += 1
 	var id := _play_id
 	_stop_animation()
-	if anim == OverlayAnimation.None or animation_duration <= 0.0:
+	if anim == OverlayAnimation.NONE or animation_duration <= 0.0:
 		return
 	var from_alpha := 0.0 if showing else 1.0
 	root_control.modulate.a = from_alpha
-	# Containers may not have sized the panel yet on the first open.
+	# containers might not have sized the panel yet on the first open.
 	if panel.size == Vector2.ZERO:
 		await get_tree().process_frame
 		if id != _play_id:
@@ -395,15 +395,15 @@ func _play(anim: OverlayAnimation, showing: bool) -> void:
 	panel.pivot_offset = panel.size * 0.5
 	var d := animation_duration
 	_tween = create_tween().set_parallel(true).set_ease(Tween.EASE_OUT if showing else Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
-	# Every animation fades, so the backdrop fades with the panel.
+	# every animation fades, so the backdrop fades with the panel.
 	_tween.tween_property(root_control, "modulate:a", 1.0 - from_alpha, d)
 	match anim:
-		OverlayAnimation.Scale:
+		OverlayAnimation.SCALE:
 			var small := Vector2(0.9, 0.9)
 			panel.scale = small if showing else Vector2.ONE
 			_tween.tween_property(panel, "scale", Vector2.ONE if showing else small, d)
-		OverlayAnimation.SlideUp, OverlayAnimation.SlideDown:
-			var dir := 1.0 if anim == OverlayAnimation.SlideUp else -1.0
+		OverlayAnimation.SLIDE_UP, OverlayAnimation.SLIDE_DOWN:
+			var dir := 1.0 if anim == OverlayAnimation.SLIDE_UP else -1.0
 			_slide_rest = panel.position
 			_sliding = true
 			var off := _slide_rest + Vector2(0, slide_distance * dir)
@@ -412,7 +412,7 @@ func _play(anim: OverlayAnimation, showing: bool) -> void:
 	_tween.finished.connect(_animation_ended.emit)
 	await _animation_ended
 	if id != _play_id:
-		return # a newer animation took over and owns the visuals now
+		return # a newer animation took over and it owns the visuals now
 	_tween = null
 	_end_slide()
 	_reset_visuals()
@@ -425,7 +425,7 @@ func _stop_animation() -> void:
 	_end_slide()
 	_reset_visuals()
 	if cut_short:
-		_animation_ended.emit() # resume the awaiting open()/close()
+		_animation_ended.emit() # lets the open()/close() that's waiting carry on
 
 func _end_slide() -> void:
 	if _sliding:

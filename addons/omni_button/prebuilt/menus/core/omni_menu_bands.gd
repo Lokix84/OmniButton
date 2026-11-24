@@ -1,13 +1,13 @@
 @tool
 class_name OmniMenuBands
 extends Control
-## The angled background of the stylized menus: bold slanted bands with a thin accent stripe, drawn
-## in code so they stay sharp at any size. [member progress] sweeps them in (0 = off screen to the
-## left, 1 = in place); [OmniMenuStylizer] animates it when the menu opens and closes.
+## the angled background behind the stylized menus. bold slanted bands with a thin accent stripe,
+## drawn in code so they stay sharp at any size. [member progress] sweeps them in (0 is off screen
+## to the left, 1 is in place), and [OmniMenuStylizer] animates it when the menu opens and closes.
 
 enum Shape {
-	FULL, ## Covers the whole screen: a solid background crossed by slanted bands (title, options).
-	SPLIT, ## A slanted plate over the left part of the screen; the rest stays see-through (pause).
+	FULL, ## covers the whole screen: a solid background with slanted bands across it (title, options).
+	SPLIT, ## a slanted plate over the left side of the screen, the rest stays see through (pause).
 }
 
 @export var shape: Shape = Shape.FULL:
@@ -26,7 +26,7 @@ enum Shape {
 	set(value):
 		accent_color = value
 		queue_redraw()
-## How far the bands have swept in: 0 = gone, 1 = in place.
+## how far the bands have swept in. 0 is gone, 1 is in place.
 @export_range(0.0, 1.0, 0.01) var progress := 1.0:
 	set(value):
 		progress = value
@@ -49,7 +49,7 @@ func _draw() -> void:
 			bg.a *= t
 			draw_rect(Rect2(Vector2.ZERO, size), bg)
 			var off := -(1.0 - t) * w * 1.3
-			# A darker band behind, a wide main band, and a thin accent stripe along its edge.
+			# a darker band behind, a wide main band, and a thin accent stripe along its edge.
 			_quad(off * 1.15, [0.30, 0.66, 0.74, 0.38], band_color.darkened(0.45), w, h)
 			_quad(off, [-0.04, 0.34, 0.60, 0.22], band_color, w, h)
 			_quad(off, [0.22, 0.60, 0.615, 0.235], accent_color, w, h)
@@ -63,7 +63,7 @@ func _draw() -> void:
 			_quad(off, [0.44, 0.56, 0.60, 0.48], band_color, w, h)
 			_quad(off, [0.48, 0.60, 0.61, 0.49], accent_color, w, h)
 
-## A slanted band: [param x] holds the bottom-left, top-left, top-right and bottom-right x positions
+## one slanted band. [param x] has the bottom left, top left, top right and bottom right x positions
 ## as fractions of the width.
 func _quad(off: float, x: Array, color: Color, w: float, h: float) -> void:
 	draw_colored_polygon(PackedVector2Array([

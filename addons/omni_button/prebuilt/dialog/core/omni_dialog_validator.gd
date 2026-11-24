@@ -1,21 +1,21 @@
 extends RefCounted
 class_name OmniDialogValidator
-## Checks dialog JSON files for mistakes before the game runs them.
+## checks dialog json files for mistakes before the game runs them.
 ##
-## A typo in a dialog file (a [code]next[/code] that points to a missing entry, a question without an
-## [code]id[/code], a misspelled field) doesn't stop the game: the line just behaves wrongly. This finds
-## those problems and says where they are.
+## a typo in a dialog file (a [code]next[/code] pointing at an entry that isn't there, a question
+## without an [code]id[/code], a misspelled field) doesn't stop the game, the line just does the wrong
+## thing. this finds those and tells you where they are.
 ## [codeblock]
 ## var problems := OmniDialogValidator.check_file("res://story/chapter1.json")
 ## print(OmniDialogValidator.format_report("res://story/chapter1.json", problems))
 ## [/codeblock]
-## In the editor, [b]Project > Tools > Check OmniButton dialog files[/b] checks every dialog file in the
-## project and prints the report to the Output panel.
-## Each problem is a Dictionary: [code]{ "severity": "error" or "warning", "entry": String,
-## "line": int (1-based, 0 for the entry itself), "message": String }[/code]. Errors break the
-## dialog; warnings are probably mistakes but might be on purpose.
+## in the editor, [b]Project > Tools > Check OmniButton dialog files[/b] checks every dialog file in
+## the project and prints the report to the output panel.
+## each problem is a Dictionary: [code]{ "severity": "error" or "warning", "entry": String,
+## "line": int (starts at 1, 0 for the entry itself), "message": String }[/code]. errors break the
+## dialog, warnings are probably mistakes but could be on purpose.
 
-## Fields each line type uses (besides [constant COMMON_FIELDS]).
+## the fields each line type uses (on top of [constant COMMON_FIELDS]).
 const LINE_FIELDS := {
 	"say": ["name", "text", "portrait", "side", "choices", "speed"],
 	"narrate": ["text", "background", "choices", "speed"],
@@ -28,14 +28,14 @@ const LINE_FIELDS := {
 	"goto": ["next"],
 	"end": [],
 }
-## Fields any line can have.
+## fields any line can have.
 const COMMON_FIELDS := ["type", "if", "if_not", "set", "event"]
-## Fields an option in a [code]choices[/code] group can have.
+## fields an option in a [code]choices[/code] group can have.
 const OPTION_FIELDS := ["text", "value", "next", "set", "if", "if_not", "event"]
-## Fields an entry written as an object can have.
+## fields an entry written as an object can have.
 const ENTRY_FIELDS := ["lines", "skippable"]
 
-## Checks the dialog file at [param path] and returns its problems (empty when it's fine).
+## checks the dialog file at [param path] and returns its problems (empty if it's fine).
 static func check_file(path: String) -> Array[Dictionary]:
 	var problems: Array[Dictionary] = []
 	var entries := OmniDialogFile.load_file(path)
@@ -64,8 +64,8 @@ static func check_file(path: String) -> Array[Dictionary]:
 			_check_line(problems, entries, stored, str(key), i + 1, lines[i])
 	return problems
 
-## Checks every [code].json[/code] file under [param folder] that looks like a dialog file. Returns
-## [code]{ path: problems }[/code] for each file checked.
+## checks every [code].json[/code] file under [param folder] that looks like a dialog file. returns
+## [code]{ path: problems }[/code] for each file it checked.
 static func check_folder(folder: String = "res://") -> Dictionary:
 	var results := {}
 	for path in _json_files(folder):
@@ -73,7 +73,7 @@ static func check_folder(folder: String = "res://") -> Dictionary:
 			results[path] = check_file(path)
 	return results
 
-## Turns [param problems] into readable text, one problem per line.
+## turns [param problems] into readable text, one per line.
 static func format_report(path: String, problems: Array[Dictionary]) -> String:
 	if problems.is_empty():
 		return "%s: no problems found." % path
@@ -101,7 +101,7 @@ static func _check_line(problems: Array[Dictionary], entries: Dictionary, stored
 	for field in line:
 		if not field in LINE_FIELDS[type] and not field in COMMON_FIELDS:
 			_add(problems, "warning", key, n, "Field \"%s\" isn't used by a \"%s\" line (a typo?)." % [field, type])
-	# Required fields.
+	# required fields.
 	if type in ["say", "narrate", "toast", "alert", "confirm", "choice"] and str(line.get("text", "")).strip_edges() == "":
 		_add(problems, "warning" if type == "say" else "error", key, n, "\"%s\" line has no \"text\"." % type)
 	match type:
@@ -160,7 +160,7 @@ static func _check_choices(problems: Array[Dictionary], entries: Dictionary, sto
 		_check_jump(problems, entries, key, n, o.get("next"), "option %d next" % (i + 1))
 		_check_common(problems, stored, key, n, o)
 
-## Conditions, set and event, shared by lines and options.
+## conditions, set and event. lines and options both use these.
 static func _check_common(problems: Array[Dictionary], stored: Dictionary, key: String, n: int, item: Dictionary) -> void:
 	for f in ["if", "if_not"]:
 		if not item.has(f):
@@ -184,7 +184,7 @@ static func _check_jump(problems: Array[Dictionary], entries: Dictionary, key: S
 	if not entries.has(str(target)):
 		_add(problems, "error", key, n, "%s points to \"%s\", which isn't an entry in this file." % [label, target])
 
-## Every id a question or `set` in the file stores.
+## every id a question or `set` in the file stores.
 static func _stored_ids(entries: Dictionary) -> Dictionary:
 	var ids := {}
 	var visit := func(item: Variant, visit: Callable) -> void:
@@ -222,7 +222,7 @@ static func _json_files(folder: String) -> PackedStringArray:
 		out.append_array(_json_files(folder.path_join(d)))
 	return out
 
-## A dialog file is a JSON object whose values are lists of objects with a "type", or {"lines": ...}.
+## a dialog file is a json object whose values are lists of objects with a "type", or {"lines": ...}.
 static func _looks_like_dialog(path: String) -> bool:
 	var text := FileAccess.get_file_as_string(path)
 	var data: Variant = JSON.parse_string(text)

@@ -1,26 +1,26 @@
 @tool
 class_name OmniTypewriterButton
-extends Omni_Button
-## An [Omni_Button] that types its [member Omni_Button.Text] out when the scene starts, for title
+extends OmniButton
+## an [OmniButton] that types its [member text] out when the scene starts. good for title
 ## screens ("Press Start"), intros and prompts.
 ##
-## The first press while it is still typing only finishes the text; presses after that emit
-## [signal Omni_Button.pressed] as usual. With [member blink_when_done] on, the text pulses once it
-## has finished typing, so it reads as "waiting for you".
+## the first press while it's still typing just finishes the text, presses after that send
+## [signal OmniButton.pressed] like normal. with [member blink_when_done] on the text pulses once
+## it's done typing so it reads as "waiting for you".
 
-## Start typing as soon as the scene starts. Off: call [method play] yourself.
+## start typing as soon as the scene starts. off means you call [method play] yourself.
 @export var autoplay := true
-## Typing speed.
+## how fast it types.
 @export_range(1.0, 200.0, 1.0, "or_greater") var characters_per_second := 24.0
-## Reveal whole words instead of letters.
+## shows whole words at a time instead of letters.
 @export var by_word := false
-## Wait this long before typing starts.
+## wait this long before it starts typing.
 @export_range(0.0, 10.0, 0.05, "suffix:s") var start_delay := 0.3
-## Pulse the button once the text is fully shown.
+## pulses the button once all the text is showing.
 @export var blink_when_done := true
-## Seconds for one full pulse (fade out and back in).
+## seconds for one whole pulse (fade out and back in).
 @export_range(0.2, 5.0, 0.05, "suffix:s") var blink_period := 1.4
-## How faint the text gets at the bottom of each pulse (0 = invisible, 1 = no pulse).
+## how faint the text gets at the bottom of each pulse (0 is invisible, 1 is no pulse).
 @export_range(0.0, 1.0, 0.05) var blink_min_alpha := 0.3
 
 var _blink: Tween
@@ -37,17 +37,17 @@ func _ready() -> void:
 			modulate.a = 1.0
 		play()
 
-## Types [member Omni_Button.Text] from the start (also restarts it).
+## types [member text] from the start (restarts it too).
 func play() -> void:
 	_stop_blink()
 	start_typewriter_from_text_to_type(characters_per_second, by_word)
 
-## Whether the text is still being typed.
+## true while it's still typing.
 func is_typing() -> bool:
 	return _tw_active
 
 func _gui_input(event: InputEvent) -> void:
-	# While typing, a press only finishes the text; it doesn't count as a press.
+	# while it's typing a press just finishes the text, it doesn't count as a press.
 	if _tw_active and OmniButtonInput.is_press_input(self, event):
 		skip_typewriter()
 		accept_event()

@@ -64,11 +64,11 @@ layout_mode = 2
 size_flags_vertical = 3
 focus_mode = 2
 script = ExtResource("3_omni")
-EnablePressedActions = true
-LabelType = 1
-LabelAutowrap = 3
-FixedFontSize = 30
-FinishTypewriterOnPress = false
+enable_pressed_actions = true
+label_type = 1
+label_autowrap = 3
+fixed_font_size = 30
+finish_typewriter_on_press = false
 
 [node name="ContinueIndicator" type="Label" parent="Root/Panel/Content/Layout/Body"]
 unique_name_in_owner = true
@@ -109,4 +109,4 @@ offset_right = -40.0
 offset_bottom = 60.0
 grow_horizontal = 0
 focus_mode = 0
-Text = "Hold to skip ▶▶"
+text = "Hold to skip ▶▶"

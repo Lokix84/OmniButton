@@ -1,65 +1,65 @@
 extends RefCounted
 class_name OmniButtonTypewriter
-## Typewriter text reveal. One instance per button, created on first use.
+## the typewriter. one per button, made the first time it's needed.
 ##
-## Typewriter reveal is driven by Label/RichTextLabel.visible_characters: the label receives its
-## text once (no per-character string rebuilding, re-shaping, or BBCode re-parsing), and each step
-## only bumps a visible-character count. With VC_CHARS_AFTER_SHAPING (set in configure_label) the
-## text is laid out at its final positions, so words no longer jump lines while being revealed.
+## it works off Label/RichTextLabel.visible_characters. the label gets the whole text once (no
+## rebuilding the string, reshaping or reparsing bbcode every character) and each step just bumps
+## how many characters are visible. with VC_CHARS_AFTER_SHAPING (set in configure_label) the text
+## is already laid out where it'll end up, so words don't jump to the next line halfway through.
 ##
-## Inline timing tags, understood only by the typewriter and removed before the text reaches the label:
-##   [pause=0.5]  wait 0.5 seconds once the reveal reaches this point
-##   [speed=12]   reveal at 12 characters (or words) per second from here
-##   [/speed]     return to the speed passed to start_typewriter
+## timing tags, only the typewriter knows about these and they get pulled out before the label sees the text:
+##   [pause=0.5]  wait half a second when the reveal gets here
+##   [speed=12]   go 12 characters (or words) a second from here on
+##   [/speed]     go back to the speed start_typewriter got
 
-## Placeholder that marks where a timing tag was while the text is stripped of other tags.
+## stand in that marks where a timing tag was while the other tags get stripped.
 const _MARKER := ""
 static var _timing_tag_regex: RegEx
 
-var _o: Omni_Button
+var _o: OmniButton
 
-# Reveal state. Only _tw_active lives on the button, because _process checks it every frame.
-## Text being revealed, as it will be committed when the reveal finishes or is skipped.
+# reveal state. only _tw_active lives on the button, since _process checks it every frame.
+## the text being revealed, the way it'll be set when the reveal finishes or gets skipped.
 var full_text: String = ""
-## Text placed on the label during the reveal (full_text, minus effect tags when they are delayed).
+## what's on the label during the reveal (full_text, minus effect tags if those are held back).
 var display_text: String = ""
-## Number of characters the reveal walks through.
+## how many characters the reveal goes through.
 var total_chars: int = 0
-## Characters revealed so far.
+## characters shown so far.
 var visible_chars: int = 0
 var _bbcode_aware := false
 var _by_word := false
 var _cps: float = 30.0
 var _accum: float = 0.0
-## By-word mode: index into _word_ends, and the cumulative visible-character count at the end of each word.
+## by word mode: index into _word_ends, and the running visible character count at the end of each word.
 var _word_index: int = 0
 var _word_ends := PackedInt32Array()
-## Speed passed to start_typewriter; [/speed] returns to it.
+## the speed start_typewriter got. [/speed] goes back to this.
 var _base_cps: float = 30.0
-## Seconds left of the current [pause].
+## seconds left on the current [pause].
 var _pause_left: float = 0.0
-## Timing tags in reveal order: { "pos": visible-character count, "pause": seconds } or { "pos", "speed": cps (0 = base) }.
+## the timing tags in order: { "pos": visible character count, "pause": seconds } or { "pos", "speed": cps (0 = base) }.
 var _timing: Array[Dictionary] = []
 var _timing_index: int = 0
-## Revealable characters, for typewriter_char_revealed.
+## the characters that get revealed, for typewriter_char_revealed.
 var _plain_text: String = ""
-## Bumped on every start and stop, so a reveal that a signal handler restarted or stopped is not continued.
+## goes up on every start and stop, so if a signal handler restarted or stopped the reveal we don't keep going with the old one.
 var _run_id: int = 0
 
-func _init(o: Omni_Button) -> void:
+func _init(o: OmniButton) -> void:
 	_o = o
 
 func start_typewriter(final_text: String = "", cps: float = 30.0, by_word: bool = false, preserve_bbcode_tags: bool = false) -> void:
-	# An empty string cancels rather than falling back to TextToType.
+	# an empty string cancels, it doesn't fall back to text_to_type.
 	if final_text == null or final_text == "":
 		skip_typewriter()
 		return
-	if preserve_bbcode_tags and _o._label_type != _o.LabelKind.RichTextLabel:
-		_o.LabelType = _o.LabelKind.RichTextLabel
-	elif _o._label_type == _o.LabelKind.None:
-		_o.LabelType = _o.LabelKind.Label
-	var want_bb := preserve_bbcode_tags and _o._label_type == _o.LabelKind.RichTextLabel
-	# Timing tags are swapped for markers first: strip_bbcode keeps unknown tags as literal text.
+	if preserve_bbcode_tags and _o._label_type != _o.LabelKind.RICH_TEXT_LABEL:
+		_o.label_type = _o.LabelKind.RICH_TEXT_LABEL
+	elif _o._label_type == _o.LabelKind.NONE:
+		_o.label_type = _o.LabelKind.LABEL
+	var want_bb := preserve_bbcode_tags and _o._label_type == _o.LabelKind.RICH_TEXT_LABEL
+	# swap the timing tags for markers first, strip_bbcode would leave unknown tags in as text.
 	var timing_values: Array[Dictionary] = []
 	var marked := _mark_timing_tags(final_text, timing_values)
 	var content := marked if want_bb else OmniButtonText.strip_bbcode(_o, marked)
@@ -76,11 +76,11 @@ func start_typewriter(final_text: String = "", cps: float = 30.0, by_word: bool 
 	_timing_index = 0
 	_word_index = 0
 	visible_chars = 0
-	# Effects such as [wave] animate already-visible glyphs; hold them back until the reveal completes.
-	display_text = _strip_effect_tags(content) if (want_bb and _o.DelayEffectTagsDuringTypewriter) else content
+	# effects like [wave] animate letters that are already showing, so hold them back until the reveal is done.
+	display_text = _strip_effect_tags(content) if (want_bb and _o.delay_effect_tags_during_typewriter) else content
 	_o._tw_active = true
-	# Only the label node needs to exist for the prefit; a full setup_children() rebuild would
-	# free and recreate every managed visual on each typewriter start.
+	# the prefit only needs the label node to exist. a full setup_children() would throw away and
+	# remake every visual each time the typewriter starts.
 	_o._set_label_text()
 	_prefit_for_text(content)
 	total_chars = _count_revealable_chars()
@@ -94,8 +94,8 @@ func start_typewriter(final_text: String = "", cps: float = 30.0, by_word: bool 
 	_apply_timing_up_to(0)
 
 func start_typewriter_from_text_to_type(cps: float = 30.0, by_word: bool = false, preserve_bbcode_tags: bool = false) -> void:
-	# Use TextToType when set; otherwise use the main Text.
-	var src := _o.TextToType if _o.TextToType != "" else _o._text
+	# use text_to_type if it's set, otherwise the main text.
+	var src := _o.text_to_type if _o.text_to_type != "" else _o._text
 	start_typewriter(src, cps, by_word, preserve_bbcode_tags)
 
 func skip_typewriter() -> void:
@@ -108,8 +108,8 @@ func skip_typewriter() -> void:
 func stop_typewriter() -> void:
 	_stop_typewriter_internal(false)
 
-## from_skip / natural completion: commit the full final text.
-## Cancel (from_skip == false while active): commit only what has been revealed so far.
+## skipped or finished normally: set the whole final text.
+## cancelled (from_skip false while active): only keep what's been shown so far.
 func _stop_typewriter_internal(_from_skip: bool) -> void:
 	var was_active: bool = _o._tw_active
 	if was_active:
@@ -137,7 +137,7 @@ func _stop_typewriter_internal(_from_skip: bool) -> void:
 		_o.emit_signal("typewriter_completed")
 		if _o._dbg: _o._debug("Typewriter completed")
 
-## Sets the full text on the live label(s) and clears any partial reveal.
+## puts the full text on the live label(s) and clears any half done reveal.
 func _set_typewriter_visible_text(s: String) -> void:
 	if _o._label != null and is_instance_valid(_o._label):
 		_o._label.text = s
@@ -154,7 +154,7 @@ func _apply_visible_chars(count: int) -> void:
 	if _o._rich_label != null and is_instance_valid(_o._rich_label):
 		_o._rich_label.visible_characters = count
 
-## Characters visible_characters will step through: parsed (tag-free) text for rich labels.
+## the characters visible_characters steps through. for rich labels that's the parsed text with no tags.
 func _count_revealable_chars() -> int:
 	if _o._rich_label != null and is_instance_valid(_o._rich_label):
 		var parsed: int = _o._rich_label.get_parsed_text().length()
@@ -164,7 +164,7 @@ func _count_revealable_chars() -> int:
 			return int(_tokenize_bbcode(display_text)["plain"])
 	return display_text.length()
 
-## Cumulative character offsets at the end of each word (word + trailing whitespace).
+## running character count at the end of each word (word plus the spaces after it).
 func _word_end_offsets(s: String) -> PackedInt32Array:
 	var ends := PackedInt32Array()
 	var total := 0
@@ -173,7 +173,7 @@ func _word_end_offsets(s: String) -> PackedInt32Array:
 		ends.append(total)
 	return ends
 
-## Partial text for a cancelled reveal (only computed once, on stop).
+## the partial text for a cancelled reveal (only worked out once, when it stops).
 func _revealed_text() -> String:
 	var shown := visible_chars
 	if _bbcode_aware:
@@ -196,7 +196,7 @@ func process_typewriter(delta: float) -> void:
 	_accum += delta
 	var before := visible_chars
 	var done := false
-	# One character (or word) per loop, so [pause] and [speed] apply exactly where they were written.
+	# one character (or word) per loop, so [pause] and [speed] kick in right where they were written.
 	while true:
 		if _pause_left > 0.0:
 			if _accum < _pause_left:
@@ -219,7 +219,7 @@ func process_typewriter(delta: float) -> void:
 		var run := _run_id
 		_emit_revealed(before, visible_chars, run)
 		if run != _run_id:
-			return # a handler skipped, stopped or restarted the reveal
+			return # a handler skipped, stopped or restarted it
 	if done:
 		_stop_typewriter_internal(true)
 
@@ -232,7 +232,7 @@ func _advance_one() -> void:
 	else:
 		visible_chars += 1
 
-## Applies every timing tag the reveal has reached (pos <= count), in written order.
+## runs every timing tag the reveal has gotten to (pos <= count), in the order they were written.
 func _apply_timing_up_to(count: int) -> void:
 	while _timing_index < _timing.size() and int(_timing[_timing_index]["pos"]) <= count:
 		var t: Dictionary = _timing[_timing_index]
@@ -251,7 +251,7 @@ func _emit_revealed(from: int, to: int, run: int) -> void:
 		if run != _run_id:
 			return
 
-## The characters visible_characters steps through, in order.
+## the characters visible_characters steps through, in order.
 func _revealable_text() -> String:
 	if _o._rich_label != null and is_instance_valid(_o._rich_label):
 		var parsed: String = _o._rich_label.get_parsed_text()
@@ -259,7 +259,7 @@ func _revealable_text() -> String:
 			return parsed
 	return display_text
 
-## Replaces each [pause=…] / [speed=…] / [/speed] with _MARKER and appends its value to `values`.
+## swaps each [pause=…] / [speed=…] / [/speed] for _MARKER and adds its value to `values`.
 func _mark_timing_tags(src: String, values: Array[Dictionary]) -> String:
 	if src.find("[") == -1:
 		return src
@@ -278,8 +278,8 @@ func _mark_timing_tags(src: String, values: Array[Dictionary]) -> String:
 			values.append({"speed": m.get_string(2).to_float()})
 	return out + src.substr(last)
 
-## Turns each marker into a reveal position (characters visible before it), fills _timing, and
-## returns the text with the markers removed. In BBCode mode, characters inside tags are not counted.
+## turns each marker into a reveal position (how many characters show before it), fills _timing,
+## and gives back the text with the markers taken out. in bbcode mode characters inside tags don't count.
 func _resolve_timing_positions(src: String, bbcode: bool, values: Array[Dictionary]) -> String:
 	_timing.clear()
 	if values.is_empty():
@@ -338,7 +338,7 @@ func _tokenize_bbcode(src: String) -> Dictionary:
 				tokens.append({"is_tag": true, "content": tag})
 				i = closing + 1
 				continue
-			# treat unmatched '[' as literal
+			# a '[' with no match is just text
 			i += 1
 			total_plain += 1
 			tokens.append({"is_tag": false, "content": "["})
@@ -359,7 +359,7 @@ func _build_visible_from_tokens(tokens: Array, visible_plain_chars: int) -> Stri
 		var is_tag: bool = token.get("is_tag", false)
 		var content: String = token.get("content", "")
 		if is_tag:
-			if _o.DelayEffectTagsDuringTypewriter and visible_plain_chars < total_chars and _is_effect_tag(content):
+			if _o.delay_effect_tags_during_typewriter and visible_plain_chars < total_chars and _is_effect_tag(content):
 				continue
 			builder += content
 		else:
@@ -386,25 +386,25 @@ func _is_effect_tag(tag: String) -> bool:
 	var normalized := name_eq[0].strip_edges().to_lower()
 	return _o.TYPEWRITER_EFFECT_TAGS.has(normalized)
 
-## Size the label for the final text before the reveal starts, so the font does not shrink mid-reveal.
-## Reuses the autosize search from omni_button_text.gd instead of duplicating it here.
+## sizes the label for the final text before the reveal starts so the font doesn't shrink halfway through.
+## uses the same autosize search as omni_button_text.gd instead of having a second copy here.
 func _prefit_for_text(content: String) -> void:
-	# A fixed font size is applied as is; with autosizing off the label keeps its size.
-	if _o.FixedFontSize > 0:
+	# a fixed font size gets used as is, with autosizing off the label keeps its size.
+	if _o.fixed_font_size > 0:
 		if _o._label != null and is_instance_valid(_o._label):
-			OmniButtonText.set_plain_font(_o, null, _o.FixedFontSize)
+			OmniButtonText.set_plain_font(_o, null, _o.fixed_font_size)
 		if _o._rich_label != null and is_instance_valid(_o._rich_label):
-			OmniButtonText.apply_rich_label_font_sizes(_o, _o.FixedFontSize)
-		_o._last_fit_font_size = _o.FixedFontSize
-		_o._rich_current_font_size = _o.FixedFontSize
+			OmniButtonText.apply_rich_label_font_sizes(_o, _o.fixed_font_size)
+		_o._last_fit_font_size = _o.fixed_font_size
+		_o._rich_current_font_size = _o.fixed_font_size
 		return
-	if not _o.EnableTextAutoSize:
+	if not _o.enable_text_auto_size:
 		return
 	var avail := OmniButtonText.calculate_available_area(_o)
 	if avail.x <= 1.0 or avail.y <= 1.0: return
-	var wrap_enabled := _o.LabelAutowrap != TextServer.AUTOWRAP_OFF
+	var wrap_enabled := _o.label_autowrap != TextServer.AUTOWRAP_OFF
 	var wrap_w := avail.x if wrap_enabled else -1.0
-	if _o._label_type == _o.LabelKind.RichTextLabel and _o._rich_label != null and is_instance_valid(_o._rich_label):
+	if _o._label_type == _o.LabelKind.RICH_TEXT_LABEL and _o._rich_label != null and is_instance_valid(_o._rich_label):
 		var fnt: Font = OmniButtonText.get_rich_fit_font(_o)
 		if fnt == null: return
 		var plain := OmniButtonText.strip_bbcode(_o, content)
@@ -413,7 +413,7 @@ func _prefit_for_text(content: String) -> void:
 		OmniButtonText.apply_rich_label_font_sizes(_o, best)
 		_o._last_fit_font_size = best
 		_o._rich_current_font_size = best
-	elif _o._label_type == _o.LabelKind.Label and _o._label != null and is_instance_valid(_o._label):
+	elif _o._label_type == _o.LabelKind.LABEL and _o._label != null and is_instance_valid(_o._label):
 		var theme_font := _o._label.get_theme_font("font")
 		var fnt2: Font = theme_font if theme_font != null else ThemeDB.fallback_font
 		if fnt2 == null: return

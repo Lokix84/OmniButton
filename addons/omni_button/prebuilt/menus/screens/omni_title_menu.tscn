@@ -35,16 +35,16 @@ theme_override_constants/separation = 10
 
 [node name="Start" parent="Root/Panel/Content/Layout/Items" instance=ExtResource("option")]
 layout_mode = 2
-Text = "Start"
+text = "Start"
 
 [node name="Continue" parent="Root/Panel/Content/Layout/Items" instance=ExtResource("option")]
 layout_mode = 2
-Text = "Continue"
+text = "Continue"
 
 [node name="Options" parent="Root/Panel/Content/Layout/Items" instance=ExtResource("option")]
 layout_mode = 2
-Text = "Options"
+text = "Options"
 
 [node name="Quit" parent="Root/Panel/Content/Layout/Items" instance=ExtResource("option")]
 layout_mode = 2
-Text = "Quit"
+text = "Quit"

@@ -1,8 +1,8 @@
 extends RefCounted
 class_name OmniDialogRunner
-## Plays dialog entries from JSON files on dialog windows, one line at a time.
+## plays dialog entries from json files on the dialog windows, one line at a time.
 ##
-## The [code]OmniDialog[/code] autoload owns one runner ([method OmniDialogAutoload.play] uses it), but a runner works on its own too, with windows you dropped into your scene:
+## the [code]OmniDialog[/code] autoload has one runner ([method OmniDialogAutoload.play] uses it), but a runner works on its own too, with windows you dropped into your scene:
 ## [codeblock]
 ## var runner := OmniDialogRunner.new()
 ## runner.dialogue_box = $DialogueBox
@@ -11,39 +11,39 @@ class_name OmniDialogRunner
 ## runner.toast = $Toast
 ## var answers := await runner.play("res://story/chapter1.json", "gate")
 ## [/codeblock]
-## Answers to questions are stored by id in [member answers] (save and load that Dictionary), and [method play] returns the answers given during that entry. Lines can check answers ([code]if[/code] / [code]if_not[/code]), store values ([code]set[/code]), jump to other entries ([code]next[/code] / [code]goto[/code]), and fire events that game code handles ([method register_event]). The dialog README describes every line type and field.
+## answers to questions get stored by id in [member answers] (save and load that Dictionary), and [method play] returns the answers given during that entry. lines can check answers ([code]if[/code] / [code]if_not[/code]), store values ([code]set[/code]), jump to other entries ([code]next[/code] / [code]goto[/code]), and fire events your game code handles ([method register_event]). the dialog README goes over every line type and field.
 
-## An entry started playing.
+## an entry started playing.
 signal started(file: String, key: String)
-## A line is about to run (after its conditions passed). `line` is the Dictionary from the file.
+## a line is about to run (its conditions passed). `line` is the Dictionary from the file.
 signal line_started(line: Dictionary)
-## An event line, or a line's / option's "event", fired. Also runs any handler registered for it.
+## an event line, or a line's or option's "event", fired. any handler registered for it runs too.
 signal event_triggered(event_name: String, args: Array)
-## A question was answered (or a value was set by `set`).
+## a question got answered (or `set` set a value).
 signal choice_made(id: String, value: Variant)
-## An entry finished. `entry_answers` are the answers given during it.
+## an entry finished. `entry_answers` are the answers given during it.
 signal finished(file: String, key: String, entry_answers: Dictionary)
-## Skipping started: the rest of the entry fast-forwards (see [method skip]).
+## skipping started, the rest of the entry fast forwards (see [method skip]).
 signal skip_started(file: String, key: String)
-## Skipping ended: a question was reached, or the entry finished.
+## skipping stopped, either it hit a question or the entry finished.
 signal skip_stopped(file: String, key: String)
 signal _released
 
-## Window for [code]say[/code] lines. Leave empty to have [member window_provider] create it.
+## window for [code]say[/code] lines. leave it empty and [member window_provider] makes it.
 var dialogue_box: OmniDialogueBox
-## Window for [code]narrate[/code] lines.
+## window for [code]narrate[/code] lines.
 var narration: OmniNarration
-## Window for [code]alert[/code], [code]confirm[/code] and [code]choice[/code] lines.
+## window for [code]alert[/code], [code]confirm[/code] and [code]choice[/code] lines.
 var popup: OmniPopup
-## Window for [code]toast[/code] lines.
+## window for [code]toast[/code] lines.
 var toast: OmniToast
-## Optional. Called with [code]"dialogue_box"[/code], [code]"narration"[/code], [code]"popup"[/code] or [code]"toast"[/code] when that window property is empty, and should return the window. The [code]OmniDialog[/code] autoload uses it to create its windows the first time they're needed.
+## optional. gets called with [code]"dialogue_box"[/code], [code]"narration"[/code], [code]"popup"[/code] or [code]"toast"[/code] when that window is empty and should give back the window. the [code]OmniDialog[/code] autoload uses it to make its windows the first time they're needed.
 var window_provider: Callable
 
-## Every answer and [code]set[/code] value so far, by id. Save and restore it with your game ([method get_answers] / [method set_answers]).
+## every answer and [code]set[/code] value so far, by id. save and restore it with your game ([method get_answers] / [method set_answers]).
 var answers: Dictionary = {}
 
-## Safety limit: an entry that runs more lines than this (a [code]goto[/code] loop) is stopped with an error.
+## safety limit. an entry that runs more lines than this (a [code]goto[/code] loop) gets stopped with an error.
 var max_lines_per_play := 10000
 
 var _events: Dictionary = {}
@@ -54,12 +54,12 @@ var _skippable := true
 var _file := ""
 var _key := ""
 var _current_type := ""
-## True while the line showing is a question (answers, confirm or choice).
+## true while the line showing is a question (answers, confirm or choice).
 var _current_is_question := false
 
 #region Playing
 
-## Plays the entry [param key] from [param file] and returns the answers given during it. A call made while another entry is playing waits for its turn.
+## plays the entry [param key] from [param file] and returns the answers given during it. a call made while another entry is playing waits its turn.
 func play(file: String, key: String) -> Dictionary:
 	while _running:
 		await _released
@@ -108,17 +108,17 @@ func play(file: String, key: String) -> Dictionary:
 	_released.emit()
 	return given
 
-## Fast-forwards the rest of the running entry. Lines are not shown, but their [code]set[/code] values,
-## conditions and jumps still apply, so the game ends up where it would have; [code]wait[/code] lines and
-## toasts are dropped, and events still run (handlers can check [method is_skipping] and jump to
-## their end state). Skipping stops at the next question, which shows normally. Does nothing for an
-## entry with [code]"skippable": false[/code]. The windows' hold-to-skip button and
+## fast forwards the rest of the running entry. the lines don't show, but their [code]set[/code] values,
+## conditions and jumps still happen, so the game ends up where it would have anyway. [code]wait[/code]
+## lines and toasts get dropped, and events still run (handlers can check [method is_skipping] and
+## jump to where they'd end up). skipping stops at the next question, which shows like normal. does
+## nothing for an entry with [code]"skippable": false[/code]. the windows' hold to skip button and
 ## [member OmniTextWindow.skip_action] call this.
 func skip() -> void:
 	if not _running or not _skippable or _skipping:
 		return
 	if _current_is_question:
-		# Never skip a question: just show the rest of it and its answers.
+		# never skip a question, just show the rest of it and its answers.
 		for kind in ["dialogue_box", "narration"]:
 			var qw := _get_window(kind, false) as OmniTextWindow
 			if qw != null:
@@ -126,7 +126,7 @@ func skip() -> void:
 		return
 	_skipping = true
 	skip_started.emit(_file, _key)
-	# End the line showing now, unless it is a question.
+	# end the line showing now, unless it's a question.
 	for kind in ["dialogue_box", "narration"]:
 		var tw := _get_window(kind, false) as OmniTextWindow
 		if tw != null:
@@ -136,8 +136,8 @@ func skip() -> void:
 		if p != null and p.is_open():
 			p.cancel()
 
-## Returns [code]true[/code] while the entry is being skipped. Event handlers use it to jump to their
-## end state instead of animating.
+## returns [code]true[/code] while the entry is being skipped. event handlers use it to jump to where
+## they'd end up instead of animating.
 func is_skipping() -> bool:
 	return _skipping
 
@@ -146,7 +146,7 @@ func _stop_skipping() -> void:
 		_skipping = false
 		skip_stopped.emit(_file, _key)
 
-## Stops the running entry: the line showing now ends (a question counts as canceled) and its windows close.
+## stops the running entry. the line showing now ends (a question counts as canceled) and its windows close.
 func stop() -> void:
 	if not _running:
 		return
@@ -156,7 +156,7 @@ func stop() -> void:
 		if w != null and w.is_open():
 			w.close()
 
-## Returns [code]true[/code] while an entry is playing.
+## returns [code]true[/code] while an entry is playing.
 func is_running() -> bool:
 	return _running
 
@@ -164,19 +164,19 @@ func is_running() -> bool:
 
 #region Answers
 
-## Returns the answer stored under [param id], or [param default] if there is none.
+## returns the answer stored under [param id], or [param default] if there isn't one.
 func get_answer(id: String, default: Variant = null) -> Variant:
 	return answers.get(id, default)
 
-## Stores [param value] under [param id]. Lines can check it with [code]if[/code] / [code]if_not[/code].
+## stores [param value] under [param id]. lines can check it with [code]if[/code] / [code]if_not[/code].
 func set_answer(id: String, value: Variant) -> void:
 	answers[id] = value
 
-## Returns a deep copy of [member answers].
+## returns a deep copy of [member answers].
 func get_answers() -> Dictionary:
 	return answers.duplicate(true)
 
-## Replaces [member answers] with a deep copy of [param values].
+## replaces [member answers] with a deep copy of [param values].
 func set_answers(values: Dictionary) -> void:
 	answers = values.duplicate(true)
 
@@ -184,12 +184,12 @@ func set_answers(values: Dictionary) -> void:
 
 #region Events
 
-## Runs [param handler] (with the event's [code]args[/code]) whenever an event named [param event_name] fires. If the handler awaits, the dialog waits for it unless the event says [code]"wait": false[/code].
-## [b]Note:[/b] don't bind this runner into its own handler ([code]_f.bind(runner)[/code]): the runner keeps its handlers, so it would never be freed.
+## runs [param handler] (with the event's [code]args[/code]) whenever an event named [param event_name] fires. if the handler awaits, the dialog waits for it unless the event says [code]"wait": false[/code].
+## [b]heads up:[/b] don't bind this runner into its own handler ([code]_f.bind(runner)[/code]). the runner holds onto its handlers so it'd never get freed.
 func register_event(event_name: String, handler: Callable) -> void:
 	_events[event_name] = handler
 
-## Stops running the handler registered for [param event_name].
+## stops running the handler registered for [param event_name].
 func unregister_event(event_name: String) -> void:
 	_events.erase(event_name)
 
@@ -216,7 +216,7 @@ func _fire_event(event: Variant, wait := true) -> void:
 
 #region Lines
 
-## Runs one line. Returns "" to carry on, an entry key to jump to, or "__end" to stop.
+## runs one line. returns "" to keep going, an entry key to jump to, or "__end" to stop.
 func _run_line(line: Dictionary, given: Dictionary) -> String:
 	if not _passes(line):
 		return ""
@@ -277,7 +277,7 @@ func _run_line(line: Dictionary, given: Dictionary) -> String:
 			push_error("OmniDialog: unknown line type '%s'." % type)
 	return ""
 
-## A dialogue or narration line, with optional answers.
+## a dialogue or narration line, maybe with answers.
 func _run_text_line(line: Dictionary, given: Dictionary, kind: String) -> String:
 	var group := _choices(line)
 	if _skipping:
@@ -290,7 +290,7 @@ func _run_text_line(line: Dictionary, given: Dictionary, kind: String) -> String
 	if not window.skip_requested.is_connected(skip):
 		window.skip_requested.connect(skip)
 	window.set_skip_available(_skippable)
-	# Only one text window at a time: switching from dialogue to narration closes the other.
+	# only one text window at a time, switching from dialogue to narration closes the other one.
 	var other := _get_window("narration" if kind == "dialogue_box" else "dialogue_box", false) as OmniTextWindow
 	if other != null and other.is_open():
 		await other.close()
@@ -308,8 +308,8 @@ func _run_text_line(line: Dictionary, given: Dictionary, kind: String) -> String
 		return ""
 	return await _apply_option(group, pick, given)
 
-## The line's "choices" group with options whose conditions fail left out.
-## Returns { "id": String, "options": Array[Dictionary] (with "_index": original position) }.
+## the line's "choices" group, minus any options whose conditions fail.
+## returns { "id": String, "options": Array[Dictionary] (with "_index": where it was originally) }.
 func _choices(line: Dictionary) -> Dictionary:
 	var group: Variant = line.get("choices")
 	var out := {"id": "", "options": []}
@@ -329,7 +329,7 @@ func _choices(line: Dictionary) -> Dictionary:
 			out["options"].append(copy)
 	return out
 
-## Stores the picked option's value, applies its `set` and `event`, and returns its `next`.
+## stores the picked option's value, does its `set` and `event`, and returns its `next`.
 func _apply_option(group: Dictionary, pick: int, given: Dictionary) -> String:
 	var options: Array = group["options"]
 	if pick < 0 or pick >= options.size():
@@ -354,8 +354,8 @@ func _apply_set(values: Variant, given: Dictionary) -> void:
 		for id in values:
 			_store(str(id), values[id], given)
 
-## Conditions: every `if` id must match, no `if_not` id may match. A list matches any of its
-## values; null matches an id that hasn't been answered yet.
+## conditions: every `if` id has to match and no `if_not` id can match. a list matches any of its
+## values, null matches an id that hasn't been answered yet.
 func _passes(item: Dictionary) -> bool:
 	var must: Variant = item.get("if")
 	if must is Dictionary:
@@ -382,7 +382,7 @@ func _matches(id: String, expected: Variant) -> bool:
 		return false
 	return _same(actual, expected)
 
-## JSON numbers are floats, so 1 and 1.0 are the same answer.
+## json numbers are floats, so 1 and 1.0 count as the same answer.
 static func _same(a: Variant, b: Variant) -> bool:
 	if (a is int or a is float) and (b is int or b is float):
 		return is_equal_approx(float(a), float(b))
@@ -398,7 +398,7 @@ func _get_window(kind: String, create := true) -> Node:
 		return w
 	if create and window_provider.is_valid():
 		w = window_provider.call(kind)
-		# Remember it, so closing and switching windows later finds it.
+		# remember it so closing and switching windows later can find it.
 		if is_instance_valid(w):
 			set(kind, w)
 		return w

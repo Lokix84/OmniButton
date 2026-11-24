@@ -6,31 +6,31 @@ var _active_touch_index: int = -1
 var _active_look_touch_index: int = -1
 
 var _gamepad: Control
-var _center: Omni_Button
+var _center: OmniButton
 var _move_area: Control
 
 var _lookjoystick: Control
-var _lookcenter: Omni_Button
+var _lookcenter: OmniButton
 var _look_area: Control
 
-var _up: Omni_Button
-var _down: Omni_Button
-var _left: Omni_Button
-var _right: Omni_Button
-var _up_left: Omni_Button
-var _up_right: Omni_Button
-var _down_left: Omni_Button
-var _down_right: Omni_Button
-var _last_hover: Omni_Button
+var _up: OmniButton
+var _down: OmniButton
+var _left: OmniButton
+var _right: OmniButton
+var _up_left: OmniButton
+var _up_right: OmniButton
+var _down_left: OmniButton
+var _down_right: OmniButton
+var _last_hover: OmniButton
 
-var _output: Omni_Button
-var _output2: Omni_Button
+var _output: OmniButton
+var _output2: OmniButton
 var _selected_container: Node
 var _selected_buttons: Array = []
-var _used_button: Omni_Button
+var _used_button: OmniButton
 
 func _ready() -> void:
-	# Set up touch areas, gamepad + joysticks, signal wiring, selection, logger, and typewriter.
+	# set up the touch areas, gamepad + joysticks, signals, selection, logger and typewriter.
 	_move_area = get_node_or_null("TouchArea/Move")
 	_look_area = get_node_or_null("TouchArea/Look")
 	if is_instance_valid(_move_area):
@@ -41,36 +41,36 @@ func _ready() -> void:
 	_gamepad = get_node_or_null("Gamepad")
 	_center = get_node_or_null("Gamepad/Center")
 	if is_instance_valid(_center):
-		_center.FollowMode = Omni_Button.FollowModeEnum.VirtualJoystick
-		_center.ClampShape = Omni_Button.JoystickClampShape.Circle
-		_center.JoystickDeadzone = 0.15
-		_center.JoystickSnapToInput = true
-		_center.JoystickResetOnRelease = true
-		_center.EnableJoystickArea = true
-		_center.JoystickAreaPersistent = false
+		_center.follow_mode = OmniButton.FollowMode.VIRTUAL_JOYSTICK
+		_center.clamp_shape = OmniButton.JoystickClampShape.CIRCLE
+		_center.joystick_deadzone = 0.15
+		_center.joystick_snap_to_input = true
+		_center.joystick_reset_on_release = true
+		_center.enable_joystick_area = true
+		_center.joystick_area_persistent = false
 	if is_instance_valid(_center) and is_instance_valid(_gamepad):
-		_center.BoundsSource = _gamepad
-		_center.EnableJoystickArea = true
-		_center.JoystickAreaUseRectForClamp = true
-		_center.JoystickAreaPersistent = false
-		_center.JoystickAreaExternalPath = NodePath("../Border")
-		_center.JoystickAreaThickness = 0
-		_center.EnableDefaultThumb = false
+		_center.bounds_source = _gamepad
+		_center.enable_joystick_area = true
+		_center.joystick_area_use_rect_for_clamp = true
+		_center.joystick_area_persistent = false
+		_center.joystick_area_external_path = NodePath("../Border")
+		_center.joystick_area_thickness = 0
+		_center.enable_default_thumb = false
 
 	_lookjoystick = get_node_or_null("LookJoystick")
 	_lookcenter = get_node_or_null("LookJoystick/Center")
 	if is_instance_valid(_lookcenter):
-		_lookcenter.FollowMode = Omni_Button.FollowModeEnum.VirtualJoystick
-		_lookcenter.ClampShape = Omni_Button.JoystickClampShape.Circle
-		_lookcenter.JoystickDeadzone = 0.15
-		_lookcenter.JoystickSnapToInput = true
-		_lookcenter.JoystickResetOnRelease = true
-		_lookcenter.EnableJoystickArea = true
-		_lookcenter.JoystickAreaPersistent = false
+		_lookcenter.follow_mode = OmniButton.FollowMode.VIRTUAL_JOYSTICK
+		_lookcenter.clamp_shape = OmniButton.JoystickClampShape.CIRCLE
+		_lookcenter.joystick_deadzone = 0.15
+		_lookcenter.joystick_snap_to_input = true
+		_lookcenter.joystick_reset_on_release = true
+		_lookcenter.enable_joystick_area = true
+		_lookcenter.joystick_area_persistent = false
 	if is_instance_valid(_lookcenter) and is_instance_valid(_lookjoystick):
-		_lookcenter.BoundsSource = _lookjoystick
-		_lookcenter.JoystickHideWhenInactive = true
-		_lookcenter.EnableJoystickArea = true
+		_lookcenter.bounds_source = _lookjoystick
+		_lookcenter.joystick_hide_when_inactive = true
+		_lookcenter.enable_joystick_area = true
 	if is_instance_valid(_lookjoystick):
 		_lookjoystick.visible = false
 
@@ -98,11 +98,11 @@ func _ready() -> void:
 		_output = get_node_or_null("ButtonOutput")
 	if _output == null:
 		var outs := get_tree().get_nodes_in_group("Output")
-		if outs.size() > 0 and outs[0] is Omni_Button:
+		if outs.size() > 0 and outs[0] is OmniButton:
 			_output = outs[0]
 	if is_instance_valid(_output):
-		_output.LabelType = Omni_Button.LabelKind.RichTextLabel
-		_output.Text = "Logger ready"
+		_output.label_type = OmniButton.LabelKind.RICH_TEXT_LABEL
+		_output.text = "Logger ready"
 		_connect_all_buttons_to_output(_output)
 
 	_output2 = get_node_or_null("%TextBlock")
@@ -110,22 +110,22 @@ func _ready() -> void:
 		_output2 = get_node_or_null("TextBlock")
 	if _output2 == null:
 		var blocks := get_tree().get_nodes_in_group("Block")
-		if blocks.size() > 0 and blocks[0] is Omni_Button:
+		if blocks.size() > 0 and blocks[0] is OmniButton:
 			_output2 = blocks[0]
 	if is_instance_valid(_output2):
-		var content := _output2.TextToType if _output2.TextToType != "" else _output2.Text
+		var content := _output2.text_to_type if _output2.text_to_type != "" else _output2.text
 		if content != "":
-			_output2.TextToType = content
-			_output2.DelayEffectTagsDuringTypewriter = false
+			_output2.text_to_type = content
+			_output2.delay_effect_tags_during_typewriter = false
 			if is_instance_valid(_output):
 				_output2.connect("typewriter_completed", func():
-					_output.LabelType = Omni_Button.LabelKind.RichTextLabel
-					_output.Text = "Typing complete"
+					_output.label_type = OmniButton.LabelKind.RICH_TEXT_LABEL
+					_output.text = "Typing complete"
 				)
 			_output2.start_typewriter_from_text_to_type(40.0, false, true)
 
 func _wire_swipe_button() -> void:
-	var swipe_btn := get_node_or_null("UI/Icons/SwipeButton") as Omni_Button
+	var swipe_btn := get_node_or_null("UI/Icons/SwipeButton") as OmniButton
 	if swipe_btn == null:
 		return
 	var c_swipe := Callable(self, "_on_swipe_button_swipe").bind(swipe_btn)
@@ -146,7 +146,7 @@ func _on_move_gui_input(ev: InputEvent) -> void:
 		return
 	if ev is InputEventScreenTouch and (ev as InputEventScreenTouch).pressed:
 		_active_touch_index = (ev as InputEventScreenTouch).index
-		# gui_input touch positions are relative to the area; convert to screen coordinates.
+		# gui_input touch positions are relative to the area, turn them into screen coordinates.
 		_begin_move_at(_move_area.get_global_transform() * (ev as InputEventScreenTouch).position)
 		get_viewport().set_input_as_handled()
 	elif ev is InputEventMouseButton:
@@ -202,7 +202,7 @@ func _input(event: InputEvent) -> void:
 func _begin_move_at(global_point: Vector2) -> void:
 	_move_active = true
 	_gamepad.visible = true
-	# Place gamepad centered on input, clamped to its parent/container.
+	# put the gamepad centered on the input, kept inside its parent/container.
 	var parent := _gamepad.get_parent()
 	var clamp: Rect2 = parent.get_global_rect() if parent is Control else get_viewport_rect()
 	var half := _gamepad.size * 0.5
@@ -257,7 +257,7 @@ func _end_move() -> void:
 	_move_active = false
 	_active_touch_index = -1
 	if is_instance_valid(_last_hover):
-		_last_hover.IsHovering = false
+		_last_hover.is_hovering = false
 		_last_hover = null
 	_center.stop_virtual_joystick()
 	_gamepad.visible = false
@@ -271,7 +271,7 @@ func _end_look() -> void:
 	_lookjoystick.visible = false
 
 func _update_directional_hover(global_point: Vector2) -> void:
-	var hit: Omni_Button = null
+	var hit: OmniButton = null
 	if is_instance_valid(_up) and _is_point_in_node(_up, global_point):
 		hit = _up
 	elif is_instance_valid(_down) and _is_point_in_node(_down, global_point):
@@ -292,39 +292,39 @@ func _update_directional_hover(global_point: Vector2) -> void:
 	if hit == _last_hover:
 		return
 	if is_instance_valid(_last_hover):
-		_last_hover.IsHovering = false
+		_last_hover.is_hovering = false
 	if is_instance_valid(hit):
-		hit.IsHovering = true
+		hit.is_hovering = true
 	_last_hover = hit
 
 func _is_point_in_node(node: Control, global_point: Vector2) -> bool:
 	return node.get_global_rect().has_point(global_point)
 
-# ===== Logging wiring =====
-func _connect_all_buttons_to_output(output: Omni_Button) -> void:
+# ===== logging =====
+func _connect_all_buttons_to_output(output: OmniButton) -> void:
 	var list: Array = []
 	var grouped := get_tree().get_nodes_in_group("Button")
 	if grouped.size() > 0:
 		for n in grouped:
-			if n is Omni_Button and n != output:
+			if n is OmniButton and n != output:
 				list.append(n)
 	else:
 		_collect_omni_buttons(self, output, list)
 	for b in list:
 		_connect_button_for_log(b, output)
 
-func _collect_omni_buttons(root: Node, skip: Omni_Button, dst: Array) -> void:
+func _collect_omni_buttons(root: Node, skip: OmniButton, dst: Array) -> void:
 	for child in root.get_children():
-		if child is Omni_Button and child != skip:
+		if child is OmniButton and child != skip:
 			dst.append(child)
 		if child is Node:
 			_collect_omni_buttons(child, skip, dst)
 
-func _connect_button_for_log(b: Omni_Button, output: Omni_Button) -> void:
+func _connect_button_for_log(b: OmniButton, output: OmniButton) -> void:
 	var _set_out: Callable = func(msg: String) -> void:
 		if is_instance_valid(output):
-			output.LabelType = Omni_Button.LabelKind.RichTextLabel
-			output.Text = msg
+			output.label_type = OmniButton.LabelKind.RICH_TEXT_LABEL
+			output.text = msg
 
 	_safe_connect(b, "pressed", func(): _set_out.call("[b][%s][/b] Pressed" % b.name))
 	_safe_connect(b, "released", func(): _set_out.call("[b][%s][/b] Released" % b.name))
@@ -344,28 +344,28 @@ func _safe_connect(obj: Object, sig: StringName, callable: Callable) -> void:
 	if not obj.is_connected(sig, callable):
 		obj.connect(sig, callable)
 
-# ===== Selected item helpers =====
+# ===== selected item helpers =====
 func _wire_selected_items(container: Node) -> void:
 	_selected_buttons.clear()
 	for child in container.get_children():
-		if child is Omni_Button:
+		if child is OmniButton:
 			_selected_buttons.append(child)
-			var ob: Omni_Button = child
+			var ob: OmniButton = child
 			_safe_connect(ob, "pressed", func(): _on_selected_item_pressed(ob))
 
-func _on_selected_item_pressed(clicked: Omni_Button) -> void:
+func _on_selected_item_pressed(clicked: OmniButton) -> void:
 	if is_instance_valid(_used_button):
-		_used_button.Selected = true
-		_used_button.Disabled = true
+		_used_button.selected = true
+		_used_button.disabled = true
 	for b in _selected_buttons:
 		if not is_instance_valid(b):
 			continue
-		b.Selected = (b == clicked)
+		b.selected = (b == clicked)
 		if b == clicked and is_instance_valid(_used_button):
-			_used_button.Selected = false
-			_used_button.Disabled = false
+			_used_button.selected = false
+			_used_button.disabled = false
 
-func _on_swipe_button_swipe(direction: Vector2, source: Omni_Button) -> void:
+func _on_swipe_button_swipe(direction: Vector2, source: OmniButton) -> void:
 	var d := direction
 	var path := ""
 	if abs(d.x) >= abs(d.y):
@@ -373,14 +373,14 @@ func _on_swipe_button_swipe(direction: Vector2, source: Omni_Button) -> void:
 	else:
 		path = "res://addons/omni_button/demo/icons/Icon-DownArrow1.png" if d.y <= 0.0 else "res://addons/omni_button/demo/icons/Icon-UpArrow1.png"
 	if is_instance_valid(source):
-		source.IconTexture = load(path)
+		source.icon_texture = load(path)
 	if is_instance_valid(_output):
-		_output.LabelType = Omni_Button.LabelKind.RichTextLabel
-		_output.Text = "[SwipeButton] Swipe: %s -> %s" % [str(direction), path.get_file().get_basename()]
+		_output.label_type = OmniButton.LabelKind.RICH_TEXT_LABEL
+		_output.text = "[SwipeButton] Swipe: %s -> %s" % [str(direction), path.get_file().get_basename()]
 
-func _on_swipe_button_swipe_ended(source: Omni_Button) -> void:
+func _on_swipe_button_swipe_ended(source: OmniButton) -> void:
 	if is_instance_valid(source):
-		source.IconTexture = load("res://addons/omni_button/demo/icons/Icon-Circle5.png")
+		source.icon_texture = load("res://addons/omni_button/demo/icons/Icon-Circle5.png")
 	if is_instance_valid(_output):
-		_output.LabelType = Omni_Button.LabelKind.RichTextLabel
-		_output.Text = "[SwipeButton] Swipe Ended"
+		_output.label_type = OmniButton.LabelKind.RICH_TEXT_LABEL
+		_output.text = "[SwipeButton] Swipe Ended"

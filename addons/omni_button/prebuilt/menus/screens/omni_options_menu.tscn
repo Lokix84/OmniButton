@@ -47,11 +47,11 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 44)
 layout_mode = 2
 size_flags_horizontal = 0
-Text = "Reset to defaults"
+text = "Reset to defaults"
 
 [node name="Back" parent="Root/Panel/Content/Layout/Footer" instance=ExtResource("option")]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(160, 44)
 layout_mode = 2
 size_flags_horizontal = 0
-Text = "Back"
+text = "Back"

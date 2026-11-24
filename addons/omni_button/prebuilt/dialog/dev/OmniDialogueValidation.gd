@@ -1,6 +1,6 @@
 extends SceneTree
-# Checks the prebuilt dialogue box and narration windows through the OmniDialog autoload.
-# Usage: godot --headless --path . -s res://addons/omni_button/prebuilt/dialog/dev/OmniDialogueValidation.gd
+# checks the prebuilt dialogue box and narration windows through the OmniDialog autoload.
+# usage: godot --headless --path . -s res://addons/omni_button/prebuilt/dialog/dev/OmniDialogueValidation.gd
 
 const DialogScript := preload("res://addons/omni_button/prebuilt/dialog/core/omni_dialog.gd")
 const PORTRAIT := "res://addons/omni_button/prebuilt/dialog/demo/icons/Icon-Sword1.png"
@@ -27,7 +27,7 @@ func _run() -> void:
 	var done := [false]
 	var result := [null]
 
-	# --- One line
+	# --- one line
 	var say_one := func(): await dlg.say("Gate Guard", "Halt! Who goes there?", PORTRAIT); done[0] = true
 	say_one.call()
 	await process_frame
@@ -38,7 +38,7 @@ func _run() -> void:
 	_check(root.gui_get_focus_owner() == box.body, "the text body has focus")
 	box.body.pressed.emit()
 	await process_frame
-	_check(box.state == OmniTextWindow.State.WAITING and box.body.Text == "Halt! Who goes there?", "pressing while revealing shows the whole line")
+	_check(box.state == OmniTextWindow.State.WAITING and box.body.text == "Halt! Who goes there?", "pressing while revealing shows the whole line")
 	_check(box.continue_indicator.visible, "continue indicator shows once the line is complete")
 	_check(not done[0], "the line waits for input once fully shown")
 	box.body.pressed.emit()
@@ -47,7 +47,7 @@ func _run() -> void:
 	_check(done[0] and not box.is_open(), "pressing again ends the line and the box closes after the last line")
 	_check(root.gui_get_focus_owner() == game_button, "focus returns to the game")
 
-	# --- Back-to-back lines keep the box open; speakers and sides change per line.
+	# --- lines back to back keep the box open, speakers and sides change per line.
 	done[0] = false
 	var opened_count := [0]
 	box.opened.connect(func(): opened_count[0] += 1)
@@ -72,7 +72,7 @@ func _run() -> void:
 	await process_frame
 	_check(done[0] and not box.is_open() and opened_count[0] == 1, "a three-line conversation opens the box once")
 
-	# --- ui_accept advances while the body has focus
+	# --- ui_accept moves on while the body has focus
 	done[0] = false
 	say_one.call()
 	await process_frame
@@ -86,7 +86,7 @@ func _run() -> void:
 	await process_frame
 	_check(done[0], "ui_accept moves on")
 
-	# --- Options
+	# --- options
 	var ask := func(): result[0] = await dlg.ask("Gate Guard", "State your business.", PackedStringArray(["Trade", "Leave"]), PORTRAIT)
 	ask.call()
 	await process_frame
@@ -113,7 +113,7 @@ func _run() -> void:
 	_check(result[0] == 1 and not box.is_open(), "ask returns the option picked")
 	_check(box.options_box.get_child_count() == 0 or box._option_nodes.is_empty(), "options are removed after the choice")
 
-	# --- Many options scroll instead of growing the box; plain lines hide the column.
+	# --- lots of options scroll instead of growing the box, plain lines hide the column.
 	var plain_size := Vector2.ZERO
 	done[0] = false
 	say_one.call()
@@ -141,7 +141,7 @@ func _run() -> void:
 	await process_frame
 	_check(result[0] == 5, "a scrolled-to option can be picked")
 
-	# --- Long answers: wrap, share one font size, and grow instead of shrinking past the minimum.
+	# --- long answers wrap, share one font size, and grow instead of shrinking past the minimum.
 	result[0] = null
 	var ask_long := func(): result[0] = await dlg.ask("Gate Guard", "State your business.", PackedStringArray([
 		"I'm a travelling merchant with silk and spices to sell in the market, and a cart of fine cloth from the southern ports.",
@@ -154,9 +154,9 @@ func _run() -> void:
 	for i in 14:
 		await process_frame
 	var look: OmniDialogTheme = box.get_dialog_theme()
-	var sizes := box._option_nodes.map(func(b): return b.FixedFontSize)
+	var sizes := box._option_nodes.map(func(b): return b.fixed_font_size)
 	_check(sizes[0] == sizes[1] and sizes[1] == sizes[2] and sizes[0] >= look.option_min_font_size, "all answers share one font size, never below the minimum")
-	_check(box._option_nodes.all(func(b): return b.LabelAutowrap != TextServer.AUTOWRAP_OFF), "answers wrap")
+	_check(box._option_nodes.all(func(b): return b.label_autowrap != TextServer.AUTOWRAP_OFF), "answers wrap")
 	_check(box._option_nodes[0].size.y > box._option_nodes[2].size.y, "an answer too long for the minimum size gets taller")
 	_check(box._option_nodes[2].size.y == look.option_height, "short answers keep the normal height")
 	_check(box.panel.size == plain_size, "long answers don't resize the box")
@@ -166,7 +166,7 @@ func _run() -> void:
 	await process_frame
 	_check(result[0] == 0, "a long answer can be picked")
 
-	# --- Timing tags and auto-advance
+	# --- timing tags and auto advance
 	done[0] = false
 	box.auto_advance_delay = 0.2
 	var tagged := func(): await dlg.say("Narrator", "Wait[pause=5] for it."); done[0] = true
@@ -174,12 +174,12 @@ func _run() -> void:
 	await process_frame
 	box.advance()
 	await process_frame
-	_check(box.body.Text == "Wait for it.", "timing tags never show in the box")
+	_check(box.body.text == "Wait for it.", "timing tags never show in the box")
 	await create_timer(0.4).timeout
 	_check(done[0], "auto_advance_delay moves on by itself")
 	box.auto_advance_delay = 0.0
 
-	# --- Closing from code ends the line
+	# --- closing from code ends the line
 	result[0] = null
 	ask.call()
 	await process_frame
@@ -188,7 +188,7 @@ func _run() -> void:
 	await process_frame
 	_check(result[0] == -1 and not box.is_busy(), "closing from code ends the line with -1")
 
-	# --- Typing sound
+	# --- typing sound
 	box.typing_sound = AudioStreamWAV.new()
 	box.characters_per_second = 400.0
 	done[0] = false
@@ -200,7 +200,7 @@ func _run() -> void:
 	await process_frame
 	box.typing_sound = null
 
-	# --- Player text speed
+	# --- player text speed
 	box.characters_per_second = 20.0
 	OmniTextWindow.text_speed_scale = 2.0
 	done[0] = false
@@ -215,7 +215,7 @@ func _run() -> void:
 	done[0] = false
 	say_one.call()
 	await process_frame
-	_check(box.state == OmniTextWindow.State.WAITING and box.body.Text == "Halt! Who goes there?", "text_speed_scale 0 shows each line at once")
+	_check(box.state == OmniTextWindow.State.WAITING and box.body.text == "Halt! Who goes there?", "text_speed_scale 0 shows each line at once")
 	box.advance()
 	await process_frame
 	await process_frame
@@ -226,7 +226,7 @@ func _run() -> void:
 	var run_alert := func(): await dlg.alert("Instant message"); alert_done[0] = true
 	run_alert.call()
 	await process_frame
-	_check(not popup.message_label._tw_active and popup.message_label.Text == "Instant message", "instant text also applies to popup messages")
+	_check(not popup.message_label._tw_active and popup.message_label.text == "Instant message", "instant text also applies to popup messages")
 	popup._button_nodes[0].pressed.emit()
 	await process_frame
 	await process_frame
@@ -234,7 +234,7 @@ func _run() -> void:
 	dlg.text_speed_scale = 1.0
 	box.characters_per_second = 500.0
 
-	# --- Narration
+	# --- narration
 	var nar: OmniNarration = dlg.get_narration()
 	nar.animation_duration = 0.0
 	done[0] = false

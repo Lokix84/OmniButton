@@ -1,78 +1,78 @@
 class_name OmniVirtualCursor
 extends CanvasLayer
-## A controller cursor for menus: a ring moved by a joystick that clicks whatever is under it, like
-## the menus in Destiny or The First Descendant.
+## a controller cursor for menus. a ring you move with a stick that clicks whatever's under it,
+## like the menus in Destiny or The First Descendant.
 ##
-## The ring drives Godot's normal mouse input: moving it sends mouse motion, so buttons under it show
-## their hover look, and the click action sends a left click at its center. Every Control works with
-## it: [Omni_Button], Godot's [Button], sliders, scroll containers.[br][br]
-## Drop [code]omni_virtual_cursor.tscn[/code] into a menu scene. It appears when the stick moves and
-## hides when the mouse, a touch or the d-pad (focus navigation) is used, so only one way of pointing
-## is active at a time. While it is shown, the click action clicks under the ring instead of pressing
-## the focused button.
+## the ring runs through godot's normal mouse input. moving it sends mouse motion so buttons under
+## it get their hover look, and the click action sends a left click at its center. so every Control
+## works with it: [OmniButton], godot's [Button], sliders, scroll containers.[br][br]
+## drop [code]omni_virtual_cursor.tscn[/code] into a menu scene. it shows up when the stick moves
+## and hides when the mouse, a touch or the d-pad (focus navigation) gets used, so only one way of
+## pointing is going at a time. while it's showing, the click action clicks under the ring instead
+## of pressing the focused button.
 
-## The ring started showing (the stick moved).
+## the ring showed up (the stick moved).
 signal shown
-## The ring hid (mouse, touch or d-pad used, or [member active] turned off).
+## the ring hid (mouse, touch or d-pad got used, or [member active] got turned off).
 signal hidden
-## The ring clicked at [param position] (in the viewport's coordinates).
+## the ring clicked at [param position] (viewport coordinates).
 signal clicked(position: Vector2)
 
 enum Stick { LEFT, RIGHT }
 
-## Turn the cursor on or off. Off hides the ring and leaves all input alone.
+## turns the cursor on or off. off hides the ring and leaves all input alone.
 @export var active := true:
 	set(value):
 		active = value
 		if not value and is_node_ready():
 			_hide()
-## Which stick moves the ring.
+## which stick moves the ring.
 @export var stick: Stick = Stick.LEFT
-## Which controller: -1 listens to all of them.
+## which controller. -1 listens to all of them.
 @export var device := -1
-## Stick movement smaller than this is ignored.
+## stick movement smaller than this gets ignored.
 @export_range(0.0, 0.9, 0.01) var dead_zone := 0.2
-## Top speed, in screen heights per second, so it feels the same at any resolution.
+## top speed in screen heights per second, so it feels the same at any resolution.
 @export_range(0.1, 5.0, 0.05) var speed := 1.2
-## Response curve: 1 = linear, higher = finer control near the middle of the stick, fast at full tilt.
+## response curve. 1 is linear, higher gives finer control near the middle of the stick and still goes fast at full tilt.
 @export_range(1.0, 4.0, 0.1) var response_curve := 2.0
-## Controller button that clicks under the ring (held = mouse button held).
+## controller button that clicks under the ring (holding it holds the mouse button).
 @export var click_button: JoyButton = JOY_BUTTON_A
-## InputMap action that also clicks under the ring, for keys (Godot's ui_accept has Enter and Space,
-## but no controller button). Empty: only [member click_button] clicks.
+## input map action that also clicks under the ring, for keys (godot's ui_accept has enter and space
+## but no controller button). empty means only [member click_button] clicks.
 @export var click_action: StringName = &"ui_accept"
 
 @export_group("Sticky Buttons")
-## Speed multiplier while over something clickable, so it's easy to stop on it (1 = no slowdown).
+## speed multiplier while it's over something clickable so it's easy to stop on it (1 is no slowdown).
 @export_range(0.1, 1.0, 0.05) var hover_slowdown := 0.45
-## How hard the ring is pulled toward the center of the clickable thing under it (0 = off). The pull
-## eases off while the stick is pushed, so it never fights the player.
+## how hard the ring gets pulled toward the middle of whatever clickable thing is under it (0 is
+## off). the pull lets up while the stick is pushed so it never fights the player.
 @export_range(0.0, 1.0, 0.05) var snap_strength := 0.5
 
 @export_group("Scrolling")
-## The other stick scrolls whatever is under the ring. 0 turns it off.
+## the other stick scrolls whatever's under the ring. 0 turns that off.
 @export_range(0.0, 40.0, 0.5) var scroll_speed := 12.0
 
 @export_group("Look")
-## Ring diameter as a fraction of the screen height.
+## ring size as a fraction of the screen height.
 @export_range(0.01, 0.3, 0.005) var ring_size := 0.08
-## Ring color at rest.
+## ring color normally.
 @export var ring_color := Color(1, 1, 1, 0.9)
-## Ring color over something clickable.
+## ring color over something clickable.
 @export var hover_color := Color(1, 0.82, 0.4, 1)
-## Optional picture to use instead of the built-in ring (drawn at ring_size, tinted by the colors).
+## optional picture to use instead of the built in ring (drawn at ring_size and tinted by the colors).
 @export var ring_texture: Texture2D:
 	set(value):
 		ring_texture = value
 		if is_node_ready():
 			_apply_look()
-## Hide the system mouse pointer while the ring is shown.
+## hides the system mouse pointer while the ring is showing.
 @export var hide_mouse_pointer := true
 
-## Ring center, in the viewport's coordinates.
+## middle of the ring, in viewport coordinates.
 var cursor_position := Vector2.ZERO
 
-## Marks the mouse events this node makes, so it can tell them from a real mouse.
+## tags the mouse events this node makes so it can tell them apart from a real mouse.
 const DEVICE_ID := -77
 const _DPAD_ACTIONS := [&"ui_up", &"ui_down", &"ui_left", &"ui_right"]
 
@@ -92,18 +92,18 @@ func _ready() -> void:
 	cursor_position = _screen().get_center()
 	_set_ring_visible(false)
 
-## Whether the ring is on screen right now.
+## true while the ring is on screen.
 func is_shown() -> bool:
 	return _visible
 
-## Moves the ring (viewport coordinates) and sends the matching mouse motion.
+## moves the ring (viewport coordinates) and sends the mouse motion to go with it.
 func warp_to(point: Vector2) -> void:
 	cursor_position = _clamp(point)
 	_place_ring()
 	if _visible:
 		_send_motion()
 
-## What is under the ring that it treats as clickable, or null.
+## the clickable thing under the ring, or null.
 func get_hovered_control() -> Control:
 	return _hovered
 
@@ -116,7 +116,7 @@ func _process(delta: float) -> void:
 			_show()
 		else:
 			return
-	# Mouse motion is buffered until the frame ends, so what's under the ring is checked here.
+	# mouse motion gets buffered until the end of the frame, so check what's under the ring here.
 	_update_hovered()
 	var screen := _screen()
 	var step := speed * screen.size.y * delta
@@ -124,7 +124,7 @@ func _process(delta: float) -> void:
 		step *= hover_slowdown
 	var before := cursor_position
 	cursor_position = _clamp(cursor_position + move * step)
-	# Snap: pull toward the hovered thing's center, easing off as the stick is pushed.
+	# snap: pull toward the middle of whatever's hovered, letting up as the stick gets pushed.
 	if snap_strength > 0.0 and _hovered != null and is_instance_valid(_hovered):
 		var center := _hovered.get_global_rect().get_center()
 		var pull := snap_strength * (1.0 - clampf(move.length(), 0.0, 1.0))
@@ -139,12 +139,12 @@ func _input(event: InputEvent) -> void:
 	if not active or event.device == DEVICE_ID:
 		return
 	if _visible:
-		# Another way of pointing takes over: hide the ring.
+		# something else is pointing now, hide the ring.
 		if (event is InputEventMouseMotion and event.relative.length_squared() > 0.0) \
 				or event is InputEventScreenTouch or event is InputEventMouseButton:
 			_hide()
 			return
-		# Godot's default ui_* actions include the left stick too; only buttons and keys count here.
+		# godot's default ui_* actions have the left stick in them too, only buttons and keys count here.
 		for action in _DPAD_ACTIONS:
 			if event.is_action_pressed(action) and not event is InputEventJoypadMotion:
 				_hide()
@@ -172,7 +172,7 @@ func _show() -> void:
 		return
 	_visible = true
 	_set_ring_visible(true)
-	# The ring replaces focus navigation while shown, so confirm can't press two things.
+	# the ring takes over from focus navigation while it's showing, so confirm can't press two things.
 	get_viewport().gui_release_focus()
 	if hide_mouse_pointer:
 		_saved_mouse_mode = Input.mouse_mode
@@ -224,7 +224,7 @@ func _scroll(v: Vector2, delta: float) -> void:
 			e.factor = absf(amount) * scroll_speed * delta
 			_send(e)
 
-## Sends a mouse event at the ring's center, as if a real mouse were there.
+## sends a mouse event at the middle of the ring like a real mouse was there.
 func _send(e: InputEventMouse) -> void:
 	e.device = DEVICE_ID
 	var window_point := get_viewport().get_final_transform() * cursor_position
@@ -242,10 +242,10 @@ func _update_hovered() -> void:
 		_ring.material.set_shader_parameter("ring_color", color)
 		_picture.modulate = color
 
-## The control itself or the nearest parent that reacts to clicks.
+## the control itself, or the closest parent that takes clicks.
 func _clickable(c: Control) -> Control:
 	while c != null:
-		if c is BaseButton or c is Omni_Button or c is Range or c is LineEdit or c is TextEdit:
+		if c is BaseButton or c is OmniButton or c is Range or c is LineEdit or c is TextEdit:
 			return c if not (c is BaseButton and c.disabled) else null
 		c = c.get_parent() as Control
 	return null

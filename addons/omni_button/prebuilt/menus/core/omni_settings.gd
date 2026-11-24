@@ -1,11 +1,12 @@
 class_name OmniSettings
 extends RefCounted
-## The game's player settings (volume, window mode, text speed...): defined once, saved to a file,
-## and applied to the game whenever they change. Static: use it from anywhere, no node needed.
+## the game's player settings (volume, window mode, text speed...). you define them once, they get
+## saved to a file, and they're applied to the game whenever they change. it's static, so use it
+## from anywhere, no node needed.
 ##
-## Each setting has a key ([code]"audio/music"[/code]), a default, and optionally a function that
-## applies it. The options screen ([OmniOptionsMenu]) builds its rows from these definitions, so a
-## setting your game adds with [method define] shows up there with no extra UI work:
+## each setting has a key ([code]"audio/music"[/code]), a default, and if you want a function that
+## applies it. the options screen ([OmniOptionsMenu]) builds its rows from these, so a setting your
+## game adds with [method define] shows up there without any extra ui work:
 ## [codeblock]
 ## OmniSettings.define("gameplay/screen_shake", true, {
 ##     "page": "Gameplay", "label": "Screen shake",
@@ -13,20 +14,20 @@ extends RefCounted
 ## })
 ## var shake: bool = OmniSettings.get_value("gameplay/screen_shake")
 ## [/codeblock]
-## Settings are loaded and applied when the game starts by the [code]OmniMenus[/code] autoload, or by
-## the first menu that needs them ([method ensure_loaded]). They are saved to
+## the [code]OmniMenus[/code] autoload loads and applies the settings when the game starts, or the
+## first menu that needs them does ([method ensure_loaded]). they get saved to
 ## [code]user://settings.cfg[/code] ([b]Project Settings > omni_button/menus/settings_path[/b]).
 
-## How the options screen shows a setting.
+## how the options screen shows a setting.
 enum Kind {
-	SLIDER, ## A 0-100 % slider (values 0 to 1, or [code]min[/code] to [code]max[/code]).
-	TOGGLE, ## On / Off.
-	CHOICE, ## One of a list (the [code]choices[/code] option).
+	SLIDER, ## a 0-100 % slider (values 0 to 1, or [code]min[/code] to [code]max[/code]).
+	TOGGLE, ## on / off.
+	CHOICE, ## one out of a list (the [code]choices[/code] option).
 }
 
-## Project Setting with the settings file path.
+## project setting with the settings file path.
 const PATH_SETTING := "omni_button/menus/settings_path"
-## Settings file used when the Project Setting is empty.
+## settings file to use when the project setting is empty.
 const DEFAULT_PATH := "user://settings.cfg"
 
 static var _defs: Dictionary = {}
@@ -34,7 +35,7 @@ static var _values: Dictionary = {}
 static var _order := 0
 static var _loaded := false
 static var _watchers: Array[Callable] = []
-## Everything read from the settings file, so settings defined after loading still get their saved value.
+## everything read from the settings file, so settings defined after loading still get their saved value.
 static var _file_values: Dictionary = {}
 
 static func _static_init() -> void:
@@ -42,17 +43,17 @@ static func _static_init() -> void:
 
 #region Defining
 
-## Adds a setting (or updates its definition; a value already set or loaded is kept). Defining a
-## setting after the settings file was loaded (the usual case for your game's own settings) picks up
+## adds a setting (or updates its definition, a value that's already set or loaded stays). if you
+## define a setting after the settings file loaded (normal for your game's own settings) it picks up
 ## its saved value and applies it.
 ## [param options] (all optional):[br]
-## - [code]page[/code]: options-screen tab, e.g. [code]"Audio"[/code]. Empty: not shown on the options screen.[br]
-## - [code]label[/code]: row text. Default: made from the key.[br]
-## - [code]kind[/code]: a [enum Kind]. Default: TOGGLE for bools, CHOICE when [code]choices[/code] is given, otherwise SLIDER.[br]
+## - [code]page[/code]: which options screen tab, like [code]"Audio"[/code]. empty keeps it off the options screen.[br]
+## - [code]label[/code]: the row text. defaults to something made from the key.[br]
+## - [code]kind[/code]: a [enum Kind]. defaults to TOGGLE for bools, CHOICE if you gave [code]choices[/code], otherwise SLIDER.[br]
 ## - [code]choices[/code]: for CHOICE, an Array of [code][label, value][/code] pairs.[br]
-## - [code]min[/code], [code]max[/code], [code]step[/code]: for SLIDER (default 0, 1, 0.05; shown as a percentage).[br]
-## - [code]apply[/code]: [Callable] called with the value whenever it is set or loaded.[br]
-## - [code]hidden[/code]: [code]true[/code] keeps it off the options screen (e.g. a platform that can't use it).
+## - [code]min[/code], [code]max[/code], [code]step[/code]: for SLIDER (defaults 0, 1, 0.05, shown as a percent).[br]
+## - [code]apply[/code]: a [Callable] that gets the value whenever it's set or loaded.[br]
+## - [code]hidden[/code]: [code]true[/code] keeps it off the options screen (like on a platform that can't use it).
 static func define(key: String, default_value: Variant, options: Dictionary = {}) -> void:
 	var def := options.duplicate()
 	def["key"] = key
@@ -73,16 +74,16 @@ static func define(key: String, default_value: Variant, options: Dictionary = {}
 		if _loaded:
 			_apply(key)
 
-## Whether [param key] has been defined.
+## true if [param key] has been defined.
 static func has_setting(key: String) -> bool:
 	return _defs.has(key)
 
-## A setting's definition: the [param options] passed to [method define], plus [code]key[/code],
+## a setting's definition: the [param options] you gave [method define], plus [code]key[/code],
 ## [code]default[/code], [code]kind[/code] and [code]label[/code].
 static func get_definition(key: String) -> Dictionary:
 	return _defs.get(key, {})
 
-## Definitions shown on [param page] of the options screen, in the order they were defined.
+## the definitions on [param page] of the options screen, in the order they were defined.
 static func get_definitions(page: String) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for def: Dictionary in _defs.values():
@@ -91,7 +92,7 @@ static func get_definitions(page: String) -> Array[Dictionary]:
 	out.sort_custom(func(a, b): return a["order"] < b["order"])
 	return out
 
-## The options-screen pages, in the order their first setting was defined.
+## the options screen pages, in the order their first setting was defined.
 static func get_pages() -> PackedStringArray:
 	var firsts := {}
 	for def: Dictionary in _defs.values():
@@ -108,11 +109,11 @@ static func get_pages() -> PackedStringArray:
 
 #region Values
 
-## The current value of [param key], or [param fallback] when it isn't defined.
+## the current value of [param key], or [param fallback] if it isn't defined.
 static func get_value(key: String, fallback: Variant = null) -> Variant:
 	return _values.get(key, fallback)
 
-## Changes a setting and applies it. Call [method save] to keep it (the options screen saves when it closes).
+## changes a setting and applies it. call [method save] to keep it (the options screen saves when it closes).
 static func set_value(key: String, value: Variant) -> void:
 	if not _defs.has(key):
 		push_warning("OmniSettings: '%s' isn't defined; call OmniSettings.define() first." % key)
@@ -125,16 +126,16 @@ static func set_value(key: String, value: Variant) -> void:
 		else:
 			_watchers.erase(w)
 
-## Calls [param callback] with [code](key, value)[/code] whenever a setting changes.
+## calls [param callback] with [code](key, value)[/code] whenever a setting changes.
 static func watch(callback: Callable) -> void:
 	if not _watchers.has(callback):
 		_watchers.append(callback)
 
-## Stops calling [param callback].
+## stops calling [param callback].
 static func unwatch(callback: Callable) -> void:
 	_watchers.erase(callback)
 
-## Puts settings back to their defaults (only those on [param page], when given) and applies them.
+## puts settings back to their defaults (only the ones on [param page] if you give one) and applies them.
 static func reset_to_defaults(page: String = "") -> void:
 	for def: Dictionary in _defs.values():
 		if page == "" or def.get("page", "") == page:
@@ -144,12 +145,12 @@ static func reset_to_defaults(page: String = "") -> void:
 
 #region Saving and loading
 
-## The settings file path ([b]Project Settings > omni_button/menus/settings_path[/b]).
+## the settings file path ([b]Project Settings > omni_button/menus/settings_path[/b]).
 static func get_path() -> String:
 	var path := str(ProjectSettings.get_setting(PATH_SETTING, ""))
 	return path if path != "" else DEFAULT_PATH
 
-## Loads the settings file (missing values keep their defaults) and applies every setting.
+## loads the settings file (anything missing keeps its default) and applies every setting.
 static func load_settings(path: String = "") -> void:
 	var file := ConfigFile.new()
 	var err := file.load(path if path != "" else get_path())
@@ -166,10 +167,10 @@ static func load_settings(path: String = "") -> void:
 	_loaded = true
 	apply_all()
 
-## Writes every setting to the settings file.
+## writes every setting to the settings file.
 static func save(path: String = "") -> void:
 	var file := ConfigFile.new()
-	# Keep saved settings that nothing has defined yet this run, so they aren't lost.
+	# keep saved settings that nothing's defined yet this run so they don't get lost.
 	var all := _file_values.duplicate()
 	all.merge(_values, true)
 	_file_values = all
@@ -181,12 +182,12 @@ static func save(path: String = "") -> void:
 	if err != OK:
 		push_warning("OmniSettings: couldn't save '%s' (error %d)." % [target, err])
 
-## Loads and applies the settings the first time it is called; does nothing after that.
+## loads and applies the settings the first time it's called, does nothing after that.
 static func ensure_loaded() -> void:
 	if not _loaded:
 		load_settings()
 
-## Applies every setting to the game (volumes, window, text speed, your own apply functions).
+## applies every setting to the game (volumes, window, text speed, your own apply functions).
 static func apply_all() -> void:
 	for key: String in _defs:
 		_apply(key)
@@ -215,7 +216,7 @@ static func _define_builtins() -> void:
 static func _apply_bus(value: float, bus_name: String) -> void:
 	var index := AudioServer.get_bus_index(bus_name)
 	if index < 0:
-		return # The project has no bus with this name; the setting is still saved.
+		return # the project doesn't have a bus with this name, the setting still saves though.
 	AudioServer.set_bus_volume_db(index, linear_to_db(maxf(value, 0.0001)))
 	AudioServer.set_bus_mute(index, value <= 0.001)
 
@@ -231,7 +232,7 @@ static func _apply_vsync(on: bool) -> void:
 		return
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if on else DisplayServer.VSYNC_DISABLED)
 
-## No window to change in headless runs, and the editor's embedded game view manages its own.
+## there's no window to change when running headless, and the editor's embedded game view handles its own.
 static func _can_change_window() -> bool:
 	if DisplayServer.get_name() == "headless":
 		return false

@@ -1,9 +1,9 @@
 extends SceneTree
-# Checks OmniVirtualCursor (prebuilt/cursor/): the ring shows on stick input, hovers and clicks what is
-# under it (OmniButtons and Godot's own Controls, with a real controller A press), snaps, scrolls,
-# hides for the d-pad and the real mouse, and the demo scene loads.
-# The cursor drives real mouse input, so these checks go through Input.parse_input_event.
-# Usage: godot --headless --path . -s res://addons/omni_button/prebuilt/cursor/dev/OmniVirtualCursorValidation.gd
+# checks OmniVirtualCursor (prebuilt/cursor/). the ring shows on stick input, hovers and clicks
+# what's under it (OmniButtons and godot's own Controls, with a real controller A press), snaps,
+# scrolls, hides for the d-pad and the real mouse, and the demo scene loads.
+# the cursor drives real mouse input, so these checks go through Input.parse_input_event.
+# usage: godot --headless --path . -s res://addons/omni_button/prebuilt/cursor/dev/OmniVirtualCursorValidation.gd
 
 const CURSOR_SCENE := "res://addons/omni_button/prebuilt/cursor/omni_virtual_cursor.tscn"
 const DEMO_SCENE := "res://addons/omni_button/prebuilt/cursor/demo/omni_cursor_demo.tscn"
@@ -19,7 +19,7 @@ func _run() -> void:
 	_check(load(CURSOR_SCENE) is PackedScene, "omni_virtual_cursor.tscn loads")
 	await _check_virtual_cursor()
 
-	# Demo scene: loads, shows the controller line, adds A to ui_accept, and has an active cursor.
+	# demo scene: loads, shows the controller line, adds A to ui_accept, and has an active cursor.
 	var demo: Control = load(DEMO_SCENE).instantiate()
 	root.add_child(demo)
 	await _frames(2)
@@ -31,7 +31,7 @@ func _run() -> void:
 		accept_has_pad = accept_has_pad or (e is InputEventJoypadButton and e.button_index == JOY_BUTTON_A)
 	_check(accept_has_pad, "demo: the controller's A button is added to ui_accept so focused buttons can be pressed")
 	cursor.hide_mouse_pointer = false
-	var play: Omni_Button = demo.get_node("%Play")
+	var play: OmniButton = demo.get_node("%Play")
 	var played := [0]
 	play.pressed.connect(func(): played[0] += 1)
 	_stick(JOY_AXIS_LEFT_X, 0.6)
@@ -56,13 +56,13 @@ func _run() -> void:
 		print("OmniVirtualCursor validation failed (%d/%d checks)." % [_failures.size(), _checks])
 		quit(1)
 
-## The virtual cursor drives real mouse input, so these checks go through Input.parse_input_event.
+## the virtual cursor drives real mouse input, so these checks go through Input.parse_input_event.
 func _check_virtual_cursor() -> void:
 	root.size = Vector2i(1152, 648)
 	var menu := Control.new()
 	menu.size = Vector2(1152, 648)
 	root.add_child(menu)
-	var omni: Omni_Button = load(BUTTONS + "presets/omni_menu_button.tscn").instantiate()
+	var omni: OmniButton = load(BUTTONS + "presets/omni_menu_button.tscn").instantiate()
 	omni.position = Vector2(100, 100)
 	menu.add_child(omni)
 	var plain := Button.new()
@@ -70,7 +70,7 @@ func _check_virtual_cursor() -> void:
 	plain.position = Vector2(100, 300)
 	plain.size = Vector2(200, 50)
 	menu.add_child(plain)
-	var focused: Omni_Button = load(BUTTONS + "presets/omni_menu_button.tscn").instantiate()
+	var focused: OmniButton = load(BUTTONS + "presets/omni_menu_button.tscn").instantiate()
 	focused.position = Vector2(100, 500)
 	menu.add_child(focused)
 	var scroll := ScrollContainer.new()
@@ -99,7 +99,7 @@ func _check_virtual_cursor() -> void:
 	await _frames(3)
 	_check(cursor.cursor_position == still, "cursor: it stops when the stick is let go")
 
-	# Hover and click an Omni_Button.
+	# hover and click an OmniButton.
 	var omni_presses := [0]
 	omni.pressed.connect(func(): omni_presses[0] += 1)
 	var focused_presses := [0]
@@ -107,17 +107,17 @@ func _check_virtual_cursor() -> void:
 	cursor.snap_strength = 0.0
 	cursor.warp_to(omni.get_global_rect().get_center())
 	await _frames(3)
-	_check(omni.IsHovering and cursor.get_hovered_control() == omni, "cursor: the button under the ring is hovered")
-	# A real controller A press: Godot's stock ui_accept has no controller button, so this checks
-	# click_button works on its own.
+	_check(omni.is_hovering and cursor.get_hovered_control() == omni, "cursor: the button under the ring is hovered")
+	# a real controller A press. godot's stock ui_accept has no controller button, so this checks
+	# click_button works by itself.
 	_joy_button(JOY_BUTTON_A, true)
 	await _frames(2)
-	_check(omni.IsPressed and omni_presses[0] == 1, "cursor: the A button presses the button under the ring")
+	_check(omni.is_pressed and omni_presses[0] == 1, "cursor: the A button presses the button under the ring")
 	_joy_button(JOY_BUTTON_A, false)
 	await _frames(2)
-	_check(not omni.IsPressed and focused_presses[0] == 0, "cursor: release lets go, and the previously focused button wasn't pressed")
+	_check(not omni.is_pressed and focused_presses[0] == 0, "cursor: release lets go, and the previously focused button wasn't pressed")
 
-	# A plain Godot Button works too.
+	# a plain godot Button works too.
 	var plain_presses := [0]
 	plain.pressed.connect(func(): plain_presses[0] += 1)
 	cursor.warp_to(plain.get_global_rect().get_center())
@@ -128,7 +128,7 @@ func _check_virtual_cursor() -> void:
 	await _frames(2)
 	_check(plain_presses[0] == 1, "cursor: the click action (Enter / Space) clicks too, and reaches Godot's own Button")
 
-	# Snap pulls toward the center of what's under the ring.
+	# snap pulls toward the middle of what's under the ring.
 	cursor.snap_strength = 1.0
 	var center := omni.get_global_rect().get_center()
 	cursor.warp_to(center + Vector2(80, 10))
@@ -136,7 +136,7 @@ func _check_virtual_cursor() -> void:
 	_check(cursor.cursor_position.distance_to(center) < 60.0, "cursor: snap pulls the ring toward the button's center")
 	cursor.snap_strength = 0.0
 
-	# The other stick scrolls what's under the ring.
+	# the other stick scrolls what's under the ring.
 	cursor.warp_to(scroll.get_global_rect().get_center())
 	await _frames(2)
 	_stick(JOY_AXIS_RIGHT_Y, 1.0)
@@ -145,7 +145,7 @@ func _check_virtual_cursor() -> void:
 	await _frames(2)
 	_check(scroll.scroll_vertical > 0, "cursor: the other stick scrolls a scroll container")
 
-	# The stick's own ui_left mapping doesn't hide it, but the d-pad / arrows do.
+	# the stick's own ui_left mapping doesn't hide it, but the d-pad / arrows do.
 	_stick(JOY_AXIS_LEFT_X, -1.0)
 	await _frames(2)
 	_check(cursor.is_shown(), "cursor: moving the stick (also mapped to ui_left) keeps the ring")
@@ -155,7 +155,7 @@ func _check_virtual_cursor() -> void:
 	_action(&"ui_down", false)
 	_check(not cursor.is_shown(), "cursor: the d-pad (focus navigation) hides the ring")
 
-	# A real mouse takes over.
+	# a real mouse takes over.
 	_stick(JOY_AXIS_LEFT_X, 1.0)
 	await _frames(3)
 	_stick(JOY_AXIS_LEFT_X, 0.0)

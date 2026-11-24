@@ -1,23 +1,23 @@
 @tool
 class_name OmniTabBar
 extends HBoxContainer
-## A row of [Omni_Button] tabs where exactly one is on at a time, for tabs, category filters and
+## a row of [OmniButton] tabs where only one is on at a time. for tabs, category filters and
 ## "pick one" choices.
 ##
-## Every [Omni_Button] child is a tab, in order (add one by duplicating a tab). The tab that is on
-## uses the button's pressed style. Set [member pages] to a container and only the child with the
-## current tab's index is shown, so a tab bar and its pages need no code.
+## every [OmniButton] child is a tab, in order (duplicate a tab to add one). the tab that's on uses
+## the button's pressed style. point [member pages] at a container and only the child matching the
+## current tab's index shows, so a tab bar and its pages don't need any code.
 
-## The current tab changed (by a click, a key press or [member current_tab]).
+## the current tab changed (a click, a key press, or setting [member current_tab]).
 signal tab_changed(index: int)
 
-## Index of the tab that is on.
+## index of the tab that's on.
 @export var current_tab := 0:
 	set(value):
 		current_tab = value
 		if is_node_ready():
 			_apply(true)
-## Optional: a container whose children are the pages. Only the child at [member current_tab] is visible.
+## optional. a container whose children are the pages, only the one at [member current_tab] shows.
 @export var pages: Control
 
 func _ready() -> void:
@@ -25,21 +25,21 @@ func _ready() -> void:
 	if not child_order_changed.is_connected(_on_children_changed):
 		child_order_changed.connect(_on_children_changed)
 
-## The tabs, in order.
-func get_tabs() -> Array[Omni_Button]:
-	var tabs: Array[Omni_Button] = []
+## the tabs, in order.
+func get_tabs() -> Array[OmniButton]:
+	var tabs: Array[OmniButton] = []
 	for child in get_children():
-		if child is Omni_Button:
+		if child is OmniButton:
 			tabs.append(child)
 	return tabs
 
-## Re-reads the tabs after you add or remove some from code. Called automatically when the children change.
+## rereads the tabs if you added or removed some from code. it already does this when the children change.
 func refresh() -> void:
 	var tabs := get_tabs()
 	for i in tabs.size():
 		var tab := tabs[i]
-		tab.InteractionMode = Omni_Button.InteractionModeEnum.ToggleOnPress
-		tab.EnableToggleActions = true
+		tab.interaction_mode = OmniButton.InteractionMode.TOGGLE_ON_PRESS
+		tab.enable_toggle_actions = true
 		for c in tab.toggled.get_connections():
 			if c["callable"].get_object() == self:
 				tab.toggled.disconnect(c["callable"])
@@ -54,7 +54,7 @@ func _on_tab_toggled(on: bool, index: int) -> void:
 	if on and index != current_tab:
 		current_tab = index
 	else:
-		# Pressing the tab that is already on keeps it on.
+		# pressing the tab that's already on keeps it on.
 		_apply(false)
 
 func _apply(notify: bool) -> void:
@@ -63,8 +63,8 @@ func _apply(notify: bool) -> void:
 		return
 	var index := clampi(current_tab, 0, tabs.size() - 1)
 	for i in tabs.size():
-		if tabs[i].IsToggled != (i == index):
-			tabs[i].IsToggled = i == index
+		if tabs[i].is_toggled != (i == index):
+			tabs[i].is_toggled = i == index
 	if pages != null:
 		var page_index := 0
 		for child in pages.get_children():

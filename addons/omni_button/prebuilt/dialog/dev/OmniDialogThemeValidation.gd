@@ -1,7 +1,7 @@
 extends SceneTree
-# Checks the dialog looks (OmniDialogTheme): the project default, switching at runtime, and
-# per-window overrides.
-# Usage: godot --headless --path . -s res://addons/omni_button/prebuilt/dialog/dev/OmniDialogThemeValidation.gd
+# checks the dialog looks (OmniDialogTheme): the project default, switching while running, and
+# per window overrides.
+# usage: godot --headless --path . -s res://addons/omni_button/prebuilt/dialog/dev/OmniDialogThemeValidation.gd
 
 const DialogScript := preload("res://addons/omni_button/prebuilt/dialog/core/omni_dialog.gd")
 const MODERN := preload("res://addons/omni_button/prebuilt/dialog/themes/omni_dialog_modern.tres")
@@ -35,62 +35,62 @@ func _run() -> void:
 	box.animation_duration = 0.0
 	var toast: OmniToast = dlg.get_toast()
 
-	# Default look
+	# default look
 	_check(popup.root_control.theme == MODERN.theme and box.root_control.theme == MODERN.theme, "windows start with the default look")
 	var run := func(c: Callable): await c.call()
 	run.call(func(): return await dlg.confirm("Look test", "Title"))
 	await process_frame
-	_check(popup._button_nodes[0].PanelStyleBox == MODERN.option_normal and popup._button_nodes[0].PanelFocusStyleBox == MODERN.option_focus, "popup buttons use the look's option styles")
+	_check(popup._button_nodes[0].panel_style_box == MODERN.option_normal and popup._button_nodes[0].panel_focus_style_box == MODERN.option_focus, "popup buttons use the look's option styles")
 	_check(popup.title_label.get_theme_font_size("font_size") == MODERN.theme.get_font_size("font_size", "OmniDialogTitle"), "popup title uses the OmniDialogTitle variation")
 
-	# Switch while the popup is open
+	# switch while the popup is open
 	dlg.set_dialog_theme(RETRO)
 	await process_frame
 	_check(popup.root_control.theme == RETRO.theme and box.root_control.theme == RETRO.theme and toast.root_control.theme == RETRO.theme, "set_dialog_theme switches every managed window")
-	_check(popup._button_nodes[0].PanelStyleBox == RETRO.option_normal and popup._button_nodes[0].LabelFont == RETRO.option_font, "open popup buttons are restyled")
-	_check(popup.message_label.LabelFont == RETRO.text_font and popup.message_label.LabelTextColor == RETRO.text_color, "popup message uses the look's text settings")
+	_check(popup._button_nodes[0].panel_style_box == RETRO.option_normal and popup._button_nodes[0].label_font == RETRO.option_font, "open popup buttons are restyled")
+	_check(popup.message_label.label_font == RETRO.text_font and popup.message_label.label_text_color == RETRO.text_color, "popup message uses the look's text settings")
 	_check(popup.title_label.get_theme_font_size("font_size") == RETRO.theme.get_font_size("font_size", "OmniDialogTitle"), "title size follows the new look")
 	popup._button_nodes[0].pressed.emit()
 	await process_frame
 	await process_frame
 
-	# Buttons built after the switch
+	# buttons made after the switch
 	run.call(func(): return await dlg.choose("After switch", PackedStringArray(["a", "b", "c"])))
 	await process_frame
-	_check(popup._button_nodes[2].PanelStyleBox == RETRO.option_normal and popup._button_nodes[2].custom_minimum_size.y == RETRO.option_height, "new buttons get the current look")
+	_check(popup._button_nodes[2].panel_style_box == RETRO.option_normal and popup._button_nodes[2].custom_minimum_size.y == RETRO.option_height, "new buttons get the current look")
 	popup.cancel()
 	await process_frame
 	await process_frame
 
-	# Dialogue body and replies
-	_check(box.body.LabelTextColor == RETRO.text_color and box.body.LabelFont == RETRO.text_font, "dialogue text uses the look's text settings")
+	# dialogue body and replies
+	_check(box.body.label_text_color == RETRO.text_color and box.body.label_font == RETRO.text_font, "dialogue text uses the look's text settings")
 	run.call(func(): return await dlg.ask("Guard", "Well?", PackedStringArray(["Yes", "No"])))
 	await process_frame
 	box.advance()
 	await process_frame
-	_check(box._option_nodes.size() == 2 and box._option_nodes[0].PanelStyleBox == RETRO.option_normal, "dialogue replies use the look's option styles")
+	_check(box._option_nodes.size() == 2 and box._option_nodes[0].panel_style_box == RETRO.option_normal, "dialogue replies use the look's option styles")
 	_check(box.name_label.get_theme_color("font_color") == RETRO.theme.get_color("font_color", "OmniDialogName"), "speaker name uses the OmniDialogName variation")
 	box._option_nodes[0].pressed.emit()
 	await process_frame
 	await process_frame
 
-	# Toasts take the look's text settings
+	# toasts take the look's text settings
 	dlg.toast("Look toast", 5.0)
 	await process_frame
 	var item = toast.toast_list.get_child(toast.toast_list.get_child_count() - 1)
-	_check(item.LabelFont == RETRO.text_font, "toasts use the look's text settings")
+	_check(item.label_font == RETRO.text_font, "toasts use the look's text settings")
 	toast.clear()
 
-	# Windows created after the switch
+	# windows made after the switch
 	var narration: OmniNarration = dlg.get_narration()
-	_check(narration.root_control.theme == RETRO.theme and narration.body.LabelFont == RETRO.text_font, "windows created later get the current look")
+	_check(narration.root_control.theme == RETRO.theme and narration.body.label_font == RETRO.text_font, "windows created later get the current look")
 
-	# Back to the default
+	# back to the default
 	dlg.set_dialog_theme(null)
 	await process_frame
-	_check(popup.root_control.theme == MODERN.theme and box.body.LabelTextColor == MODERN.text_color, "set_dialog_theme(null) goes back to the project default")
+	_check(popup.root_control.theme == MODERN.theme and box.body.label_text_color == MODERN.text_color, "set_dialog_theme(null) goes back to the project default")
 
-	# A window's own dialog_theme wins
+	# a window's own dialog_theme wins
 	var own: OmniPopup = PopupScene.instantiate()
 	own.dialog_theme = RETRO
 	root.add_child(own)

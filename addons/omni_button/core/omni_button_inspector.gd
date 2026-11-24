@@ -1,278 +1,286 @@
 @tool
 extends EditorInspectorPlugin
-## Inspector plugin: friendly labels, tooltips and custom editors for Omni_Button properties.
+## inspector plugin: nicer labels, tooltips and custom editors for the OmniButton settings.
 
 const ACTION_TOOLTIPS := {
-	"EnablePressedActions": "Emits the Pressed signal and runs its connected action when this button is pressed.",
-	"EnableReleasedActions": "Emits the Released signal and runs its connected action when this button is released.",
-	"EnableHoverActions": "Emits HoverIn and HoverOut and runs their connected actions as the pointer enters or leaves.",
-	"EnableToggleActions": "Emits Toggled and runs its connected action when the button changes toggle state.",
-	"EnableHoldActions": "Emits Hold and runs its connected action when the configured hold duration completes.",
-	"EnableSwipeActions": "Emits Swipe and SwipeEnded and runs their connected actions for recognized swipe gestures.",
-	"EnableLogActions": "Enables the Log signal and connected action for messages sent through this button.",
-	"EnableWarningActions": "Enables the Warning signal and connected action for warnings sent through this button.",
-	"EnableErrorActions": "Enables the Error signal and connected action for errors sent through this button.",
+	"enable_pressed_actions": "sends pressed and runs pressed_action when the button gets pressed.",
+	"enable_released_actions": "sends released and runs released_action when the button gets let go.",
+	"enable_hover_actions": "sends hover_in and hover_out (and runs their actions) as the pointer comes and goes.",
+	"enable_toggle_actions": "sends toggled and runs toggled_action when the button flips on or off.",
+	"enable_hold_actions": "sends hold and runs hold_action once the hold fills up.",
+	"enable_swipe_actions": "sends swipe and swipe_ended (and runs their actions) when it sees a swipe.",
+	"enable_log_actions": "turns on the log signal and log_action for messages sent through this button.",
+	"enable_warning_actions": "turns on the warning signal and warning_action for warnings sent through this button.",
+	"enable_error_actions": "turns on the error signal and error_action for errors sent through this button.",
 }
 
 const PROPERTY_LABELS := {
-	"EnablePressedActions": "Press",
-	"EnableReleasedActions": "Release",
-	"EnableHoverActions": "Hover",
-	"EnableToggleActions": "Toggle",
-	"EnableHoldActions": "Hold",
-	"EnableSwipeActions": "Swipe",
-	"EnableLogActions": "Log",
-	"EnableWarningActions": "Warning",
-	"EnableErrorActions": "Error",
-	"BackgroundType": "Background Type",
-	"LabelType": "Label Type",
-	"Disabled": "Disabled",
-	"DisabledModulate": "Disabled Modulate",
-	"InvertModes": "Invert Modes",
-	"HoverScale": "Scale",
-	"HoverLerpSpeed": "Lerp Speed",
-	"SelectedColor": "Selected Color",
-	"ActivationAction": "InFocus Action",
-	"OutputAction": "Output Action",
-	"BoundsSource": "Bounds Source",
-	"HitSlop": "Hit Slop",
-	"ClampToBounds": "Clamp To Bounds",
-	"FollowMode": "Follow Mode",
-	"ClampShape": "Clamp Shape",
-	"JoystickRadiusPx": "Joystick Radius Px",
-	"JoystickRectSizePx": "Joystick Rect Size Px",
-	"JoystickDeadzone": "Joystick Deadzone",
-	"JoystickSnapToInput": "Joystick Snap To Input",
-	"JoystickHideWhenInactive": "Joystick Hide When Inactive",
-	"JoystickResetOnRelease": "Joystick Reset On Release",
-	"EnableJoystickArea": "Enable Joystick Area",
-	"JoystickAreaPersistent": "Joystick Area Persistent",
-	"JoystickAreaColor": "Joystick Area Color",
-	"JoystickAreaThickness": "Joystick Area Thickness",
-	"JoystickAreaUseRectForClamp": "Joystick Area Use Rect For Clamp",
-	"JoystickAreaExternalPath": "Joystick Area External Path",
-	"EnableDefaultThumb": "Enable Default Thumb",
-	"DefaultThumbSizeRatio": "Default Thumb Size Ratio",
-	"DefaultThumbColor": "Default Thumb Color",
-	"IconTexture": "Texture",
-	"IconExpandMode": "Expand",
-	"IconStretchMode": "Stretch",
-	"IconFlipH": "Flip H",
-	"IconFlipV": "Flip V",
-	"IconModulate": "Modulate",
-	"HoldDuration": "Duration",
-	"HoldFillColor": "Fill Color",
-	"HoldFillDirection": "Fill Direction",
-	"SwipeThreshold": "Threshold",
-	"TouchSwipeInit": "Touch Init",
-	"TouchSwipeExit": "Touch Exit",
-	"MouseSwipeInit": "Mouse Init",
-	"MouseSwipeExit": "Mouse Exit",
-	"InteractionMode": "Interaction Mode",
-	"CooldownTrigger": "Trigger",
-	"CooldownStartDelay": "Start Delay",
-	"CooldownDuration": "Duration",
-	"CooldownStartFilled": "Start Filled",
-	"CooldownColor": "Color",
-	"CooldownFillDirection": "Fill Direction",
-	"InvertOnCooldown": "Invert During",
-	"CooldownInvertDuration": "Invert Delay",
-	"SuspendHoverScaleDuringCooldown": "Stop Hover Scale",
-	"AllowHoldDuringCooldown": "Allow Hold During Cooldown",
-	"HideCooldownDuringHoldBuildUp": "Hide During Buildup",
-	"Text": "Text",
-	"LabelUppercase": "Uppercase",
-	"LabelClipText": "Clip",
-	"LabelTextOverrun": "Overrun",
-	"LabelFont": "Font",
-	"LabelTextColor": "Color",
-	"TextModulate": "Modulate",
-	"LabelHorizontalAlignment": "Horizontal",
-	"LabelVerticalAlignment": "Vertical",
-	"LabelAutowrap": "Autowrap",
-	"RichLabelUseBBCode": "Rich Label Use BB Code",
-	"RichTextFitContent": "Rich Text Fit Content",
-	"RichTextScrollActive": "Rich Text Scroll Active",
-	"RichTextScrollFollowing": "Rich Text Scroll Following",
-	"RichTextSelectionEnabled": "Rich Text Selection Enabled",
-	"RichTextContextMenuEnabled": "Rich Text Context Menu Enabled",
-	"TextFitPadding": "Text Fit Padding",
-	"MinFontSize": "Min Font Size",
-	"MaxFontSize": "Max Font Size",
-	"FixedFontSize": "Fixed Font Size",
-	"EnableTextAutoSize": "Enable Text Auto Size",
-	"LabelPadding": "Label Padding",
-	"LabelAdditionalPaddingLeft": "Left",
-	"LabelAdditionalPaddingTop": "Top",
-	"LabelAdditionalPaddingRight": "Right",
-	"LabelAdditionalPaddingBottom": "Bottom",
-	"TextToType": "Text To Type",
-	"SuspendHoverDuringTypewriter": "Suspend Hover During Typewriter",
-	"DelayEffectTagsDuringTypewriter": "Delay Effect Tags During Typewriter",
-	"FinishTypewriterOnPress": "Finish Typewriter On Press",
-	"PanelThemeVariation": "Panel Theme Variation",
-	"PanelStyleBox": "Panel Style Box",
-	"PanelHoverStyleBox": "Panel Hover Style Box",
-	"PanelPressedStyleBox": "Panel Pressed Style Box",
-	"PanelDisabledStyleBox": "Panel Disabled Style Box",
-	"PanelFocusStyleBox": "Panel Focus Style Box",
-	"PanelModulate": "Panel Modulate",
+	"enable_pressed_actions": "Press",
+	"enable_released_actions": "Release",
+	"enable_hover_actions": "Hover",
+	"enable_toggle_actions": "Toggle",
+	"enable_hold_actions": "Hold",
+	"enable_swipe_actions": "Swipe",
+	"enable_log_actions": "Log",
+	"enable_warning_actions": "Warning",
+	"enable_error_actions": "Error",
+	"background_type": "Background Type",
+	"label_type": "Label Type",
+	"disabled": "Disabled",
+	"disabled_modulate": "Disabled Modulate",
+	"invert_modes": "Invert Modes",
+	"hover_scale": "Scale",
+	"hover_lerp_speed": "Lerp Speed",
+	"selected_color": "Selected Color",
+	"activation_action": "InFocus Action",
+	"output_action": "Output Action",
+	"bounds_source": "Bounds Source",
+	"hit_slop": "Hit Slop",
+	"clamp_to_bounds": "Clamp To Bounds",
+	"follow_mode": "Follow Mode",
+	"clamp_shape": "Clamp Shape",
+	"joystick_radius_px": "Joystick Radius Px",
+	"joystick_rect_size_px": "Joystick Rect Size Px",
+	"joystick_deadzone": "Joystick Deadzone",
+	"joystick_snap_to_input": "Joystick Snap To Input",
+	"joystick_hide_when_inactive": "Joystick Hide When Inactive",
+	"joystick_reset_on_release": "Joystick Reset On Release",
+	"enable_joystick_area": "Enable Joystick Area",
+	"joystick_area_persistent": "Joystick Area Persistent",
+	"joystick_area_color": "Joystick Area Color",
+	"joystick_area_thickness": "Joystick Area Thickness",
+	"joystick_area_use_rect_for_clamp": "Joystick Area Use Rect For Clamp",
+	"joystick_area_external_path": "Joystick Area External Path",
+	"enable_default_thumb": "Enable Default Thumb",
+	"default_thumb_size_ratio": "Default Thumb Size Ratio",
+	"default_thumb_color": "Default Thumb Color",
+	"icon_texture": "Texture",
+	"icon_expand_mode": "Expand",
+	"icon_stretch_mode": "Stretch",
+	"icon_flip_h": "Flip H",
+	"icon_flip_v": "Flip V",
+	"icon_modulate": "Modulate",
+	"hold_duration": "Duration",
+	"hold_fill_color": "Fill Color",
+	"hold_fill_direction": "Fill Direction",
+	"swipe_threshold": "Threshold",
+	"touch_swipe_init": "Touch Init",
+	"touch_swipe_exit": "Touch Exit",
+	"mouse_swipe_init": "Mouse Init",
+	"mouse_swipe_exit": "Mouse Exit",
+	"interaction_mode": "Interaction Mode",
+	"cooldown_trigger": "Trigger",
+	"cooldown_start_delay": "Start Delay",
+	"cooldown_duration": "Duration",
+	"cooldown_start_filled": "Start Filled",
+	"cooldown_color": "Color",
+	"cooldown_fill_direction": "Fill Direction",
+	"invert_on_cooldown": "Invert During",
+	"cooldown_invert_duration": "Invert Delay",
+	"suspend_hover_scale_during_cooldown": "Stop Hover Scale",
+	"allow_hold_during_cooldown": "Allow Hold During Cooldown",
+	"hide_cooldown_during_hold_build_up": "Hide During Buildup",
+	"text": "Text",
+	"label_uppercase": "Uppercase",
+	"label_clip_text": "Clip",
+	"label_text_overrun": "Overrun",
+	"label_font": "Font",
+	"label_text_color": "Color",
+	"text_modulate": "Modulate",
+	"label_horizontal_alignment": "Horizontal",
+	"label_vertical_alignment": "Vertical",
+	"label_autowrap": "Autowrap",
+	"rich_label_use_bbcode": "Rich Label Use BB Code",
+	"rich_text_fit_content": "Rich Text Fit Content",
+	"rich_text_scroll_active": "Rich Text Scroll Active",
+	"rich_text_scroll_following": "Rich Text Scroll Following",
+	"rich_text_selection_enabled": "Rich Text Selection Enabled",
+	"rich_text_context_menu_enabled": "Rich Text Context Menu Enabled",
+	"text_fit_padding": "Text Fit Padding",
+	"min_font_size": "Min Font Size",
+	"max_font_size": "Max Font Size",
+	"fixed_font_size": "Fixed Font Size",
+	"enable_text_auto_size": "Enable Text Auto Size",
+	"label_padding": "Label Padding",
+	"label_additional_padding_left": "Left",
+	"label_additional_padding_top": "Top",
+	"label_additional_padding_right": "Right",
+	"label_additional_padding_bottom": "Bottom",
+	"text_to_type": "Text To Type",
+	"suspend_hover_during_typewriter": "Suspend Hover During Typewriter",
+	"delay_effect_tags_during_typewriter": "Delay Effect Tags During Typewriter",
+	"finish_typewriter_on_press": "Finish Typewriter On Press",
+	"panel_theme_variation": "Panel Theme Variation",
+	"panel_style_box": "Panel Style Box",
+	"panel_hover_style_box": "Panel Hover Style Box",
+	"panel_pressed_style_box": "Panel Pressed Style Box",
+	"panel_disabled_style_box": "Panel Disabled Style Box",
+	"panel_focus_style_box": "Panel Focus Style Box",
+	"panel_modulate": "Panel Modulate",
 	"texture": "Texture",
 	"expand_mode": "Expand",
 	"stretch_mode": "Stretch",
 	"flip_h": "Flip H",
 	"flip_v": "Flip V",
-	"BackgroundModulate": "Background Modulate",
-	"ManagedDrawOnTop": "Managed Draw On Top",
-	"Selected": "Selected",
-	"IsToggled": "Is Toggled",
-	"IsPressed": "Is Pressed",
-	"IsHovering": "Is Hovering",
-	"IsHolding": "Is Holding",
-	"DebuggerLog": "Debugger Log",
+	"background_modulate": "Background Modulate",
+	"managed_draw_on_top": "Managed Draw On Top",
+	"selected": "Selected",
+	"is_toggled": "Is Toggled",
+	"is_pressed": "Is Pressed",
+	"is_hovering": "Is Hovering",
+	"is_holding": "Is Holding",
+	"debugger_log": "Debugger Log",
 }
 
 const CUSTOM_PROPERTY_EDITORS := {
-	"ActivationAction": true,
-	"OutputAction": true,
-	"LabelFont": true,
-	"LabelTextColor": true,
-	"TextModulate": true,
-	"LabelHorizontalAlignment": true,
-	"LabelVerticalAlignment": true,
-	"LabelAutowrap": true,
-	"LabelUppercase": true,
-	"LabelClipText": true,
-	"LabelTextOverrun": true,
-	"LabelAdditionalPaddingLeft": true,
-	"LabelAdditionalPaddingTop": true,
-	"LabelAdditionalPaddingRight": true,
-	"LabelAdditionalPaddingBottom": true,
-	"HoverScale": true,
-	"HoverLerpSpeed": true,
-	"IconTexture": true,
-	"IconExpandMode": true,
-	"IconStretchMode": true,
-	"IconFlipH": true,
-	"IconFlipV": true,
-	"IconModulate": true,
-	"HoldDuration": true,
-	"HoldFillColor": true,
-	"HoldFillDirection": true,
-	"SwipeThreshold": true,
-	"TouchSwipeInit": true,
-	"TouchSwipeExit": true,
-	"MouseSwipeInit": true,
-	"MouseSwipeExit": true,
-	"CooldownTrigger": true,
-	"CooldownStartDelay": true,
-	"CooldownDuration": true,
-	"CooldownStartFilled": true,
-	"CooldownColor": true,
-	"CooldownFillDirection": true,
-	"InvertOnCooldown": true,
-	"CooldownInvertDuration": true,
-	"SuspendHoverScaleDuringCooldown": true,
-	"HideCooldownDuringHoldBuildUp": true,
+	"activation_action": true,
+	"output_action": true,
+	"label_font": true,
+	"label_text_color": true,
+	"text_modulate": true,
+	"label_horizontal_alignment": true,
+	"label_vertical_alignment": true,
+	"label_autowrap": true,
+	"label_uppercase": true,
+	"label_clip_text": true,
+	"label_text_overrun": true,
+	"label_additional_padding_left": true,
+	"label_additional_padding_top": true,
+	"label_additional_padding_right": true,
+	"label_additional_padding_bottom": true,
+	"hover_scale": true,
+	"hover_lerp_speed": true,
+	"icon_texture": true,
+	"icon_expand_mode": true,
+	"icon_stretch_mode": true,
+	"icon_flip_h": true,
+	"icon_flip_v": true,
+	"icon_modulate": true,
+	"hold_duration": true,
+	"hold_fill_color": true,
+	"hold_fill_direction": true,
+	"swipe_threshold": true,
+	"touch_swipe_init": true,
+	"touch_swipe_exit": true,
+	"mouse_swipe_init": true,
+	"mouse_swipe_exit": true,
+	"cooldown_trigger": true,
+	"cooldown_start_delay": true,
+	"cooldown_duration": true,
+	"cooldown_start_filled": true,
+	"cooldown_color": true,
+	"cooldown_fill_direction": true,
+	"invert_on_cooldown": true,
+	"cooldown_invert_duration": true,
+	"suspend_hover_scale_during_cooldown": true,
+	"hide_cooldown_during_hold_build_up": true,
 }
 
 const PROPERTY_TOOLTIPS := {
-	"BackgroundType": "None draws no generated background; UsePanel draws a styled Panel; UseTexture draws a TextureRect background.",
-	"LabelType": "None creates no text node; Label uses plain text; RichTextLabel supports BBCode and rich text behavior.",
-	"LabelFont": "Font resource used to draw button text.",
-	"LabelTextColor": "Base color used to draw the button text.",
-	"TextModulate": "Additional color modulation applied to the text.",
-	"DisabledModulate": "Multiplies the text and icon colors while Disabled is on. White leaves them unchanged.",
-	"LabelHorizontalAlignment": "Horizontal alignment of the text inside its label.",
-	"LabelVerticalAlignment": "Vertical alignment of the text inside its label.",
-	"LabelAutowrap": "Off never wraps; Arbitrary wraps anywhere; Word wraps at word boundaries; Smart favors word boundaries but can break long words.",
-	"LabelUppercase": "Displays plain Label text in uppercase without changing the Text property.",
-	"LabelClipText": "Clips plain Label text at the label boundary.",
-	"LabelTextOverrun": "None keeps text unchanged; Trim Character/Word removes overflow; Ellipsis adds an ellipsis; Trim Word with Ellipsis trims at a word boundary and adds an ellipsis.",
-	"LabelAdditionalPaddingLeft": "Additional left-side space excluded from the label text area.",
-	"LabelAdditionalPaddingTop": "Additional top-side space excluded from the label text area.",
-	"LabelAdditionalPaddingRight": "Additional right-side space excluded from the label text area.",
-	"LabelAdditionalPaddingBottom": "Additional bottom-side space excluded from the label text area.",
-	"InteractionMode": "Momentary is pressed only while held; Toggle On Press switches state on press; Toggle On Release switches state on release.",
-	"HoverScale": "Extra scale applied while hovered. Zero disables hover scaling; positive values enable it.",
-	"HoverLerpSpeed": "Speed at which the hover scale transitions between normal and hovered size.",
-	"IconTexture": "Texture displayed in the icon layer, behind the button text.",
-	"IconExpandMode": "Keep Size uses the texture's native dimensions; Ignore Size ignores its minimum size; Fit Width/Height constrain that dimension, with Proportional variants preserving aspect ratio.",
-	"IconStretchMode": "Chooses scaling, tiling, native-size placement, centering, or aspect-preserving fit/cover behavior for the icon.",
-	"IconFlipH": "Mirrors the icon texture horizontally.",
-	"IconFlipV": "Mirrors the icon texture vertically.",
-	"IconModulate": "Multiplies the icon texture colors by this color.",
-	"HoldDuration": "Time the button must remain pressed before the Hold action fires. Zero disables hold build-up.",
-	"HoldFillColor": "Color of the progress fill shown while the button is building up a hold.",
-	"HoldFillDirection": "Direction the hold progress fill advances: 0 bottom-to-top, 1 top-to-bottom, 2 left-to-right, 3 right-to-left.",
-	"SwipeThreshold": "Minimum pointer travel in pixels required to recognize a swipe.",
-	"TouchSwipeInit": "OnHoverIn begins touch swipe tracking on pointer entry; OnPressed begins tracking on touch press.",
-	"TouchSwipeExit": "OnHoverOut ends touch swipe tracking when leaving the bounds; OnReleased ends it when the touch is released.",
-	"MouseSwipeInit": "OnHoverIn begins mouse swipe tracking on pointer entry; OnPressed begins tracking on mouse press.",
-	"MouseSwipeExit": "OnHoverOut ends mouse swipe tracking when leaving the bounds; OnReleased ends it when the mouse button is released.",
-	"CooldownTrigger": "None disables cooldown; OnPress starts it on press; OnRelease starts it on release; OnPressAndRelease starts it on both events.",
-	"FollowMode": "None stays in place; FollowBoth moves with the pointer; VirtualJoystick emits joystick axes while the pointer moves within its clamp area.",
-	"ClampShape": "Circle constrains movement to a radius; Rectangle constrains movement to the configured width and height.",
-	"DebuggerLog": "Writes per-button diagnostic messages to the output: Off disables logging; Basic enables it.",
-	"OutputAction": "InputMap action held down while this button is pressed, so game code can use Input.is_action_pressed() (like TouchScreenButton). Empty does nothing.",
-	"ActivationAction": "InputMap action that activates this button while it has keyboard focus. Set to empty to disable focused input; player remapping is handled through InputMap.",
-	"CooldownStartDelay": "Wait time after the selected trigger before the cooldown fill begins.",
-	"CooldownDuration": "Time the cooldown remains active after its start delay.",
-	"CooldownStartFilled": "Shows the cooldown fill as full at the start and drains it, instead of filling from empty.",
-	"CooldownColor": "Color of the cooldown overlay.",
-	"CooldownFillDirection": "Direction the cooldown overlay advances: 0 bottom-to-top, 1 top-to-bottom, 2 left-to-right, 3 right-to-left.",
-	"InvertOnCooldown": "Inverts the button colors while cooldown is active.",
-	"CooldownInvertDuration": "Duration of the cooldown color-inversion transition. Zero applies it immediately.",
-	"SuspendHoverScaleDuringCooldown": "Temporarily returns the button to normal scale while cooldown is active.",
-	"AllowHoldDuringCooldown": "Allows hold build-up while cooldown is active.",
-	"HideCooldownDuringHoldBuildUp": "Hides the cooldown overlay while hold build-up is visible.",
+	"background_type": "none means no background. use panel draws a styled panel, use texture draws a texture.",
+	"label_type": "none means no text at all. label is plain text, rich text label lets you use bbcode and effects.",
+	"label_font": "font for the text.",
+	"label_text_color": "color of the text.",
+	"text_modulate": "extra color multiplied on top of the text.",
+	"disabled_modulate": "gets multiplied into the text and icon colors while disabled is on so it looks greyed out. white leaves them alone.",
+	"label_horizontal_alignment": "left, center or right inside the label.",
+	"label_vertical_alignment": "top, center or bottom inside the label.",
+	"label_autowrap": "off never wraps, arbitrary wraps anywhere, word wraps between words, smart tries words first but will break a long word if it has to.",
+	"label_uppercase": "shows plain label text in all caps without actually changing the text.",
+	"label_clip_text": "cuts off plain label text at the edge of the label.",
+	"label_text_overrun": "none leaves the text alone. trim character/word cuts off what doesn't fit, ellipsis adds \"...\", and trim word with ellipsis cuts at a word and adds \"...\".",
+	"label_additional_padding_left": "extra space taken off the left of the text area.",
+	"label_additional_padding_top": "extra space taken off the top of the text area.",
+	"label_additional_padding_right": "extra space taken off the right of the text area.",
+	"label_additional_padding_bottom": "extra space taken off the bottom of the text area.",
+	"interaction_mode": "momentary is only pressed while you hold it. toggle on press flips on press, toggle on release flips on release.",
+	"hover_scale": "how big the button gets on hover. 1.2 is 120%, zero turns it off. it won't grow past the edge of the screen.",
+	"hover_lerp_speed": "how fast it grows and shrinks between normal and hover size.",
+	"icon_texture": "the icon texture. it sits behind the text.",
+	"icon_expand_mode": "keep size uses the texture's own size, ignore size ignores it, fit width/height lock that side, and the proportional ones keep the aspect ratio.",
+	"icon_stretch_mode": "how the icon gets drawn: scaled, tiled, native size, centered, or fit/cover keeping the aspect ratio.",
+	"icon_flip_h": "flips the icon left to right.",
+	"icon_flip_v": "flips the icon upside down.",
+	"icon_modulate": "gets multiplied into the icon's colors.",
+	"hold_duration": "how long you have to hold the button before the hold action fires. zero turns hold off.",
+	"hold_fill_color": "color of the fill that grows while you're holding.",
+	"hold_fill_direction": "which way the hold fill grows: 0 bottom to top, 1 top to bottom, 2 left to right, 3 right to left.",
+	"swipe_threshold": "how far in pixels the pointer has to move before it counts as a swipe.",
+	"touch_swipe_init": "on hover in starts tracking a touch swipe as soon as the finger moves onto it, on pressed waits for the touch to press it.",
+	"touch_swipe_exit": "on hover out ends a touch swipe when the finger leaves, on released ends it when the finger lifts.",
+	"mouse_swipe_init": "on hover in starts tracking a mouse swipe when the pointer moves onto it, on pressed waits for a click.",
+	"mouse_swipe_exit": "on hover out ends a mouse swipe when the pointer leaves, on released ends it when the mouse button comes up.",
+	"cooldown_trigger": "none means no cooldown. on press starts it on press, on release on release, on press and release on both.",
+	"follow_mode": "none stays put. follow both moves with the pointer. virtual joystick sends joystick axes while the pointer moves inside its area.",
+	"clamp_shape": "circle keeps the stick inside a radius, rectangle keeps it inside a width and height.",
+	"debugger_log": "prints what this button is doing to the output. off is off, basic turns it on.",
+	"output_action": "input map action that gets held down while this button is pressed, so game code can use Input.is_action_pressed() (same idea as TouchScreenButton). empty does nothing.",
+	"activation_action": "input map action that presses this button while it has focus. leave it empty and focus does nothing. players remap it through the input map.",
+	"cooldown_start_delay": "how long to wait after the trigger before the cooldown fill starts.",
+	"cooldown_duration": "how long the cooldown lasts after that wait.",
+	"cooldown_start_filled": "starts the cooldown fill full and drains it, instead of filling it up from empty.",
+	"cooldown_color": "color of the cooldown overlay.",
+	"cooldown_fill_direction": "which way the cooldown overlay moves: 0 bottom to top, 1 top to bottom, 2 left to right, 3 right to left.",
+	"invert_on_cooldown": "flips the button's colors while the cooldown is running.",
+	"cooldown_invert_duration": "how long that color flip takes. zero is instant.",
+	"suspend_hover_scale_during_cooldown": "puts the button back to normal size while the cooldown is running.",
+	"allow_hold_during_cooldown": "lets hold keep building while the cooldown is running.",
+	"hide_cooldown_during_hold_build_up": "hides the cooldown overlay while the hold fill is showing.",
 }
 
+## tooltips for dropdown options. "property/Option" is checked first since words like None mean
+## different things on different settings, then just "Option".
 const OPTION_TOOLTIPS := {
-	"Keep Size": "Uses the icon texture's native size.",
-	"Ignore Size": "Ignores the icon texture's minimum size when laying out the TextureRect.",
-	"Fit Width": "Fits the icon to the available width.",
-	"Fit Width Proportional": "Fits to the available width while preserving aspect ratio.",
-	"Fit Height": "Fits the icon to the available height.",
-	"Fit Height Proportional": "Fits to the available height while preserving aspect ratio.",
-	"Scale": "Stretches the texture to fill the rectangle.",
-	"Tile": "Repeats the texture at its native size.",
-	"Keep": "Draws at native size from the rectangle's top-left corner.",
-	"Keep Centered": "Draws at native size centered in the rectangle.",
-	"Keep Aspect": "Fits inside the rectangle while preserving aspect ratio.",
-	"Keep Aspect Centered": "Fits inside and centers while preserving aspect ratio.",
-	"Keep Aspect Covered": "Covers the rectangle while preserving aspect ratio; some texture may be cropped.",
-	"OnHoverIn": "Begins tracking when the pointer enters the button bounds.",
-	"OnPressed": "Begins tracking when the pointer press starts.",
-	"OnHoverOut": "Ends tracking when the pointer leaves the button bounds.",
-	"OnReleased": "Ends tracking when the pointer is released.",
-	"None": "Disables cooldown.",
-	"OnPress": "Starts cooldown when the button is pressed.",
-	"OnRelease": "Starts cooldown when the button is released.",
-	"OnPressAndRelease": "Starts cooldown on both press and release.",
-	"UsePanel": "Draws a styled Panel as the button background.",
-	"UseTexture": "Draws a TextureRect as the button background.",
-	"Label": "Creates a plain text Label.",
-	"RichTextLabel": "Creates a RichTextLabel with optional BBCode and rich text behavior.",
-	"Momentary": "The button is pressed only while the pointer is held down.",
-	"ToggleOnPress": "Switches the toggle state each time the pointer presses the button.",
-	"ToggleOnRelease": "Switches the toggle state each time the pointer releases the button.",
-	"FollowBoth": "Moves the button with the pointer while it is pressed.",
-	"VirtualJoystick": "Emits joystick axes while the pointer moves within the configured clamp area.",
-	"Circle": "Constrains joystick movement to a circular radius.",
-	"Rectangle": "Constrains joystick movement to a rectangular area.",
-	"Off": "Disables text wrapping.",
-	"Arbitrary": "Wraps text at any character when it reaches the label boundary.",
-	"Word": "Wraps text at word boundaries.",
-	"Word (Smart)": "Prefers word boundaries but can break long words when necessary.",
-	"Trim Character": "Removes overflowing characters one at a time.",
-	"Trim Word": "Removes overflowing text up to a word boundary.",
-	"Ellipsis": "Replaces overflowing text with an ellipsis.",
-	"Trim Word with Ellipsis": "Trims at a word boundary and adds an ellipsis.",
+	"Keep Size": "uses the icon texture's own size.",
+	"Ignore Size": "ignores the icon texture's minimum size when laying it out.",
+	"Fit Width": "fits the icon to the width it has.",
+	"Fit Width Proportional": "fits to the width it has and keeps the aspect ratio.",
+	"Fit Height": "fits the icon to the height it has.",
+	"Fit Height Proportional": "fits to the height it has and keeps the aspect ratio.",
+	"Scale": "stretches the texture to fill the rect.",
+	"Tile": "repeats the texture at its own size.",
+	"Keep": "draws it at its own size from the top left corner.",
+	"Keep Centered": "draws it at its own size in the middle.",
+	"Keep Aspect": "fits it inside and keeps the aspect ratio.",
+	"Keep Aspect Centered": "fits it inside, centered, and keeps the aspect ratio.",
+	"Keep Aspect Covered": "covers the whole rect and keeps the aspect ratio. some of the texture might get cut off.",
+	"On Hover In": "starts tracking when the pointer moves onto the button.",
+	"On Pressed": "starts tracking when the press starts.",
+	"On Hover Out": "stops tracking when the pointer leaves the button.",
+	"On Released": "stops tracking when the press lets go.",
+	"On Press": "starts the cooldown when the button gets pressed.",
+	"On Release": "starts the cooldown when the button gets let go.",
+	"On Press And Release": "starts the cooldown on both press and release.",
+	"Use Panel": "draws a styled panel as the background.",
+	"Use Texture": "draws a texture as the background.",
+	"Label": "plain text.",
+	"Rich Text Label": "rich text, can use bbcode and effects.",
+	"Momentary": "only pressed while you're holding it down.",
+	"Toggle On Press": "flips on or off every time it gets pressed.",
+	"Toggle On Release": "flips on or off every time it gets let go.",
+	"Follow Both": "moves the button along with the pointer while it's pressed.",
+	"Virtual Joystick": "sends joystick axes while the pointer moves inside its area.",
+	"Circle": "keeps the stick inside a circle.",
+	"Rectangle": "keeps the stick inside a rectangle.",
+	"Arbitrary": "wraps at any character when it hits the edge of the label.",
+	"Word": "wraps between words.",
+	"Word (Smart)": "tries to wrap between words but breaks a long word if it has to.",
+	"Trim Character": "cuts off the characters that don't fit.",
+	"Trim Word": "cuts off at a word.",
+	"Ellipsis": "puts \"...\" where the text gets cut off.",
+	"Trim Word with Ellipsis": "cuts off at a word and adds \"...\".",
+	"background_type/None": "no background.",
+	"label_type/None": "no text.",
+	"cooldown_trigger/None": "no cooldown.",
+	"follow_mode/None": "stays put.",
+	"label_text_overrun/None": "leaves text that doesn't fit alone.",
+	"label_autowrap/Off": "never wraps.",
+	"debugger_log/Off": "no logging.",
+	"debugger_log/Basic": "prints what this button is doing to the output.",
 }
 
 func _can_handle(object: Object) -> bool:
-	return object is Omni_Button
+	return object is OmniButton
 
 func _parse_property(
 	_object: Object,
@@ -348,7 +356,7 @@ class _ConcisePropertyEditor extends EditorProperty:
 		_description = description
 		tooltip_text = description
 		match property_name:
-			"HoverScale", "HoverLerpSpeed", "HoldDuration", "SwipeThreshold", "CooldownStartDelay", "CooldownDuration", "CooldownInvertDuration", "LabelAdditionalPaddingLeft", "LabelAdditionalPaddingTop", "LabelAdditionalPaddingRight", "LabelAdditionalPaddingBottom":
+			"hover_scale", "hover_lerp_speed", "hold_duration", "swipe_threshold", "cooldown_start_delay", "cooldown_duration", "cooldown_invert_duration", "label_additional_padding_left", "label_additional_padding_top", "label_additional_padding_right", "label_additional_padding_bottom":
 				var slider := EditorSpinSlider.new()
 				var range_parts := hint_string.split(",")
 				if range_parts.size() >= 3:
@@ -360,26 +368,26 @@ class _ConcisePropertyEditor extends EditorProperty:
 					slider.allow_lesser = "or_lesser" in range_parts.slice(3)
 				slider.value_changed.connect(_on_value_changed)
 				_control = slider
-			"IconTexture", "LabelFont":
+			"icon_texture", "label_font":
 				var picker := EditorResourcePicker.new()
-				picker.base_type = "Texture2D" if property_name == "IconTexture" else "Font"
+				picker.base_type = "Texture2D" if property_name == "icon_texture" else "Font"
 				picker.resource_changed.connect(_on_resource_changed)
 				_control = picker
-			"ActivationAction", "OutputAction":
+			"activation_action", "output_action":
 				var line_edit := LineEdit.new()
 				line_edit.text_changed.connect(_on_string_name_changed)
 				_control = line_edit
-			"IconExpandMode", "IconStretchMode", "TouchSwipeInit", "TouchSwipeExit", "MouseSwipeInit", "MouseSwipeExit", "CooldownTrigger":
+			"icon_expand_mode", "icon_stretch_mode", "touch_swipe_init", "touch_swipe_exit", "mouse_swipe_init", "mouse_swipe_exit", "cooldown_trigger":
 				_control = _create_enum_editor(hint_string, property_name)
-			"IconFlipH", "IconFlipV", "CooldownStartFilled", "InvertOnCooldown", "SuspendHoverScaleDuringCooldown", "HideCooldownDuringHoldBuildUp", "LabelUppercase", "LabelClipText":
+			"icon_flip_h", "icon_flip_v", "cooldown_start_filled", "invert_on_cooldown", "suspend_hover_scale_during_cooldown", "hide_cooldown_during_hold_build_up", "label_uppercase", "label_clip_text":
 				var checkbox := CheckBox.new()
 				checkbox.toggled.connect(_on_value_changed)
 				_control = checkbox
-			"IconModulate", "HoldFillColor", "CooldownColor", "LabelTextColor", "TextModulate":
+			"icon_modulate", "hold_fill_color", "cooldown_color", "label_text_color", "text_modulate":
 				var color_picker := ColorPickerButton.new()
 				color_picker.color_changed.connect(_on_value_changed)
 				_control = color_picker
-			"HoldFillDirection", "CooldownFillDirection":
+			"hold_fill_direction", "cooldown_fill_direction":
 				var slider := EditorSpinSlider.new()
 				slider.editing_integer = true
 				slider.step = 1.0
@@ -406,6 +414,9 @@ class _ConcisePropertyEditor extends EditorProperty:
 			if parts.size() == 2:
 				option = parts[0].strip_edges()
 				value = int(parts[1].strip_edges())
+			# script enums are SCREAMING_CASE, show them like the stock inspector does
+			if option == option.to_upper():
+				option = option.capitalize()
 			popup.add_item(option, index)
 			popup.set_item_tooltip(index, _enum_option_tooltip(option, property_name))
 			_enum_values.append(value)
@@ -414,15 +425,13 @@ class _ConcisePropertyEditor extends EditorProperty:
 		return menu_button
 
 	func _enum_option_tooltip(option: String, property_name: String) -> String:
-		if property_name == "LabelTextOverrun" and option == "None":
-			return "Keeps overflowing text unchanged."
-		return String(OPTION_TOOLTIPS.get(option, ""))
+		return String(OPTION_TOOLTIPS.get(property_name + "/" + option, OPTION_TOOLTIPS.get(option, "")))
 
 	func _enum_display_text(option: String, property_name: String) -> String:
 		var display := option
-		if property_name == "LabelHorizontalAlignment":
+		if property_name == "label_horizontal_alignment":
 			display = display.trim_prefix("Horizontal Alignment ")
-		elif property_name == "LabelVerticalAlignment":
+		elif property_name == "label_vertical_alignment":
 			display = display.trim_prefix("Vertical Alignment ")
 		const MAX_DISPLAY_CHARACTERS := 12
 		if display.length() > MAX_DISPLAY_CHARACTERS:
@@ -447,20 +456,20 @@ class _ConcisePropertyEditor extends EditorProperty:
 			return
 		var value: Variant = object.get(_property_name)
 		match _property_name:
-			"HoverScale", "HoverLerpSpeed", "HoldDuration", "SwipeThreshold", "CooldownStartDelay", "CooldownDuration", "CooldownInvertDuration", "HoldFillDirection", "CooldownFillDirection", "LabelAdditionalPaddingLeft", "LabelAdditionalPaddingTop", "LabelAdditionalPaddingRight", "LabelAdditionalPaddingBottom":
+			"hover_scale", "hover_lerp_speed", "hold_duration", "swipe_threshold", "cooldown_start_delay", "cooldown_duration", "cooldown_invert_duration", "hold_fill_direction", "cooldown_fill_direction", "label_additional_padding_left", "label_additional_padding_top", "label_additional_padding_right", "label_additional_padding_bottom":
 				(_control as EditorSpinSlider).set_value_no_signal(float(value))
-			"IconTexture", "LabelFont":
+			"icon_texture", "label_font":
 				(_control as EditorResourcePicker).edited_resource = value
-			"ActivationAction", "OutputAction":
+			"activation_action", "output_action":
 				var line_edit := _control as LineEdit
 				var text := String(value)
 				if line_edit.text != text:
 					line_edit.text = text
-			"IconExpandMode", "IconStretchMode", "TouchSwipeInit", "TouchSwipeExit", "MouseSwipeInit", "MouseSwipeExit", "CooldownTrigger", "LabelHorizontalAlignment", "LabelVerticalAlignment", "LabelAutowrap", "LabelTextOverrun":
+			"icon_expand_mode", "icon_stretch_mode", "touch_swipe_init", "touch_swipe_exit", "mouse_swipe_init", "mouse_swipe_exit", "cooldown_trigger", "label_horizontal_alignment", "label_vertical_alignment", "label_autowrap", "label_text_overrun":
 				_set_enum_selection(int(value))
-			"IconFlipH", "IconFlipV", "CooldownStartFilled", "InvertOnCooldown", "SuspendHoverScaleDuringCooldown", "HideCooldownDuringHoldBuildUp", "LabelUppercase", "LabelClipText":
+			"icon_flip_h", "icon_flip_v", "cooldown_start_filled", "invert_on_cooldown", "suspend_hover_scale_during_cooldown", "hide_cooldown_during_hold_build_up", "label_uppercase", "label_clip_text":
 				(_control as CheckBox).set_pressed_no_signal(bool(value))
-			"IconModulate", "HoldFillColor", "CooldownColor", "LabelTextColor", "TextModulate":
+			"icon_modulate", "hold_fill_color", "cooldown_color", "label_text_color", "text_modulate":
 				(_control as ColorPickerButton).color = value
 			_:
 				if _control is MenuButton:

@@ -1,15 +1,15 @@
 @tool
 class_name OmniStaircaseContainer
 extends Container
-## Stacks its children like a [VBoxContainer], shifting each one sideways by [member step], so a list
-## follows a slant (the stylized menus line their items up with the angled bands).
+## stacks its children like a [VBoxContainer] but shifts each one sideways by [member step], so the
+## list follows a slant (the stylized menus use it to line their items up with the angled bands).
 
-## Space between items.
+## space between items.
 @export var separation := 6.0:
 	set(value):
 		separation = value
 		queue_sort()
-## Sideways shift per item: negative moves each lower item left, positive right.
+## how far each item shifts sideways. negative moves each lower item left, positive moves it right.
 @export var step := -18.0:
 	set(value):
 		step = value

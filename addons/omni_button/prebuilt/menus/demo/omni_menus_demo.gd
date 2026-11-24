@@ -1,15 +1,15 @@
 extends Control
-## A tiny "game" that uses all three menus: the title screen opens first, Start begins play, Esc or
-## the controller's Start button pauses, Options changes settings, and Quit to title goes back.
-## Open this scene and press F6. The three menus share one options screen (their Options Menu setting).
+## a tiny "game" that uses all three menus. the title screen opens first, Start starts playing, esc or
+## start on the controller pauses, Options changes settings, and Quit to title goes back.
+## open this scene and hit F6. the three menus share one options screen (their Options Menu setting).
 ##
-## So every setting can be seen working, the demo also:
-## - plays a soft music loop on a "Music" bus and a click on an "SFX" bus (it adds the two buses
-##   while it runs if the project has none), so the volume sliders are audible;
-## - shows a line of dialogue on T (or Y on a controller), typed at the chosen text speed;
-## - lists the current settings at the left edge, with the audio bus levels they set;
-## - adds a "Demo" tab to the options screen (two settings of its own, defined with OmniSettings.define)
-##   to switch between the panel menus and the full-screen stylized ones, and between the looks.
+## so you can actually see every setting doing something, the demo also:
+## - plays a soft music loop on a "Music" bus and a click on an "SFX" bus (it adds those two buses
+##   while it runs if the project doesn't have them), so you can hear the volume sliders
+## - shows a line of dialogue on T (or Y on a controller), typed at whatever text speed you picked
+## - lists the current settings on the left edge, with the audio bus levels they set
+## - adds a "Demo" tab to the options screen (two settings of its own, made with OmniSettings.define)
+##   to switch between the panel menus and the full screen stylized ones, and between the looks
 
 const STYLIZED := {
 	"title": "res://addons/omni_button/prebuilt/menus/screens/omni_title_menu_stylized.tscn",
@@ -36,7 +36,7 @@ var _dialogue: OmniDialogueBox
 var _readout: Label
 var _line := 0
 var _playing := false
-## The two menu sets: "panel" (the scene's own menus) and "stylized" (made in code).
+## the two menu sets: "panel" (the scene's own menus) and "stylized" (made in code).
 var _sets := {}
 var _style := "panel"
 
@@ -44,7 +44,7 @@ func _ready() -> void:
 	_add_gamepad_accept()
 	_ensure_bus(&"Music")
 	_ensure_bus(&"SFX")
-	# The settings were applied before these buses existed (at startup); apply them again.
+	# the settings got applied before these buses existed (at startup), so apply them again.
 	OmniSettings.ensure_loaded()
 	OmniSettings.apply_all()
 	_make_sounds()
@@ -62,7 +62,7 @@ func _ready() -> void:
 		for menu in [set.title, set.pause]:
 			menu.item_pressed.connect(func(_item): _click.play())
 
-	# Two settings of the demo's own: they get a "Demo" tab on the options screen.
+	# two settings just for the demo, they get a "Demo" tab on the options screen.
 	OmniSettings.define("demo/look", "modern", {"page": "Demo", "label": "Look",
 		"choices": [["Modern", "modern"], ["Retro", "retro"], ["Bold", "bold"]], "apply": _apply_look})
 	OmniSettings.define("demo/menu_style", "panel", {"page": "Demo", "label": "Menu style",
@@ -77,7 +77,7 @@ func _exit_tree() -> void:
 	OmniSettings.unwatch(_on_setting_changed)
 
 func _process(delta: float) -> void:
-	# A paused game stops here: this node isn't set to keep processing while paused.
+	# a paused game stops here, this node isn't set to keep going while paused.
 	var sword: Control = %Sword
 	sword.position += _velocity * delta
 	var area: Vector2 = %Game.size - sword.size
@@ -115,7 +115,7 @@ func _make_stylized_set() -> Dictionary:
 	pause.options_menu = options
 	return {"title": title, "pause": pause, "options": options}
 
-## Menu style changes wait until the options screen (where it was changed) has closed.
+## menu style changes wait until the options screen (where you changed it) has closed.
 func _switch_style_when_free() -> void:
 	if _sets.is_empty():
 		return
@@ -127,7 +127,7 @@ func _switch_style_when_free() -> void:
 func _on_options_closed() -> void:
 	_switch_style_when_free.call_deferred()
 
-## Swaps the menus in use, keeping whatever was showing (the title screen or the pause menu).
+## swaps which menus are in use, keeping whatever was showing (the title screen or the pause menu).
 func _switch_style(to: String) -> void:
 	if not _sets.has(to) or to == _style:
 		return
@@ -169,7 +169,7 @@ func _start() -> void:
 
 func _back_to_title() -> void:
 	_playing = false
-	# A real game would save here, then show Continue on the title screen.
+	# a real game would save here, then show Continue on the title screen.
 	_current().title.can_continue = true
 	_current().title.open()
 
@@ -177,7 +177,7 @@ func _on_setting_changed(key: String, _value: Variant) -> void:
 	_update_readout()
 	if key == "audio/sfx" or key == "audio/master":
 		if not _click.playing:
-			_click.play() # hear the new level while dragging the slider
+			_click.play() # so you hear the new level while dragging the slider
 
 #region Sounds
 
@@ -204,7 +204,7 @@ func _make_sounds() -> void:
 
 const RATE := 22050
 
-## A gentle four-chord arpeggio, made in code so the demo needs no audio files.
+## a gentle four chord arpeggio, made in code so the demo doesn't need any audio files.
 static func _music_loop() -> AudioStreamWAV:
 	var chords := [[261.63, 329.63, 392.0], [220.0, 261.63, 329.63], [174.61, 220.0, 261.63], [196.0, 246.94, 293.66]]
 	var note_len := 0.25
@@ -219,7 +219,7 @@ static func _music_loop() -> AudioStreamWAV:
 				samples.append(sin(TAU * freq * t) * env * 0.18 + sin(TAU * chord[0] * 0.5 * t) * 0.05)
 	return _to_wav(samples, true)
 
-## A short soft click.
+## a short soft click.
 static func _click_sound() -> AudioStreamWAV:
 	var samples := PackedFloat32Array()
 	var n := int(0.06 * RATE)
@@ -248,7 +248,7 @@ static func _to_wav(samples: PackedFloat32Array, loop: bool) -> AudioStreamWAV:
 
 func _make_readout() -> void:
 	var layer := CanvasLayer.new()
-	layer.layer = 40 # above every menu, so changes show while the options screen is open
+	layer.layer = 40 # above every menu so you see changes while the options screen is open
 	add_child(layer)
 	var panel := PanelContainer.new()
 	var style := StyleBoxFlat.new()
@@ -256,7 +256,7 @@ func _make_readout() -> void:
 	style.set_corner_radius_all(6)
 	style.set_content_margin_all(10)
 	panel.add_theme_stylebox_override("panel", style)
-	# Left edge: clear of the menus, which sit in the middle.
+	# left edge, out of the way of the menus in the middle.
 	panel.offset_left = 12.0
 	panel.offset_right = 222.0
 	panel.offset_top = 12.0
@@ -286,8 +286,8 @@ func _update_readout() -> void:
 
 #endregion
 
-## Godot's ui_accept has Enter and Space but no controller button, so A couldn't press a menu item.
-## Adds A while the demo runs; in your game, add it under Project Settings > Input Map.
+## godot's ui_accept has enter and space but no controller button, so A couldn't press a menu item.
+## this adds A while the demo runs. in your game add it under project settings > input map.
 func _add_gamepad_accept() -> void:
 	for e in InputMap.action_get_events(&"ui_accept"):
 		if e is InputEventJoypadButton:

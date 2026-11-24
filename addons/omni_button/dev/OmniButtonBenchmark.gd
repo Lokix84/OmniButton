@@ -1,7 +1,7 @@
 extends SceneTree
-# Dev tool: benchmarks load, hover/press and typewriter paths, plus checks on the generated
-# visuals, lazy accessors and unhandled-input gating. Not needed at runtime.
-# Usage: godot --headless --path . -s res://addons/omni_button/dev/OmniButtonBenchmark.gd
+# dev tool: benchmarks loading, hover/press and the typewriter, plus checks on the visuals, lazy
+# accessors and unhandled input gating. not needed at runtime.
+# usage: godot --headless --path . -s res://addons/omni_button/dev/OmniButtonBenchmark.gd
 
 const OmniButtonScript = preload("res://addons/omni_button/omni_button.gd")
 
@@ -11,15 +11,15 @@ func _initialize() -> void:
 func _make() -> Control:
 	var b = OmniButtonScript.new()
 	b.size = Vector2(120, 48)
-	b.BackgroundType = 1 # UsePanel
+	b.background_type = 1 # USE_PANEL
 	var normal := StyleBoxFlat.new()
 	var pressed := StyleBoxFlat.new()
 	pressed.bg_color = Color.RED
-	b.PanelStyleBox = normal
-	b.PanelPressedStyleBox = pressed
-	b.Text = "Button"
-	b.HoverScale = 1.2
-	b.InvertModes = 1 | 4
+	b.panel_style_box = normal
+	b.panel_pressed_style_box = pressed
+	b.text = "Button"
+	b.hover_scale = 1.2
+	b.invert_modes = 1 | 4
 	return b
 
 func _run() -> void:
@@ -32,19 +32,19 @@ func _run() -> void:
 	for _f in 8:
 		await process_frame
 
-	# --- Demo-style load: properties set before entering the tree, like a .tscn instance.
+	# --- demo style load: properties set before entering the tree, like a .tscn instance.
 	var icon_tex := load("res://addons/omni_button/demo/icons/Icon-Potion6.png")
 	var style := StyleBoxFlat.new()
 	for same_text in [false, true]:
 		await _bench_load(icon_tex, style, same_text)
 
-	# --- Autosize/settle: 200 labelled buttons created and settled over 8 frames.
+	# --- autosize/settle: 200 buttons with labels made and settled over 8 frames.
 	var ts := Time.get_ticks_usec()
 	var text_buttons: Array = []
 	for i in 200:
 		var tb = OmniButtonScript.new()
 		tb.size = Vector2(140, 48)
-		tb.Text = "Autosized label %d" % i
+		tb.text = "Autosized label %d" % i
 		root.add_child(tb)
 		text_buttons.append(tb)
 	for _f in 8:
@@ -53,7 +53,7 @@ func _run() -> void:
 	for tb in text_buttons: tb.queue_free()
 	await process_frame
 
-	# --- Typewriter: 40 rich-text buttons revealing a long BBCode message.
+	# --- typewriter: 40 rich text buttons typing out a long bbcode message.
 	var msg := ""
 	for _r in 12:
 		msg += "Some [b]bold[/b] and [i]italic[/i] text with a [wave amp=20]wavy[/wave] bit and [color=green]colour[/color]. "
@@ -61,7 +61,7 @@ func _run() -> void:
 	for i in 40:
 		var wb = OmniButtonScript.new()
 		wb.size = Vector2(400, 220)
-		wb.LabelType = 1
+		wb.label_type = 1
 		root.add_child(wb)
 		tw_buttons.append(wb)
 	await process_frame
@@ -90,15 +90,15 @@ func _run() -> void:
 		var shown: int = w._rich_label.visible_characters
 		if shown <= 0 or shown >= w._typewriter.total_chars: twf.append("rich reveal is partial (%d)" % shown)
 		w.stop_typewriter()
-		if w._tw_active or w.Text.is_empty() or w.Text.length() >= msg.length(): twf.append("cancel commits partial text")
-		w.LabelType = 0
+		if w._tw_active or w.text.is_empty() or w.text.length() >= msg.length(): twf.append("cancel commits partial text")
+		w.label_type = 0
 		w.start_typewriter("one two three four", 2.0, true)
 		w._process(0.5)
 		if w._label.visible_characters != 4: twf.append("by-word reveals whole first word (got %d)" % w._label.visible_characters)
 		w._process(0.5)
 		if w._label.visible_characters != 8: twf.append("by-word reveals second word (got %d)" % w._label.visible_characters)
 		w.skip_typewriter()
-		if w.Text != "one two three four" or w._label.visible_characters != -1: twf.append("skip shows full plain text")
+		if w.text != "one two three four" or w._label.visible_characters != -1: twf.append("skip shows full plain text")
 		print("TW CHECKS passed" if twf.is_empty() else "TW CHECK FAILED: " + ", ".join(twf))
 	for wb in tw_buttons: wb.queue_free()
 	await process_frame
@@ -108,9 +108,9 @@ func _run() -> void:
 	for _c in cycles:
 		for b in buttons:
 			OmniButtonInput.on_mouse_entered(b)
-			b.IsPressed = true
+			b.is_pressed = true
 			b._process(0.016)
-			b.IsPressed = false
+			b.is_pressed = false
 			OmniButtonInput.on_mouse_exited(b)
 			b._process(0.016)
 	var ms := float(Time.get_ticks_usec() - t0) / 1000.0
@@ -126,13 +126,13 @@ func _run() -> void:
 		var fails: Array[String] = []
 		var b = buttons[0]
 		# panel stylebox swaps with state
-		b.IsPressed = true; b._process(0.016)
-		if b._panel.style != b.PanelPressedStyleBox: fails.append("pressed stylebox applied")
+		b.is_pressed = true; b._process(0.016)
+		if b._panel.style != b.panel_pressed_style_box: fails.append("pressed stylebox applied")
 		if b._label.material != b._invert_material: fails.append("press invert applied to label")
-		b.IsPressed = false; b._process(0.016)
-		if b._panel.style != b.PanelStyleBox: fails.append("normal stylebox restored")
+		b.is_pressed = false; b._process(0.016)
+		if b._panel.style != b.panel_style_box: fails.append("normal stylebox restored")
 		if b._label.material != null: fails.append("invert cleared on release")
-		# hover scales the managed root only
+		# hover only scales the managed root
 		OmniButtonInput.on_mouse_entered(b)
 		for _i in 30: b._process(0.016)
 		if b._managed_root.scale.x <= 1.01: fails.append("hover scales managed root")
@@ -140,19 +140,19 @@ func _run() -> void:
 		OmniButtonInput.on_mouse_exited(b)
 		for _i in 60: b._process(0.016)
 		if not b._managed_root.scale.is_equal_approx(Vector2.ONE): fails.append("hover-out returns root to 1")
-		# icon swap keeps node and siblings
-		b.IconTexture = load("res://addons/omni_button/demo/icons/Icon-Potion6.png")
+		# swapping the icon keeps the node and its siblings
+		b.icon_texture = load("res://addons/omni_button/demo/icons/Icon-Potion6.png")
 		await process_frame
 		var icon_node = b._icon
 		var panel_node = b._panel
 		var label_node = b._label
-		b.IconTexture = load("res://addons/omni_button/demo/icons/Icon-Sword1.png")
+		b.icon_texture = load("res://addons/omni_button/demo/icons/Icon-Sword1.png")
 		await process_frame
 		await process_frame
 		if b._icon != icon_node: fails.append("icon node reused on texture change")
 		if b._panel != panel_node or b._label != label_node: fails.append("siblings not rebuilt on icon change")
 		if b._icon.texture.resource_path.get_file() != "Icon-Sword1.png": fails.append("icon texture updated")
-		b.IconTexture = null
+		b.icon_texture = null
 		await process_frame
 		if is_instance_valid(b._icon): fails.append("icon removed when cleared")
 		# unhandled input gating
@@ -164,49 +164,49 @@ func _run() -> void:
 		b.release_focus()
 		await process_frame
 		if b.is_processing_unhandled_input(): fails.append("unfocused button turns unhandled input off")
-		# typewriter start keeps panel node
+		# starting the typewriter keeps the panel node
 		var panel_before = b._panel
 		b.start_typewriter("Hello", 1000.0)
 		if b._panel != panel_before: fails.append("typewriter start does not rebuild panel")
 		await create_timer(0.1).timeout
-		if b.Text != "Hello": fails.append("typewriter completes")
-		# programmatic joystick start/stop
+		if b.text != "Hello": fails.append("typewriter completes")
+		# starting/stopping the joystick from code
 		var js = OmniButtonScript.new()
 		js.size = Vector2(80, 80)
 		js.position = Vector2(300, 300)
-		js.EnableVirtualJoystick = true
+		js.enable_virtual_joystick = true
 		root.add_child(js)
 		await process_frame
 		var started := [0]
 		js.joystick_started.connect(func(): started[0] += 1)
 		js.start_virtual_joystick_at(js.global_position + Vector2(60, 40))
-		if not (js._vj_active and js.IsPressed and js.mouse_filter == Control.MOUSE_FILTER_IGNORE and started[0] == 1):
+		if not (js._vj_active and js.is_pressed and js.mouse_filter == Control.MOUSE_FILTER_IGNORE and started[0] == 1):
 			fails.append("start_virtual_joystick_at activates, presses, ignores mouse, emits once")
 		js.stop_virtual_joystick()
-		if js._vj_active or js.IsPressed or js.mouse_filter != Control.MOUSE_FILTER_STOP:
+		if js._vj_active or js.is_pressed or js.mouse_filter != Control.MOUSE_FILTER_STOP:
 			fails.append("stop_virtual_joystick restores state")
 		js.queue_free()
 		# lazy accessors
 		if not b._accessor_cache.is_empty(): fails.append("accessors are not created until used")
 		b.label.color = Color.RED
-		if b.LabelTextColor != Color.RED: fails.append("label accessor writes through")
+		if b.label_text_color != Color.RED: fails.append("label accessor writes through")
 		if b.label != b.label: fails.append("accessor instance is reused")
 		b.charge_up.duration = 0.25
-		if not is_equal_approx(b.HoldDuration, 0.25): fails.append("charge_up accessor writes through")
-		b.HoldDuration = 0.0
+		if not is_equal_approx(b.hold_duration, 0.25): fails.append("charge_up accessor writes through")
+		b.hold_duration = 0.0
 		# debug flag
-		b.DebuggerLog = 1
-		if not b._dbg: fails.append("DebuggerLog sets _dbg")
-		b.DebuggerLog = 0
-		if b._dbg: fails.append("DebuggerLog clears _dbg")
+		b.debugger_log = 1
+		if not b._dbg: fails.append("debugger_log sets _dbg")
+		b.debugger_log = 0
+		if b._dbg: fails.append("debugger_log clears _dbg")
 		if fails.is_empty():
 			print("CHECKS passed")
 		else:
 			for f in fails: print("CHECK FAILED: ", f)
 	quit()
 
-## Demo-style load: properties set before entering the tree, like a .tscn instance.
-## same_text = hotbar-like (every button says "Use"), otherwise every label is unique.
+## demo style load: properties set before entering the tree, like a .tscn instance.
+## same_text is like a hotbar (every button says "Use"), otherwise every label is different.
 func _bench_load(icon_tex: Texture2D, style: StyleBox, same_text: bool) -> void:
 	var nodes0 := Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
 	var objs0 := Performance.get_monitor(Performance.OBJECT_COUNT)
@@ -215,11 +215,11 @@ func _bench_load(icon_tex: Texture2D, style: StyleBox, same_text: bool) -> void:
 	for i in 200:
 		var db = OmniButtonScript.new()
 		db.size = Vector2(100, 50)
-		db.BackgroundType = 1
-		db.PanelStyleBox = style
-		db.IconTexture = icon_tex
-		db.Text = "Use" if same_text else "Demo button %d" % i
-		db.InvertModes = 1
+		db.background_type = 1
+		db.panel_style_box = style
+		db.icon_texture = icon_tex
+		db.text = "Use" if same_text else "Demo button %d" % i
+		db.invert_modes = 1
 		root.add_child(db)
 		demo_buttons.append(db)
 	var t_add := float(Time.get_ticks_usec() - tl0) / 1000.0

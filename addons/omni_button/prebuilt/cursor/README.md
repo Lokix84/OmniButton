@@ -1,5 +1,7 @@
 # Virtual cursor
 
+*Part of OmniButton. New to the plugin? Start with [Getting started](../../GETTING_STARTED.md).*
+
 `omni_virtual_cursor.tscn` is a controller cursor for menus: a ring moved by a joystick that clicks whatever is under it, like the menus in Destiny or The First Descendant.
 
 It's a companion to OmniButton rather than part of it. It isn't made of OmniButtons; it works *with* them, and with any other Control. Menus built from OmniButtons (for example the [button presets](../buttons/README.md)) are what it's made for.

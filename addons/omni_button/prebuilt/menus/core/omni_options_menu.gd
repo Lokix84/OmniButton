@@ -1,41 +1,41 @@
 @tool
 class_name OmniOptionsMenu
 extends OmniOverlay
-## The options screen: one tab per settings page, one row per setting, built from [OmniSettings].
+## the options screen. one tab per settings page, one row per setting, all built from [OmniSettings].
 ##
-## Rows come from the setting definitions, so settings your game adds with [method OmniSettings.define]
-## (with a [code]page[/code]) appear here on their own. Changes apply at once; they are saved when the
+## the rows come from the setting definitions, so settings your game adds with [method OmniSettings.define]
+## (with a [code]page[/code]) just show up here. changes apply right away and get saved when the
 ## screen closes.[br][br]
-## Controls: the d-pad / arrows move between rows. On a slider, left / right changes it; on a choice
-## or an On / Off row, left / right steps through the values and confirm steps forward. The shoulder
-## buttons switch tabs. Cancel or [b]Back[/b] closes.
+## controls: the d-pad / arrows move between rows. on a slider left / right changes it, on a choice
+## or an on / off row left / right steps through the values and confirm steps forward. the shoulder
+## buttons switch tabs. cancel or [b]Back[/b] closes it.
 
-## A setting was changed on this screen.
+## a setting got changed on this screen.
 signal setting_changed(key: String, value: Variant)
 
-## Text at the top. Empty hides it.
+## text at the top. empty hides it.
 @export var title: String = "Options":
 	set(value):
 		title = value
 		if is_node_ready():
 			_apply_title()
-## Width of the control on the right of each row (slider, choice, On / Off).
+## width of the control on the right side of each row (slider, choice, on / off).
 @export var control_width: float = 260.0
-## Button scene used for tabs, choices and On / Off rows (styled by the look).
+## button scene used for tabs, choices and on / off rows (the look styles it).
 @export var option_button_scene: PackedScene = preload("res://addons/omni_button/prebuilt/dialog/parts/omni_option_button.tscn")
 
-## The [Label] showing [member title].
+## the [Label] showing [member title].
 @onready var title_label: Label = get_node_or_null("%Title")
-## The tab row ([OmniTabBar]); built from the settings pages.
+## the tab row ([OmniTabBar]), built from the settings pages.
 @onready var tabs: OmniTabBar = %Tabs
-## The container holding one page per tab.
+## the container with one page per tab.
 @onready var pages: Container = %Pages
-## The button that closes the screen.
-@onready var back_button: Omni_Button = %Back
-## The button that puts the current page back to its defaults.
-@onready var reset_button: Omni_Button = %Reset
+## the button that closes the screen.
+@onready var back_button: OmniButton = %Back
+## the button that puts the current page back to its defaults.
+@onready var reset_button: OmniButton = %Reset
 
-## Setting key -> the control showing it.
+## setting key -> the control showing it.
 var _controls := {}
 var _page_names: PackedStringArray = []
 
@@ -49,7 +49,7 @@ func _ready() -> void:
 	reset_button.pressed.connect(_on_reset_pressed)
 	tabs.tab_changed.connect(func(_i: int): _focus_first_row())
 
-## Rebuilds the tabs and rows from the current definitions and values.
+## rebuilds the tabs and rows from the current definitions and values.
 func rebuild() -> void:
 	OmniSettings.ensure_loaded()
 	var keep_tab := tabs.current_tab
@@ -76,18 +76,18 @@ func rebuild() -> void:
 	if t != null:
 		t.style_option(back_button)
 		t.style_option(reset_button)
-		# One font size per group, like a popup's buttons.
+		# one font size per group, like a popup's buttons.
 		var tab_buttons: Array[Control] = []
 		for c in tabs.get_children():
 			tab_buttons.append(c)
 		t.fit_option_group(tab_buttons)
 		t.fit_option_group([reset_button, back_button] as Array[Control])
 
-## The page name of the tab that is showing.
+## the page name of the tab that's showing.
 func get_current_page() -> String:
 	return _page_names[tabs.current_tab] if tabs.current_tab < _page_names.size() else ""
 
-## The control showing setting [param key] (an [HSlider] or an [Omni_Button]), or [code]null[/code].
+## the control showing setting [param key] (an [HSlider] or an [OmniButton]), or [code]null[/code].
 func get_control(key: String) -> Control:
 	var c = _controls.get(key)
 	return c if is_instance_valid(c) else null
@@ -146,7 +146,7 @@ func _make_row(def: Dictionary, t: OmniDialogTheme) -> Control:
 			control = _make_stepper(key, def.get("choices", []), t)
 			row.add_child(control)
 	_controls[key] = control
-	# Godot's slider shows no focus, so the focused row's label lights up instead.
+	# godot's slider doesn't show focus, so the focused row's label lights up instead.
 	control.focus_entered.connect(func(): label.modulate = _focus_tint())
 	control.focus_exited.connect(func(): label.modulate = Color.WHITE)
 	return row
@@ -180,15 +180,15 @@ func _make_slider(def: Dictionary, row: HBoxContainer) -> HSlider:
 	row.add_child(holder)
 	return slider
 
-## A button that steps through [param choices] ([code][label, value][/code] pairs): confirm and
+## a button that steps through [param choices] ([code][label, value][/code] pairs). confirm and
 ## right go forward, left goes back.
-func _make_stepper(key: String, choices: Array, t: OmniDialogTheme) -> Omni_Button:
+func _make_stepper(key: String, choices: Array, t: OmniDialogTheme) -> OmniButton:
 	var b := _make_button("", t)
 	b.custom_minimum_size.x = control_width
 	var show_current := func():
 		var value = OmniSettings.get_value(key)
 		var index := _choice_index(choices, value)
-		b.Text = "‹  %s  ›" % (str(choices[index][0]) if index >= 0 else str(value))
+		b.text = "‹  %s  ›" % (str(choices[index][0]) if index >= 0 else str(value))
 	var step := func(dir: int):
 		if choices.is_empty() or not is_top():
 			return
@@ -216,9 +216,9 @@ static func _choice_index(choices: Array, value: Variant) -> int:
 			return i
 	return -1
 
-func _make_button(text: String, t: OmniDialogTheme) -> Omni_Button:
-	var b: Omni_Button = option_button_scene.instantiate()
-	b.Text = text
+func _make_button(text: String, t: OmniDialogTheme) -> OmniButton:
+	var b: OmniButton = option_button_scene.instantiate()
+	b.text = text
 	b.size_flags_horizontal = Control.SIZE_SHRINK_END
 	if t != null:
 		t.style_option(b)
@@ -245,7 +245,7 @@ func _focus_first_row() -> void:
 	if c != null:
 		c.grab_focus.call_deferred()
 
-## Tint of a row label while its control has focus: the look's accent color, made light.
+## tint for a row's label while its control has focus: the look's accent color, lightened.
 func _focus_tint() -> Color:
 	var t := get_dialog_theme()
 	return t.accent_color.lightened(0.35) if t != null else Color(1, 0.84, 0.45)
@@ -260,8 +260,8 @@ func _on_dialog_theme(t: OmniDialogTheme) -> void:
 		if b != null:
 			t.style_option(b)
 	for c in tabs.get_children() if tabs != null else []:
-		if c is Omni_Button:
+		if c is OmniButton:
 			t.style_option(c)
 	for c: Control in _controls.values():
-		if is_instance_valid(c) and c is Omni_Button:
+		if is_instance_valid(c) and c is OmniButton:
 			t.style_option(c)

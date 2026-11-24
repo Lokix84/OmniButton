@@ -1,9 +1,9 @@
 extends RefCounted
 class_name OmniButtonSignals
-## Turns on an Action switch when a handler was connected to its signal before _ready.
-## Static: every function takes the button as its first argument (_o).
+## flips an action switch on when something got connected to its signal before _ready.
+## static, every function takes the button as the first argument (_o).
 
-static func auto_enable_actions_once_from_connections(_o: Omni_Button) -> void:
+static func auto_enable_actions_once_from_connections(_o: OmniButton) -> void:
 	var map := {
 		"pressed": _o.ACT_PRESSED,
 		"released": _o.ACT_RELEASED,

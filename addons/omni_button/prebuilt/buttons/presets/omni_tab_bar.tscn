@@ -11,12 +11,12 @@ script = ExtResource("script")
 
 [node name="Tab1" parent="." instance=ExtResource("tab")]
 layout_mode = 2
-Text = "Tab 1"
+text = "Tab 1"
 
 [node name="Tab2" parent="." instance=ExtResource("tab")]
 layout_mode = 2
-Text = "Tab 2"
+text = "Tab 2"
 
 [node name="Tab3" parent="." instance=ExtResource("tab")]
 layout_mode = 2
-Text = "Tab 3"
+text = "Tab 3"

@@ -1,5 +1,7 @@
 # OmniButton: dialog windows
 
+*Part of OmniButton. New to the plugin? Start with [Getting started](../../GETTING_STARTED.md).*
+
 Part of the OmniButton plugin, with nothing extra to install. Ready-made dialog windows built from OmniButtons: popups (alert, confirm, choice), toasts, an RPG dialogue box and full-screen narration. Every window is a scene you can open, see and edit. Show them from code through the `OmniDialog` autoload, or drop a window into your scene and set it up in the Inspector.
 
 ## Quick start
@@ -15,7 +17,7 @@ Part of the OmniButton plugin, with nothing extra to install. Ready-made dialog 
 
 3. Run `demo/omni_dialog_demo.tscn` (F6). One screen with a button for everything: popups, toasts, dialogue, narration, the story file, the base overlay, the looks and text speed. The **Windows** button switches between the `OmniDialog` autoload and windows dropped into the scene, and a log shows each call and what it returned.
 
-Every class (`OmniPopup`, `OmniDialogueBox`, `OmniDialogRunner`, the `OmniDialog` autoload as `OmniDialogAutoload`, ...) has a help page in the editor: press F1 and type its name. The same pages as Markdown are in [`docs/api/`](docs/api/README.md), and the design notes in [`docs/dialog_design_spec.md`](docs/dialog_design_spec.md).
+Every class (`OmniPopup`, `OmniDialogueBox`, `OmniDialogRunner`, the `OmniDialog` autoload as `OmniDialogAutoload`, ...) has a help page in the editor: press F1 and type its name.
 
 ## What's in this folder
 
@@ -30,7 +32,6 @@ dialog/
 │   ├── omni_option_button.tscn   every popup button and dialogue answer
 │   └── omni_toast_item.tscn      each toast
 ├── themes/         CUSTOMIZE LOOK: omni_dialog_modern.tres, omni_dialog_retro.tres, omni_dialog_bold.tres, README.md (how to make one)
-├── docs/           READ: api/ (one page per class), dialog_design_spec.md (design notes)
 ├── demo/           TRY IT: omni_dialog_demo.tscn (every feature on one screen),
 │                   story/gate_story.json (example dialog file)
 ├── dev/            ONLY FOR PLUGIN WORK: automated tests (left out of downloads)
@@ -184,7 +185,7 @@ Don't bind a runner into one of its own handlers, as in `register_event("x", _f.
 
 ### Skipping
 
-While a story entry plays, the dialogue box and narration show a **Hold to skip ▶▶** button. It's an `Omni_Button` using its hold build-up: holding it until the fill completes fast-forwards the rest of the entry.
+While a story entry plays, the dialogue box and narration show a **Hold to skip ▶▶** button. It's an `OmniButton` using its hold build-up: holding it until the fill completes fast-forwards the rest of the entry.
 - **Lines still count:** skipped lines aren't shown, but their `set` values, conditions and jumps still apply, so the game ends up where it would have.
 - **Dropped:** `wait` lines and toasts.
 - **Questions stop the skip:** skipping ends at the next question, which shows normally. A question is never skipped: skipping on one only shows the rest of it.

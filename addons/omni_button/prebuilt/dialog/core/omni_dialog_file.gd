@@ -1,25 +1,25 @@
 extends RefCounted
 class_name OmniDialogFile
-## Loads dialog JSON files and caches them.
+## loads dialog json files and caches them.
 ##
-## A file holds many entries by key. An entry is a list of lines, or an object with [code]"lines"[/code] plus entry-wide options:
+## a file holds a bunch of entries by key. an entry is a list of lines, or an object with [code]"lines"[/code] plus options for the whole entry:
 ## [codeblock]
 ## {
 ##   "gate":     [ { "type": "say", "name": "Guard", "text": "Halt!" } ],
 ##   "tutorial": { "lines": [ { "type": "narrate", "text": "Welcome." } ] }
 ## }
 ## [/codeblock]
-## [code]res://[/code] files are loaded as Godot [JSON] resources, so they work in exported games; [code]user://[/code] files are read directly. [OmniDialogRunner] uses this class; you only need it to list keys or clear the cache.
+## [code]res://[/code] files load as godot [JSON] resources so they work in exported games, [code]user://[/code] files get read straight off disk. [OmniDialogRunner] uses this, you only need it yourself to list keys or clear the cache.
 
 static var _cache: Dictionary = {}
 
-## Returns the whole file at [param path] as a Dictionary of entries, or an empty Dictionary (with an error printed) if it can't be read.
+## returns the whole file at [param path] as a Dictionary of entries, or an empty one (and prints an error) if it can't be read.
 static func load_file(path: String) -> Dictionary:
 	if _cache.has(path):
 		return _cache[path]
 	var json: JSON
 	if path.begins_with("res://") and ResourceLoader.exists(path, "JSON"):
-		# Godot imports res:// .json files as JSON resources, and exported games only contain the
+		# godot imports res:// .json files as JSON resources and exported games only have the
 		# imported version, so load it as a resource.
 		json = load(path) as JSON
 		if json == null:
@@ -39,7 +39,7 @@ static func load_file(path: String) -> Dictionary:
 	_cache[path] = json.data
 	return json.data
 
-## Returns one entry as [code]{ "lines": Array, "skippable": bool }[/code], or an empty Dictionary if the file or [param key] is missing.
+## returns one entry as [code]{ "lines": Array, "skippable": bool }[/code], or an empty Dictionary if the file or [param key] isn't there.
 static func get_entry(path: String, key: String) -> Dictionary:
 	var entries := load_file(path)
 	if entries.is_empty():
@@ -55,10 +55,10 @@ static func get_entry(path: String, key: String) -> Dictionary:
 	push_error("OmniDialog: entry '%s' in %s must be a list of lines or an object with \"lines\"." % [key, path])
 	return {}
 
-## Returns every entry key in the file at [param path].
+## returns every entry key in the file at [param path].
 static func get_keys(path: String) -> PackedStringArray:
 	return PackedStringArray(load_file(path).keys())
 
-## Forgets cached files. Call it after editing a dialog file while the game runs.
+## forgets the cached files. call it after editing a dialog file while the game's running.
 static func clear_cache() -> void:
 	_cache.clear()

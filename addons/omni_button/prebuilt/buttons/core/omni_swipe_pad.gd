@@ -1,17 +1,17 @@
 @tool
 class_name OmniSwipePad
-extends Omni_Button
-## An [Omni_Button] that reports one direction per swipe, for dashes, card swipes and menus.
+extends OmniButton
+## an [OmniButton] that gives you one direction per swipe, for dashes, card swipes and menus.
 ##
-## [signal Omni_Button.swipe] fires again and again while the finger keeps moving; [signal swiped]
-## fires once per gesture, as soon as the finger has travelled [member Omni_Button.SwipeThreshold]
-## pixels, with the direction snapped to left / right / up / down (or exact, with [member four_way] off).
+## [signal OmniButton.swipe] keeps firing over and over while the finger moves. [signal swiped]
+## fires once per gesture, as soon as the finger has gone [member swipe_threshold] pixels, with the
+## direction snapped to left / right / up / down (or the exact direction if [member four_way] is off).
 
-## One swipe happened. With [member four_way] on, [param direction] is [code]Vector2.LEFT[/code],
-## [code]RIGHT[/code], [code]UP[/code] or [code]DOWN[/code]; otherwise it is the exact unit direction.
+## a swipe happened. with [member four_way] on, [param direction] is [code]Vector2.LEFT[/code],
+## [code]RIGHT[/code], [code]UP[/code] or [code]DOWN[/code], otherwise it's the exact unit direction.
 signal swiped(direction: Vector2)
 
-## Snap each swipe to the nearest of left / right / up / down.
+## snaps each swipe to whichever of left / right / up / down is closest.
 @export var four_way := true
 
 var _fired := false
@@ -29,7 +29,7 @@ func _on_swipe(direction: Vector2) -> void:
 	_fired = true
 	swiped.emit(snap(direction) if four_way else direction)
 
-## Nearest of left / right / up / down to [param direction].
+## whichever of left / right / up / down is closest to [param direction].
 static func snap(direction: Vector2) -> Vector2:
 	if absf(direction.x) >= absf(direction.y):
 		return Vector2.RIGHT if direction.x >= 0.0 else Vector2.LEFT

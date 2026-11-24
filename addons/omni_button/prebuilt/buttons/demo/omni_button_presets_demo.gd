@@ -1,14 +1,14 @@
 extends Control
-## Shows every ready-made button in [code]prebuilt/buttons/presets/[/code] and logs the signals they send.
-## Open this scene and press F6. Each card is an instance of a preset scene with only its text or icon changed,
-## so the handlers below are all the code a preset needs. The page buttons at the top are an
-## OmniTabBar preset: its pages setting shows the matching page with no code.
+## shows every ready made button in [code]prebuilt/buttons/presets/[/code] and logs the signals they send.
+## open this scene and hit F6. each card is just an instance of a preset scene with its text or icon
+## changed, so the handlers below are all the code a preset needs. the page buttons at the top are an
+## OmniTabBar preset, its pages setting shows the right page without any code.
 
-## Screen size this demo is laid out for; it scales to fit smaller or larger windows.
+## the screen size this demo is laid out for, it scales to fit smaller or bigger windows.
 const REFERENCE_SIZE := Vector2(1152, 648)
 const MAX_LOG_LINES := 14
-## InputMap action the "A" action button holds down (see its OutputAction). Added at runtime if the
-## project doesn't have it, so the demo works anywhere.
+## input map action the "A" action button holds down (see its output_action). it gets added while
+## running if the project doesn't have it, so the demo works anywhere.
 const JUMP_ACTION := &"jump"
 
 var _lines: PackedStringArray = []
@@ -22,7 +22,7 @@ func _ready() -> void:
 
 	%Tabs.tab_changed.connect(_on_page_changed)
 
-	# Buttons page
+	# buttons page
 	%Start.pressed.connect(_add_log.bind("Start: pressed"))
 	%Music.toggled.connect(_on_music_toggled)
 	%Fullscreen.toggled.connect(func(on: bool): _add_log("Fullscreen: toggled %s" % ("on" if on else "off")))
@@ -35,7 +35,7 @@ func _ready() -> void:
 	%Attack.pressed.connect(_add_log.bind("Attack: pressed, cooling down for 3 s"))
 	%Dash.pressed.connect(_add_log.bind("Dash: pressed, cooling down for 1 s"))
 
-	# Touch controls page
+	# touch controls page
 	%Stick.started.connect(_add_log.bind("Joystick: started"))
 	%Stick.ended.connect(_add_log.bind("Joystick: ended"))
 	%Stick.axis_changed.connect(func(axis: Vector2): %StickAxis.text = "axis (%.2f, %.2f)" % [axis.x, axis.y])
@@ -46,7 +46,7 @@ func _ready() -> void:
 	%ActionA.released.connect(_add_log.bind("A: released"))
 	%ActionB.pressed.connect(_add_log.bind("B: pressed"))
 
-	# More page
+	# more page
 	%Title.pressed.connect(_add_log.bind("Press Start: pressed"))
 	%Title.typewriter_completed.connect(_add_log.bind("Press Start: typing done"))
 	%Replay.pressed.connect(%Title.play)
@@ -58,7 +58,7 @@ func _ready() -> void:
 	_add_log("Hover, click, or use the keyboard / gamepad (arrows + Enter).")
 
 func _process(_delta: float) -> void:
-	# What game code sees: the A button holds the "jump" action like a keyboard key would.
+	# what your game code sees: the A button holds "jump" down just like a keyboard key would.
 	%JumpState.text = "jump: held" if Input.is_action_pressed(JUMP_ACTION) else "jump: up"
 
 func _on_page_changed(index: int) -> void:
@@ -68,8 +68,8 @@ func _on_page_changed(index: int) -> void:
 		2:
 			%Title.play()
 
-## Godot's ui_accept has Enter and Space but no controller button, so a focused button can't be
-## pressed with A. Adds A while the demo runs; in your game, add it under Project Settings > Input Map.
+## godot's ui_accept has enter and space but no controller button, so A can't press a focused
+## button. this adds A while the demo runs. in your game add it under project settings > input map.
 func _add_gamepad_accept() -> void:
 	for e in InputMap.action_get_events(&"ui_accept"):
 		if e is InputEventJoypadButton:
@@ -79,9 +79,9 @@ func _add_gamepad_accept() -> void:
 	a.device = -1
 	InputMap.action_add_event(&"ui_accept", a)
 
-## A toggle's text doesn't change by itself: update it in the toggled handler.
+## a toggle's text doesn't change on its own, update it in the toggled handler.
 func _on_music_toggled(on: bool) -> void:
-	%Music.Text = "Music: On" if on else "Music: Off"
+	%Music.text = "Music: On" if on else "Music: Off"
 	_add_log("Music: toggled %s" % ("on" if on else "off"))
 
 func _on_swiped(direction: Vector2) -> void:
@@ -95,7 +95,7 @@ func _add_log(line: String) -> void:
 		_lines.remove_at(0)
 	%Log.text = "\n".join(_lines)
 
-## Scales the page so it fits any window, down to 320x180.
+## scales the page so it fits any window, down to 320x180.
 func _fit_to_screen() -> void:
 	var margin: Control = $Margin
 	var screen := get_viewport().get_visible_rect().size
